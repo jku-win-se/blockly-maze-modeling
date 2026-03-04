@@ -1,0 +1,1555 @@
+<html dir="ltr" lang="en">
+ <head>
+  <style id="blockly-renderer-style-geras-classic">
+   .geras-renderer.classic-theme .blocklyText, 
+.geras-renderer.classic-theme .blocklyFlyoutLabelText {
+font: normal 11pt sans-serif;
+}
+.geras-renderer.classic-theme .blocklyText {
+fill: #fff;
+}
+.geras-renderer.classic-theme .blocklyNonEditableText>rect,
+.geras-renderer.classic-theme .blocklyEditableText>rect {
+fill: #fff;
+fill-opacity: .6;
+stroke: none;
+}
+.geras-renderer.classic-theme .blocklyNonEditableText>text,
+.geras-renderer.classic-theme .blocklyEditableText>text {
+fill: #000;
+}
+.geras-renderer.classic-theme .blocklyFlyoutLabelText {
+fill: #000;
+}
+.geras-renderer.classic-theme .blocklyText.blocklyBubbleText {
+fill: #000;
+}
+.geras-renderer.classic-theme .blocklyEditableText:not(.editing):hover>rect {
+stroke: #fff;
+stroke-width: 2;
+}
+.geras-renderer.classic-theme .blocklyHtmlInput {
+font-family: sans-serif;
+font-weight: normal;
+}
+.geras-renderer.classic-theme .blocklySelected>.blocklyPath {
+stroke: #fc3;
+stroke-width: 3px;
+}
+.geras-renderer.classic-theme .blocklyHighlightedConnectionPath {
+stroke: #fc3;
+}
+.geras-renderer.classic-theme .blocklyReplaceable .blocklyPath {
+fill-opacity: .5;
+}
+.geras-renderer.classic-theme .blocklyReplaceable .blocklyPathLight,
+.geras-renderer.classic-theme .blocklyReplaceable .blocklyPathDark {
+display: none;
+}
+.geras-renderer.classic-theme .blocklyInsertionMarker>.blocklyPath {
+fill-opacity: 0.2;
+stroke: none;
+}
+.geras-renderer.classic-theme .blocklyInsertionMarker>.blocklyPathLight,
+.geras-renderer.classic-theme .blocklyInsertionMarker>.blocklyPathDark {
+fill-opacity: 0.2;
+stroke: none;
+}
+  </style>
+  <style id="blockly-common-style">
+   .blocklySvg {
+background-color: #fff;
+outline: none;
+overflow: hidden;
+position: absolute;
+display: block;
+}
+.blocklyWidgetDiv {
+display: none;
+position: absolute;
+z-index: 99999;
+}
+.injectionDiv {
+height: 100%;
+position: relative;
+overflow: hidden;
+touch-action: none;
+}
+.blocklyNonSelectable {
+user-select: none;
+-ms-user-select: none;
+-webkit-user-select: none;
+}
+.blocklyWsDragSurface {
+display: none;
+position: absolute;
+top: 0;
+left: 0;
+}
+.blocklyWsDragSurface.blocklyOverflowVisible {
+overflow: visible;
+}
+.blocklyBlockDragSurface {
+display: none;
+position: absolute;
+top: 0;
+left: 0;
+right: 0;
+bottom: 0;
+overflow: visible !important;
+z-index: 50;
+}
+.blocklyBlockCanvas.blocklyCanvasTransitioning,
+.blocklyBubbleCanvas.blocklyCanvasTransitioning {
+transition: transform .5s;
+}
+.blocklyTooltipDiv {
+background-color: #ffffc7;
+border: 1px solid #ddc;
+box-shadow: 4px 4px 20px 1px rgba(0,0,0,.15);
+color: #000;
+display: none;
+font: 9pt sans-serif;
+opacity: .9;
+padding: 2px;
+position: absolute;
+z-index: 100000;
+}
+.blocklyDropDownDiv {
+position: absolute;
+left: 0;
+top: 0;
+z-index: 1000;
+display: none;
+border: 1px solid;
+border-color: #dadce0;
+background-color: #fff;
+border-radius: 2px;
+padding: 4px;
+box-shadow: 0 0 3px 1px rgba(0,0,0,.3);
+}
+.blocklyDropDownDiv.blocklyFocused {
+box-shadow: 0 0 6px 1px rgba(0,0,0,.3);
+}
+.blocklyDropDownContent {
+max-height: 300px;
+overflow: auto;
+overflow-x: hidden;
+position: relative;
+}
+.blocklyDropDownArrow {
+position: absolute;
+left: 0;
+top: 0;
+width: 16px;
+height: 16px;
+z-index: -1;
+background-color: inherit;
+border-color: inherit;
+}
+.blocklyDropDownButton {
+display: inline-block;
+float: left;
+padding: 0;
+margin: 4px;
+border-radius: 4px;
+outline: none;
+border: 1px solid;
+transition: box-shadow .1s;
+cursor: pointer;
+}
+.blocklyArrowTop {
+border-top: 1px solid;
+border-left: 1px solid;
+border-top-left-radius: 4px;
+border-color: inherit;
+}
+.blocklyArrowBottom {
+border-bottom: 1px solid;
+border-right: 1px solid;
+border-bottom-right-radius: 4px;
+border-color: inherit;
+}
+.blocklyResizeSE {
+cursor: se-resize;
+fill: #aaa;
+}
+.blocklyResizeSW {
+cursor: sw-resize;
+fill: #aaa;
+}
+.blocklyResizeLine {
+stroke: #515A5A;
+stroke-width: 1;
+}
+.blocklyHighlightedConnectionPath {
+fill: none;
+stroke: #fc3;
+stroke-width: 4px;
+}
+.blocklyPathLight {
+fill: none;
+stroke-linecap: round;
+stroke-width: 1;
+}
+.blocklySelected>.blocklyPathLight {
+display: none;
+}
+.blocklyDraggable {
+cursor: url("third-party/blockly/media/handopen.cur"), auto;
+cursor: grab;
+cursor: -webkit-grab;
+}
+.blocklyDragging {
+cursor: url("third-party/blockly/media/handclosed.cur"), auto;
+cursor: grabbing;
+cursor: -webkit-grabbing;
+}
+.blocklyDraggable:active {
+cursor: url("third-party/blockly/media/handclosed.cur"), auto;
+cursor: grabbing;
+cursor: -webkit-grabbing;
+}
+.blocklyBlockDragSurface .blocklyDraggable {
+cursor: url("third-party/blockly/media/handclosed.cur"), auto;
+cursor: grabbing;
+cursor: -webkit-grabbing;
+}
+.blocklyDragging.blocklyDraggingDelete {
+cursor: url("third-party/blockly/media/handdelete.cur"), auto;
+}
+.blocklyDragging>.blocklyPath,
+.blocklyDragging>.blocklyPathLight {
+fill-opacity: .8;
+stroke-opacity: .8;
+}
+.blocklyDragging>.blocklyPathDark {
+display: none;
+}
+.blocklyDisabled>.blocklyPath {
+fill-opacity: .5;
+stroke-opacity: .5;
+}
+.blocklyDisabled>.blocklyPathLight,
+.blocklyDisabled>.blocklyPathDark {
+display: none;
+}
+.blocklyInsertionMarker>.blocklyPath,
+.blocklyInsertionMarker>.blocklyPathLight,
+.blocklyInsertionMarker>.blocklyPathDark {
+fill-opacity: .2;
+stroke: none;
+}
+.blocklyMultilineText {
+font-family: monospace;
+}
+.blocklyNonEditableText>text {
+pointer-events: none;
+}
+.blocklyFlyout {
+position: absolute;
+z-index: 20;
+}
+.blocklyText text {
+cursor: default;
+}
+.blocklySvg text,
+.blocklyBlockDragSurface text {
+user-select: none;
+-ms-user-select: none;
+-webkit-user-select: none;
+cursor: inherit;
+}
+.blocklyHidden {
+display: none;
+}
+.blocklyFieldDropdown:not(.blocklyHidden) {
+display: block;
+}
+.blocklyIconGroup {
+cursor: default;
+}
+.blocklyIconGroup:not(:hover),
+.blocklyIconGroupReadonly {
+opacity: .6;
+}
+.blocklyIconShape {
+fill: #00f;
+stroke: #fff;
+stroke-width: 1px;
+}
+.blocklyIconSymbol {
+fill: #fff;
+}
+.blocklyMinimalBody {
+margin: 0;
+padding: 0;
+}
+.blocklyHtmlInput {
+border: none;
+border-radius: 4px;
+height: 100%;
+margin: 0;
+outline: none;
+padding: 0;
+width: 100%;
+text-align: center;
+display: block;
+box-sizing: border-box;
+}
+.blocklyHtmlInput::-ms-clear {
+display: none;
+}
+.blocklyMainBackground {
+stroke-width: 1;
+stroke: #c6c6c6;
+}
+.blocklyMutatorBackground {
+fill: #fff;
+stroke: #ddd;
+stroke-width: 1;
+}
+.blocklyFlyoutBackground {
+fill: #ddd;
+fill-opacity: .8;
+}
+.blocklyMainWorkspaceScrollbar {
+z-index: 20;
+}
+.blocklyFlyoutScrollbar {
+z-index: 30;
+}
+.blocklyScrollbarHorizontal,
+.blocklyScrollbarVertical {
+position: absolute;
+outline: none;
+}
+.blocklyScrollbarBackground {
+opacity: 0;
+}
+.blocklyScrollbarHandle {
+fill: #ccc;
+}
+.blocklyScrollbarBackground:hover+.blocklyScrollbarHandle,
+.blocklyScrollbarHandle:hover {
+fill: #bbb;
+}
+.blocklyFlyout .blocklyScrollbarHandle {
+fill: #bbb;
+}
+.blocklyFlyout .blocklyScrollbarBackground:hover+.blocklyScrollbarHandle,
+.blocklyFlyout .blocklyScrollbarHandle:hover {
+fill: #aaa;
+}
+.blocklyInvalidInput {
+background: #faa;
+}
+.blocklyVerticalMarker {
+stroke-width: 3px;
+fill: rgba(255,255,255,.5);
+pointer-events: none;
+}
+.blocklyComputeCanvas {
+position: absolute;
+width: 0;
+height: 0;
+}
+.blocklyNoPointerEvents {
+pointer-events: none;
+}
+.blocklyContextMenu {
+border-radius: 4px;
+max-height: 100%;
+}
+.blocklyDropdownMenu {
+border-radius: 2px;
+padding: 0 !important;
+}
+.blocklyDropdownMenu .blocklyMenuItem {
+padding-left: 28px;
+}
+.blocklyDropdownMenu .blocklyMenuItemRtl {
+padding-left: 5px;
+padding-right: 28px;
+}
+.blocklyWidgetDiv .blocklyMenu {
+background: #fff;
+border: 1px solid transparent;
+box-shadow: 0 0 3px 1px rgba(0,0,0,.3);
+font: normal 13px Arial, sans-serif;
+margin: 0;
+outline: none;
+padding: 4px 0;
+position: absolute;
+overflow-y: auto;
+overflow-x: hidden;
+max-height: 100%;
+z-index: 20000;
+}
+.blocklyWidgetDiv .blocklyMenu.blocklyFocused {
+box-shadow: 0 0 6px 1px rgba(0,0,0,.3);
+}
+.blocklyDropDownDiv .blocklyMenu {
+background: inherit;
+border: inherit;
+font: normal 13px "Helvetica Neue", Helvetica, sans-serif;
+outline: none;
+position: relative;
+z-index: 20000;
+}
+.blocklyMenuItem {
+border: none;
+color: #000;
+cursor: pointer;
+list-style: none;
+margin: 0;
+min-width: 7em;
+padding: 6px 15px;
+white-space: nowrap;
+}
+.blocklyMenuItemDisabled {
+color: #ccc;
+cursor: inherit;
+}
+.blocklyMenuItemHighlight {
+background-color: rgba(0,0,0,.1);
+}
+.blocklyMenuItemCheckbox {
+height: 16px;
+position: absolute;
+width: 16px;
+}
+.blocklyMenuItemSelected .blocklyMenuItemCheckbox {
+background: url(third-party/blockly/media/sprites.png) no-repeat -48px -16px;
+float: left;
+margin-left: -24px;
+position: static;
+}
+.blocklyMenuItemRtl .blocklyMenuItemCheckbox {
+float: right;
+margin-right: -24px;
+}
+  </style>
+  <meta charset="utf-8"/>
+  <meta name="google" value="notranslate"/>
+  <meta content="target-densitydpi=device-dpi, width=device-width, initial-scale=1.0, user-scalable=no" name="viewport"/>
+  <meta content="Maze is an introduction to loops and conditionals. It starts simply, but every level is more challenging than the last." name="description"/>
+  <title>
+   Blockly Games : Maze
+  </title>
+  <link href="css/common.css" rel="stylesheet"/>
+  <link href="css/style.css" rel="stylesheet"/>
+  <script src="js/boot.js">
+  </script>
+  <script src="js/en.js" type="text/javascript">
+  </script>
+  <script src="js/compressed.js" type="text/javascript">
+  </script>
+  <script src="js/compressed.js" type="text/javascript">
+  </script>
+  <link href="css/prettify.css" rel="stylesheet" type="text/css"/>
+  <script src="js/prettify.js" type="text/javascript">
+  </script>
+ </head>
+ <body>
+  <table width="100%">
+   <tbody>
+    <tr>
+     <td>
+      <h1>
+       <span id="title">
+        <a href="./?lang=en">
+         Blockly Games
+        </a>
+        : Maze
+       </span>
+       <span class="level_number level_done" id="level1">
+        1
+       </span>
+       <a class="level_dot" href="?lang=en&amp;level=2&amp;&amp;skin=0" id="level2">
+       </a>
+       <a class="level_dot" href="?lang=en&amp;level=3&amp;&amp;skin=0" id="level3">
+       </a>
+       <a class="level_dot" href="?lang=en&amp;level=4&amp;&amp;skin=0" id="level4">
+       </a>
+       <a class="level_dot" href="?lang=en&amp;level=5&amp;&amp;skin=0" id="level5">
+       </a>
+       <a class="level_dot" href="?lang=en&amp;level=6&amp;&amp;skin=0" id="level6">
+       </a>
+       <a class="level_dot" href="?lang=en&amp;level=7&amp;&amp;skin=0" id="level7">
+       </a>
+       <a class="level_dot" href="?lang=en&amp;level=8&amp;&amp;skin=0" id="level8">
+       </a>
+       <a class="level_dot" href="?lang=en&amp;level=9&amp;&amp;skin=0" id="level9">
+       </a>
+       <a class="level_number" href="?lang=en&amp;level=10&amp;&amp;skin=0" id="level10">
+        10
+       </a>
+      </h1>
+     </td>
+     <td class="farSide" id="header_cta">
+      <select id="languageMenu">
+       <option value="ig">
+        Asụsụ Igbo
+       </option>
+       <option value="id">
+        Bahasa Indonesia
+       </option>
+       <option value="ms">
+        Bahasa Melayu
+       </option>
+       <option value="br">
+        Brezhoneg
+       </option>
+       <option value="ca">
+        Català
+       </option>
+       <option value="da">
+        Dansk
+       </option>
+       <option value="de">
+        Deutsch
+       </option>
+       <option value="en">
+        English
+       </option>
+       <option value="es">
+        Español
+       </option>
+       <option value="eo">
+        Esperanto
+       </option>
+       <option value="eu">
+        Euskara
+       </option>
+       <option value="fr">
+        Français
+       </option>
+       <option value="fo">
+        Føroyskt
+       </option>
+       <option value="gl">
+        Galego
+       </option>
+       <option value="ha">
+        Hausa
+       </option>
+       <option value="hr">
+        Hrvatski
+       </option>
+       <option value="ia">
+        Interlingua
+       </option>
+       <option value="it">
+        Italiano
+       </option>
+       <option value="lv">
+        Latviešu
+       </option>
+       <option value="lt">
+        Lietuvių
+       </option>
+       <option value="hu">
+        Magyar
+       </option>
+       <option value="nl">
+        Nederlands, Vlaams
+       </option>
+       <option value="nb">
+        Norsk (bokmål)
+       </option>
+       <option value="pms">
+        Piemontèis
+       </option>
+       <option value="pl">
+        Polski
+       </option>
+       <option value="pt">
+        Português
+       </option>
+       <option value="pt-br">
+        Português Brasileiro
+       </option>
+       <option value="ro">
+        Română
+       </option>
+       <option value="sc">
+        Sardu
+       </option>
+       <option value="sq">
+        Shqip
+       </option>
+       <option value="sk">
+        Slovenčina
+       </option>
+       <option value="sl">
+        Slovenščina
+       </option>
+       <option value="sr-latn">
+        Srpski
+       </option>
+       <option value="fi">
+        Suomi
+       </option>
+       <option value="sv">
+        Svenska
+       </option>
+       <option value="kab">
+        Taqbaylit
+       </option>
+       <option value="be-tarask">
+        Taraškievica
+       </option>
+       <option value="vi">
+        Tiếng Việt
+       </option>
+       <option value="tr">
+        Türkçe
+       </option>
+       <option value="yo">
+        Èdè Yorùbá
+       </option>
+       <option value="is">
+        Íslenska
+       </option>
+       <option value="cs">
+        Česky
+       </option>
+       <option value="el">
+        Ελληνικά
+       </option>
+       <option value="ru">
+        Русский
+       </option>
+       <option value="sr">
+        Српски
+       </option>
+       <option value="uk">
+        Українська
+       </option>
+       <option value="be">
+        беларускі
+       </option>
+       <option value="bg">
+        български език
+       </option>
+       <option value="hy">
+        հայերէն
+       </option>
+       <option value="he">
+        עברית
+       </option>
+       <option value="ar">
+        العربية
+       </option>
+       <option value="ur">
+        اُردُو‬
+       </option>
+       <option value="fa">
+        فارسی
+       </option>
+       <option value="hi">
+        हिन्दी
+       </option>
+       <option value="bn">
+        বাংলা
+       </option>
+       <option value="kn">
+        ಕನ್ನಡ
+       </option>
+       <option value="th">
+        ภาษาไทย
+       </option>
+       <option value="my">
+        မြန်မာစာ
+       </option>
+       <option value="ti">
+        ትግርኛ
+       </option>
+       <option value="am">
+        አማርኛ
+       </option>
+       <option value="ja">
+        日本語
+       </option>
+       <option value="zh-hant">
+        正體中文
+       </option>
+       <option value="zh-hans">
+        简体中文
+       </option>
+       <option value="ko">
+        한국어
+       </option>
+      </select>
+      <button id="linkButton" title="Save and link to blocks.">
+       <img class="link icon21" src="images/1x1.gif"/>
+      </button>
+      <button id="pegmanButton">
+       <img src="images/1x1.gif" style='background-image: url("images/pegman.png");'/>
+       <span id="pegmanButtonArrow">
+        ▾
+       </span>
+      </button>
+     </td>
+    </tr>
+   </tbody>
+  </table>
+  <div id="visualization">
+   <svg height="400px" id="svgMaze" version="1.1" viewbox="0 0 350 350" width="400px" xmlns="http://www.w3.org/2000/svg">
+    <rect fill="#F1EEE7" height="350" stroke="#CCB" stroke-width="1" width="350">
+    </rect>
+    <clippath id="tileClipPath0">
+     <rect height="50" width="50" x="0" y="0">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath0)" height="200" width="250" x="-200" xlink:href="maze/tiles_pegman.png" y="-150"/>
+    <clippath id="tileClipPath1">
+     <rect height="50" width="50" x="50" y="0">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath1)" height="200" width="250" x="-150" xlink:href="maze/tiles_pegman.png" y="-150"/>
+    <clippath id="tileClipPath2">
+     <rect height="50" width="50" x="100" y="0">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath2)" height="200" width="250" x="-100" xlink:href="maze/tiles_pegman.png" y="-150"/>
+    <clippath id="tileClipPath3">
+     <rect height="50" width="50" x="150" y="0">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath3)" height="200" width="250" x="-50" xlink:href="maze/tiles_pegman.png" y="-150"/>
+    <clippath id="tileClipPath4">
+     <rect height="50" width="50" x="200" y="0">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath4)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="0"/>
+    <clippath id="tileClipPath5">
+     <rect height="50" width="50" x="250" y="0">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath5)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="-150"/>
+    <clippath id="tileClipPath6">
+     <rect height="50" width="50" x="300" y="0">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath6)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="-150"/>
+    <clippath id="tileClipPath7">
+     <rect height="50" width="50" x="0" y="50">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath7)" height="200" width="250" x="-150" xlink:href="maze/tiles_pegman.png" y="50"/>
+    <clippath id="tileClipPath8">
+     <rect height="50" width="50" x="50" y="50">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath8)" height="200" width="250" x="-150" xlink:href="maze/tiles_pegman.png" y="-100"/>
+    <clippath id="tileClipPath9">
+     <rect height="50" width="50" x="100" y="50">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath9)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="-100"/>
+    <clippath id="tileClipPath10">
+     <rect height="50" width="50" x="150" y="50">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath10)" height="200" width="250" x="-50" xlink:href="maze/tiles_pegman.png" y="-100"/>
+    <clippath id="tileClipPath11">
+     <rect height="50" width="50" x="200" y="50">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath11)" height="200" width="250" x="0" xlink:href="maze/tiles_pegman.png" y="-100"/>
+    <clippath id="tileClipPath12">
+     <rect height="50" width="50" x="250" y="50">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath12)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="-100"/>
+    <clippath id="tileClipPath13">
+     <rect height="50" width="50" x="300" y="50">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath13)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="-100"/>
+    <clippath id="tileClipPath14">
+     <rect height="50" width="50" x="0" y="100">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath14)" height="200" width="250" x="-200" xlink:href="maze/tiles_pegman.png" y="-50"/>
+    <clippath id="tileClipPath15">
+     <rect height="50" width="50" x="50" y="100">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath15)" height="200" width="250" x="-150" xlink:href="maze/tiles_pegman.png" y="-50"/>
+    <clippath id="tileClipPath16">
+     <rect height="50" width="50" x="100" y="100">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath16)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="-50"/>
+    <clippath id="tileClipPath17">
+     <rect height="50" width="50" x="150" y="100">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath17)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="-50"/>
+    <clippath id="tileClipPath18">
+     <rect height="50" width="50" x="200" y="100">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath18)" height="200" width="250" x="150" xlink:href="maze/tiles_pegman.png" y="-50"/>
+    <clippath id="tileClipPath19">
+     <rect height="50" width="50" x="250" y="100">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath19)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="-50"/>
+    <clippath id="tileClipPath20">
+     <rect height="50" width="50" x="300" y="100">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath20)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="-50"/>
+    <clippath id="tileClipPath21">
+     <rect height="50" width="50" x="0" y="150">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath21)" height="200" width="250" x="0" xlink:href="maze/tiles_pegman.png" y="0"/>
+    <clippath id="tileClipPath22">
+     <rect height="50" width="50" x="50" y="150">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath22)" height="200" width="250" x="-100" xlink:href="maze/tiles_pegman.png" y="100"/>
+    <clippath id="tileClipPath23">
+     <rect height="50" width="50" x="100" y="150">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath23)" height="200" width="250" x="-50" xlink:href="maze/tiles_pegman.png" y="100"/>
+    <clippath id="tileClipPath24">
+     <rect height="50" width="50" x="150" y="150">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath24)" height="200" width="250" x="0" xlink:href="maze/tiles_pegman.png" y="100"/>
+    <clippath id="tileClipPath25">
+     <rect height="50" width="50" x="200" y="150">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath25)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="150"/>
+    <clippath id="tileClipPath26">
+     <rect height="50" width="50" x="250" y="150">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath26)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="0"/>
+    <clippath id="tileClipPath27">
+     <rect height="50" width="50" x="300" y="150">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath27)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="0"/>
+    <clippath id="tileClipPath28">
+     <rect height="50" width="50" x="0" y="200">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath28)" height="200" width="250" x="-200" xlink:href="maze/tiles_pegman.png" y="50"/>
+    <clippath id="tileClipPath29">
+     <rect height="50" width="50" x="50" y="200">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath29)" height="200" width="250" x="-100" xlink:href="maze/tiles_pegman.png" y="200"/>
+    <clippath id="tileClipPath30">
+     <rect height="50" width="50" x="100" y="200">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath30)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="100"/>
+    <clippath id="tileClipPath31">
+     <rect height="50" width="50" x="150" y="200">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath31)" height="200" width="250" x="0" xlink:href="maze/tiles_pegman.png" y="100"/>
+    <clippath id="tileClipPath32">
+     <rect height="50" width="50" x="200" y="200">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath32)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="50"/>
+    <clippath id="tileClipPath33">
+     <rect height="50" width="50" x="250" y="200">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath33)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="200"/>
+    <clippath id="tileClipPath34">
+     <rect height="50" width="50" x="300" y="200">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath34)" height="200" width="250" x="250" xlink:href="maze/tiles_pegman.png" y="50"/>
+    <clippath id="tileClipPath35">
+     <rect height="50" width="50" x="0" y="250">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath35)" height="200" width="250" x="-200" xlink:href="maze/tiles_pegman.png" y="100"/>
+    <clippath id="tileClipPath36">
+     <rect height="50" width="50" x="50" y="250">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath36)" height="200" width="250" x="-150" xlink:href="maze/tiles_pegman.png" y="100"/>
+    <clippath id="tileClipPath37">
+     <rect height="50" width="50" x="100" y="250">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath37)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="100"/>
+    <clippath id="tileClipPath38">
+     <rect height="50" width="50" x="150" y="250">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath38)" height="200" width="250" x="0" xlink:href="maze/tiles_pegman.png" y="200"/>
+    <clippath id="tileClipPath39">
+     <rect height="50" width="50" x="200" y="250">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath39)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="200"/>
+    <clippath id="tileClipPath40">
+     <rect height="50" width="50" x="250" y="250">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath40)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="100"/>
+    <clippath id="tileClipPath41">
+     <rect height="50" width="50" x="300" y="250">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath41)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="100"/>
+    <clippath id="tileClipPath42">
+     <rect height="50" width="50" x="0" y="300">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath42)" height="200" width="250" x="-200" xlink:href="maze/tiles_pegman.png" y="150"/>
+    <clippath id="tileClipPath43">
+     <rect height="50" width="50" x="50" y="300">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath43)" height="200" width="250" x="-150" xlink:href="maze/tiles_pegman.png" y="150"/>
+    <clippath id="tileClipPath44">
+     <rect height="50" width="50" x="100" y="300">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath44)" height="200" width="250" x="-100" xlink:href="maze/tiles_pegman.png" y="150"/>
+    <clippath id="tileClipPath45">
+     <rect height="50" width="50" x="150" y="300">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath45)" height="200" width="250" x="-50" xlink:href="maze/tiles_pegman.png" y="150"/>
+    <clippath id="tileClipPath46">
+     <rect height="50" width="50" x="200" y="300">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath46)" height="200" width="250" x="50" xlink:href="maze/tiles_pegman.png" y="250"/>
+    <clippath id="tileClipPath47">
+     <rect height="50" width="50" x="250" y="300">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath47)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="300"/>
+    <clippath id="tileClipPath48">
+     <rect height="50" width="50" x="300" y="300">
+     </rect>
+    </clippath>
+    <image clip-path="url(#tileClipPath48)" height="200" width="250" x="100" xlink:href="maze/tiles_pegman.png" y="150"/>
+    <image height="34" id="finish" width="20" x="215" xlink:href="maze/marker.png" y="195.99999999999997"/>
+    <clippath id="pegmanClipPath">
+     <rect height="52" id="clipRect" width="49" x="101" y="191">
+     </rect>
+    </clippath>
+    <image clip-path="url(#pegmanClipPath)" height="52" id="pegman" transform="rotate(0, 0, 0)" width="1029" x="-95" xlink:href="maze/pegman.png" y="191"/>
+    <g id="look" style="display: none;">
+     <path d="M 0,-15 a 15 15 0 0 1 15 15" stroke="#000">
+     </path>
+     <path d="M 0,-35 a 35 35 0 0 1 35 35" stroke="#000">
+     </path>
+     <path d="M 0,-55 a 55 55 0 0 1 55 55" stroke="#000">
+     </path>
+    </g>
+   </svg>
+   <div id="capacityBubble">
+    <div id="capacity" style="display: none;">
+    </div>
+   </div>
+  </div>
+  <div id="commandDiv">
+   <button class="primary" id="runButton" title="Makes the player do what the blocks say.">
+    <img class="run icon21" src="images/1x1.gif"/>
+    Run Program
+   </button>
+   <button class="primary" id="resetButton" title="Put the player back at the start of the maze.">
+    <img class="stop icon21" src="images/1x1.gif"/>
+    Reset
+   </button>
+  </div>
+  <xml id="toolbox" xmlns="https://developers.google.com/blockly/xml">
+   <block type="maze_moveForward">
+   </block>
+   <block type="maze_turn">
+    <field name="DIR">
+     turnLeft
+    </field>
+   </block>
+   <block type="maze_turn">
+    <field name="DIR">
+     turnRight
+    </field>
+   </block>
+  </xml>
+  <div id="blockly" style="top: 59px; left: 420px; width: 1480px;">
+   <div aria-label="Blockly Workspace" class="injectionDiv geras-renderer classic-theme" dir="LTR" tabindex="0">
+    <svg class="blocklySvg" height="819px" tabindex="0" version="1.1" width="1480px" xmlns="http://www.w3.org/2000/svg" xmlns:html="http://www.w3.org/1999/xhtml" xmlns:xlink="http://www.w3.org/1999/xlink">
+     <defs>
+      <pattern height="100" id="blocklyGridPattern966421352628414" patternunits="userSpaceOnUse" width="100" x="202.82871551513674" y="0">
+       <line stroke-width="1.3" x1="0" x2="1.3" y1="0.65" y2="0.65">
+       </line>
+      </pattern>
+     </defs>
+     <g class="blocklyWorkspace">
+      <rect class="blocklyMainBackground" height="100%" style='fill: url("#blocklyGridPattern966421352628414");' width="100%">
+      </rect>
+      <g class="blocklyTrash" style="opacity: 0.4;" transform="translate(1413,739)">
+       <clippath id="blocklyTrashBodyClipPath6255169808443702">
+        <rect height="44" width="47" y="16">
+        </rect>
+       </clippath>
+       <image clip-path="url(#blocklyTrashBodyClipPath6255169808443702)" height="124" width="96" x="0" xlink:href="third-party/blockly/media/sprites.png" y="-32"/>
+       <clippath id="blocklyTrashLidClipPath6255169808443702">
+        <rect height="16" width="47">
+        </rect>
+       </clippath>
+       <image clip-path="url(#blocklyTrashLidClipPath6255169808443702)" height="124" transform="rotate(0,43,14)" width="96" x="0" xlink:href="third-party/blockly/media/sprites.png" y="-32"/>
+      </g>
+      <g class="blocklyBlockCanvas" transform="translate(202.82871551513674,0) scale(1.3)">
+       <g class="blocklyCursor">
+        <g height="5" width="100">
+         <rect height="5" style="display: none;" width="100">
+          <animate attributename="fill" attributetype="XML" dur="1s" repeatcount="indefinite" values="#cc0a0a;transparent;transparent;">
+          </animate>
+         </rect>
+         <rect class="blocklyVerticalMarker" rx="10" ry="10" style="display: none;">
+         </rect>
+         <path style="display: none;" transform="">
+          <animate attributename="fill" attributetype="XML" dur="1s" repeatcount="indefinite" values="#cc0a0a;transparent;transparent;">
+          </animate>
+         </path>
+         <path fill="none" stroke-width="4" style="display: none;" transform="">
+          <animate attributename="stroke" attributetype="XML" dur="1s" repeatcount="indefinite" values="#cc0a0a;transparent;transparent;">
+          </animate>
+         </path>
+        </g>
+       </g>
+       <g data-id="t.,Lg.#.R=,?y,M,v@e%" transform="translate(70,70)">
+        <path class="blocklyPathDark" d=" m 0,0  m 0,8 a 8 8 0 0,1 8,-8  h 7  l 6,4  3,0  6,-4  h 91.78501892089844  v 5  H 121.78501892089844  V 5  H 121.78501892089844  V 22  H 121.78501892089844  V 22  V 26  h -92.28501892089844  l -6,4  -3,0  -6,-4  h -6.5 a 8 8 0 0,1 -8,-8 z
+" fill="#7a4984" transform="translate(1,1)">
+        </path>
+        <path class="blocklyPath" d=" m 0,0  m 0,8 a 8 8 0 0,1 8,-8  h 7  l 6,4  3,0  6,-4  h 91.78501892089844  v 5  H 121.78501892089844  V 5  H 121.78501892089844  V 22  H 121.78501892089844  V 22  V 26  h -92.28501892089844  l -6,4  -3,0  -6,-4  h -6.5 a 8 8 0 0,1 -8,-8 z
+" fill="#995ba5" stroke="none">
+        </path>
+        <path class="blocklyPathLight" d=" m 0,0  m 0.5,8 a 7.5 7.5 0 0,1 8,-7.5  H 14.5  h 0.5  l 6,4  3,0  6,-4  H 121.28501892089844  H 121.28501892089844  M 0,26  m 2.6966991411008934,-2.6966991411008934 a 7.5 7.5 0 0,1 -2.1966991411008934,-5.303300858899107  V 8 
+" stroke="#b88cc0">
+        </path>
+        <g transform="translate(10,5)">
+         <text class="blocklyText" x="0" y="14">
+          move forward
+         </text>
+        </g>
+       </g>
+      </g>
+      <g class="blocklyBubbleCanvas" transform="translate(202.82871551513674,0) scale(1.3)">
+      </g>
+      <defs>
+       <filter id="blocklyEmbossFilter9790436005357872">
+        <fegaussianblur in="SourceAlpha" result="blur" stddeviation="1">
+        </fegaussianblur>
+        <fespecularlighting in="blur" lighting-color="white" result="specOut" specularconstant="0.5" specularexponent="10" surfacescale="1">
+         <fepointlight x="-5000" y="-10000" z="20000">
+         </fepointlight>
+        </fespecularlighting>
+        <fecomposite in="specOut" in2="SourceAlpha" operator="in" result="specOut">
+        </fecomposite>
+        <fecomposite in="SourceGraphic" in2="specOut" k1="0" k2="1" k3="1" k4="0" operator="arithmetic">
+        </fecomposite>
+       </filter>
+       <pattern height="10" id="blocklyDisabledPattern9790436005357872" patternunits="userSpaceOnUse" width="10">
+        <rect fill="#aaa" height="10" width="10">
+        </rect>
+        <path d="M 0 0 L 10 10 M 10 0 L 0 10" stroke="#cc0">
+        </path>
+       </pattern>
+      </defs>
+     </g>
+    </svg>
+    <svg class="blocklyFlyout" style="display: none">
+     <path class="blocklyFlyoutBackground">
+     </path>
+     <g class="blocklyWorkspace">
+      <g class="blocklyBlockCanvas">
+       <g class="blocklyCursor">
+        <g height="5" width="100">
+         <rect height="5" style="display: none;" width="100">
+          <animate attributename="fill" attributetype="XML" dur="1s" repeatcount="indefinite" values="#cc0a0a;transparent;transparent;">
+          </animate>
+         </rect>
+         <rect class="blocklyVerticalMarker" rx="10" ry="10" style="display: none;">
+         </rect>
+         <path style="display: none;" transform="">
+          <animate attributename="fill" attributetype="XML" dur="1s" repeatcount="indefinite" values="#cc0a0a;transparent;transparent;">
+          </animate>
+         </path>
+         <path fill="none" stroke-width="4" style="display: none;" transform="">
+          <animate attributename="stroke" attributetype="XML" dur="1s" repeatcount="indefinite" values="#cc0a0a;transparent;transparent;">
+          </animate>
+         </path>
+        </g>
+       </g>
+      </g>
+      <g class="blocklyBubbleCanvas">
+      </g>
+      <defs>
+       <filter id="blocklyEmbossFilter056379599317961104">
+        <fegaussianblur in="SourceAlpha" result="blur" stddeviation="1">
+        </fegaussianblur>
+        <fespecularlighting in="blur" lighting-color="white" result="specOut" specularconstant="0.5" specularexponent="10" surfacescale="1">
+         <fepointlight x="-5000" y="-10000" z="20000">
+         </fepointlight>
+        </fespecularlighting>
+        <fecomposite in="specOut" in2="SourceAlpha" operator="in" result="specOut">
+        </fecomposite>
+        <fecomposite in="SourceGraphic" in2="specOut" k1="0" k2="1" k3="1" k4="0" operator="arithmetic">
+        </fecomposite>
+       </filter>
+       <pattern height="10" id="blocklyDisabledPattern056379599317961104" patternunits="userSpaceOnUse" width="10">
+        <rect fill="#aaa" height="10" width="10">
+        </rect>
+        <path d="M 0 0 L 10 10 M 10 0 L 0 10" stroke="#cc0">
+        </path>
+       </pattern>
+      </defs>
+     </g>
+    </svg>
+    <svg class="blocklyScrollbarVertical blocklyFlyoutScrollbar" width="15">
+     <g>
+      <rect class="blocklyScrollbarBackground" width="15">
+      </rect>
+      <rect class="blocklyScrollbarHandle" rx="5" ry="5" width="10" x="2.5">
+      </rect>
+     </g>
+    </svg>
+    <svg class="blocklyFlyout" height="819" style="display: block; transform: translate(0px, 0px);" width="202.82871551513674">
+     <path class="blocklyFlyoutBackground" d="M 0,0 h 194.82871551513674 a 8 8 0 0 1 8 8 v 803 a 8 8 0 0 1 -8 8 h -194.82871551513674 z">
+     </path>
+     <g class="blocklyWorkspace">
+      <g class="blocklyBlockCanvas" transform="translate(0,0) scale(1.3)">
+       <g class="blocklyCursor">
+        <g height="5" width="100">
+         <rect height="5" style="display: none;" width="100">
+          <animate attributename="fill" attributetype="XML" dur="1s" repeatcount="indefinite" values="#cc0a0a;transparent;transparent;">
+          </animate>
+         </rect>
+         <rect class="blocklyVerticalMarker" rx="10" ry="10" style="display: none;">
+         </rect>
+         <path style="display: none;" transform="">
+          <animate attributename="fill" attributetype="XML" dur="1s" repeatcount="indefinite" values="#cc0a0a;transparent;transparent;">
+          </animate>
+         </path>
+         <path fill="none" stroke-width="4" style="display: none;" transform="">
+          <animate attributename="stroke" attributetype="XML" dur="1s" repeatcount="indefinite" values="#cc0a0a;transparent;transparent;">
+          </animate>
+         </path>
+        </g>
+       </g>
+       <rect fill-opacity="0" height="31" width="122.78501892089844" x="16" y="8">
+       </rect>
+       <g class="blocklyDraggable" data-id="T4*R!yo,^U@9^%2QS,[=" transform="translate(16,8)">
+        <path class="blocklyPathDark" d=" m 0,0  m 0,8 a 8 8 0 0,1 8,-8  h 7  l 6,4  3,0  6,-4  h 91.78501892089844  v 5  H 121.78501892089844  V 5  H 121.78501892089844  V 22  H 121.78501892089844  V 22  V 26  h -92.28501892089844  l -6,4  -3,0  -6,-4  h -6.5 a 8 8 0 0,1 -8,-8 z
+" fill="#7a4984" transform="translate(1,1)">
+        </path>
+        <path class="blocklyPath" d=" m 0,0  m 0,8 a 8 8 0 0,1 8,-8  h 7  l 6,4  3,0  6,-4  h 91.78501892089844  v 5  H 121.78501892089844  V 5  H 121.78501892089844  V 22  H 121.78501892089844  V 22  V 26  h -92.28501892089844  l -6,4  -3,0  -6,-4  h -6.5 a 8 8 0 0,1 -8,-8 z
+" fill="#995ba5" stroke="none">
+        </path>
+        <path class="blocklyPathLight" d=" m 0,0  m 0.5,8 a 7.5 7.5 0 0,1 8,-7.5  H 14.5  h 0.5  l 6,4  3,0  6,-4  H 121.28501892089844  H 121.28501892089844  M 0,26  m 2.6966991411008934,-2.6966991411008934 a 7.5 7.5 0 0,1 -2.1966991411008934,-5.303300858899107  V 8 
+" stroke="#b88cc0">
+        </path>
+        <g transform="translate(10,5)">
+         <text class="blocklyText" x="0" y="14">
+          move forward
+         </text>
+        </g>
+       </g>
+       <rect fill-opacity="0" height="31" width="113.7847900390625" x="16" y="63">
+       </rect>
+       <g class="blocklyDraggable" data-id="Yr8b?ldZpZJWXG~DhOR~" transform="translate(16,63)">
+        <path class="blocklyPathDark" d=" m 0,0  m 0,8 a 8 8 0 0,1 8,-8  h 7  l 6,4  3,0  6,-4  h 82.7847900390625  v 5  H 112.7847900390625  V 5  H 112.7847900390625  V 22  H 112.7847900390625  V 22  V 26  h -83.2847900390625  l -6,4  -3,0  -6,-4  h -6.5 a 8 8 0 0,1 -8,-8 z
+" fill="#7a4984" transform="translate(1,1)">
+        </path>
+        <path class="blocklyPath" d=" m 0,0  m 0,8 a 8 8 0 0,1 8,-8  h 7  l 6,4  3,0  6,-4  h 82.7847900390625  v 5  H 112.7847900390625  V 5  H 112.7847900390625  V 22  H 112.7847900390625  V 22  V 26  h -83.2847900390625  l -6,4  -3,0  -6,-4  h -6.5 a 8 8 0 0,1 -8,-8 z
+" fill="#995ba5" stroke="none">
+        </path>
+        <path class="blocklyPathLight" d=" m 0,0  m 0.5,8 a 7.5 7.5 0 0,1 8,-7.5  H 14.5  h 0.5  l 6,4  3,0  6,-4  H 112.2847900390625  H 112.2847900390625  M 0,26  m 2.6966991411008934,-2.6966991411008934 a 7.5 7.5 0 0,1 -2.1966991411008934,-5.303300858899107  V 8 
+" stroke="#b88cc0">
+        </path>
+        <g transform="translate(10,5)">
+         <text class="blocklyText" x="0" y="14">
+          turn
+         </text>
+        </g>
+        <g class="blocklyEditableText" style="cursor: default;" transform="translate(45.09248352050781,5)">
+         <rect class="blocklyFieldRect blocklyDropdownRect" fill="transparent" height="17" rx="4" ry="4" stroke="#b88cc0" width="62.69230651855469" x="0" y="0">
+         </rect>
+         <text class="blocklyText blocklyDropdownText" text-anchor="start" x="5" y="14">
+          left ↺
+          <tspan style="fill: rgb(153, 91, 165);">
+           ▾
+          </tspan>
+         </text>
+         <image style="display: none;"/>
+        </g>
+       </g>
+       <rect fill-opacity="0" height="31" width="124.48362731933594" x="16" y="118">
+       </rect>
+       <g class="blocklyDraggable" data-id="5BJ$-DdN=*~AfH(UZ3#T" transform="translate(16,118)">
+        <path class="blocklyPathDark" d=" m 0,0  m 0,8 a 8 8 0 0,1 8,-8  h 7  l 6,4  3,0  6,-4  h 93.48362731933594  v 5  H 123.48362731933594  V 5  H 123.48362731933594  V 22  H 123.48362731933594  V 22  V 26  h -93.98362731933594  l -6,4  -3,0  -6,-4  h -6.5 a 8 8 0 0,1 -8,-8 z
+" fill="#7a4984" transform="translate(1,1)">
+        </path>
+        <path class="blocklyPath" d=" m 0,0  m 0,8 a 8 8 0 0,1 8,-8  h 7  l 6,4  3,0  6,-4  h 93.48362731933594  v 5  H 123.48362731933594  V 5  H 123.48362731933594  V 22  H 123.48362731933594  V 22  V 26  h -93.98362731933594  l -6,4  -3,0  -6,-4  h -6.5 a 8 8 0 0,1 -8,-8 z
+" fill="#995ba5" stroke="none">
+        </path>
+        <path class="blocklyPathLight" d=" m 0,0  m 0.5,8 a 7.5 7.5 0 0,1 8,-7.5  H 14.5  h 0.5  l 6,4  3,0  6,-4  H 122.98362731933594  H 122.98362731933594  M 0,26  m 2.6966991411008934,-2.6966991411008934 a 7.5 7.5 0 0,1 -2.1966991411008934,-5.303300858899107  V 8 
+" stroke="#b88cc0">
+        </path>
+        <g transform="translate(10,5)">
+         <text class="blocklyText" x="0" y="14">
+          turn
+         </text>
+        </g>
+        <g class="blocklyEditableText" style="cursor: default;" transform="translate(45.09248352050781,5)">
+         <rect class="blocklyFieldRect blocklyDropdownRect" fill="transparent" height="17" rx="4" ry="4" stroke="#b88cc0" width="73.39114379882812" x="0" y="0">
+         </rect>
+         <text class="blocklyText blocklyDropdownText" text-anchor="start" x="5" y="14">
+          right ↻
+          <tspan style="fill: rgb(153, 91, 165);">
+           ▾
+          </tspan>
+         </text>
+         <image style="display: none;"/>
+        </g>
+       </g>
+      </g>
+      <g class="blocklyBubbleCanvas" transform="translate(0,0) scale(1.3)">
+      </g>
+      <defs>
+       <filter id="blocklyEmbossFilter4939851895973576">
+        <fegaussianblur in="SourceAlpha" result="blur" stddeviation="1">
+        </fegaussianblur>
+        <fespecularlighting in="blur" lighting-color="white" result="specOut" specularconstant="0.5" specularexponent="10" surfacescale="1">
+         <fepointlight x="-5000" y="-10000" z="20000">
+         </fepointlight>
+        </fespecularlighting>
+        <fecomposite in="specOut" in2="SourceAlpha" operator="in" result="specOut">
+        </fecomposite>
+        <fecomposite in="SourceGraphic" in2="specOut" k1="0" k2="1" k3="1" k4="0" operator="arithmetic">
+        </fecomposite>
+       </filter>
+       <pattern height="10" id="blocklyDisabledPattern4939851895973576" patternunits="userSpaceOnUse" width="10">
+        <rect fill="#aaa" height="10" width="10">
+        </rect>
+        <path d="M 0 0 L 10 10 M 10 0 L 0 10" stroke="#cc0">
+        </path>
+       </pattern>
+      </defs>
+     </g>
+    </svg>
+    <svg class="blocklyScrollbarVertical blocklyFlyoutScrollbar" display="none" height="814" style="transform: translate(185.329px, 2.5px);" width="15">
+     <g>
+      <rect class="blocklyScrollbarBackground" height="814" width="15">
+      </rect>
+      <rect class="blocklyScrollbarHandle" height="814" rx="5" ry="5" width="10" x="2.5" y="0">
+      </rect>
+     </g>
+    </svg>
+    <svg class="blocklyBlockDragSurface" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:html="http://www.w3.org/1999/xhtml" xmlns:xlink="http://www.w3.org/1999/xlink">
+     <g transform="translate(203,0) scale(1.3)">
+     </g>
+    </svg>
+    <svg class="blocklyWsDragSurface blocklyOverflowVisible" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:html="http://www.w3.org/1999/xhtml" xmlns:xlink="http://www.w3.org/1999/xlink">
+    </svg>
+   </div>
+  </div>
+  <div id="pegmanMenu" style="display: none;">
+   <div>
+    <img src="images/1x1.gif" style='background-image: url("images/astro.png");'/>
+   </div>
+   <div>
+    <img src="images/1x1.gif" style='background-image: url("images/panda.png");'/>
+   </div>
+  </div>
+  <div class="dialogAnimate" id="dialogShadow">
+  </div>
+  <div id="dialogBorder">
+  </div>
+  <div id="dialog">
+  </div>
+  <div class="dialogHiddenContent" id="dialogDone">
+   <div class="large">
+    Congratulations!
+   </div>
+   <div class="large" id="dialogLinesText">
+   </div>
+   <pre id="containerCode"></pre>
+   <div class="large" id="dialogDoneText">
+   </div>
+   <img id="pegSpin" src="images/1x1.gif" style='background-image: url("images/pegman.png");'/>
+   <div class="farSide farSideButtons" id="dialogDoneButtons">
+    <button class="addHideHandler">
+     Cancel
+    </button>
+    <button class="secondary" id="doneOk">
+     OK
+    </button>
+   </div>
+  </div>
+  <div class="dialogHiddenContent" id="dialogAbort">
+   This level is extremely difficult. Would you like to skip it and go onto the next game? You can always come back later.
+   <div class="farSide farSideButtons">
+    <button class="addHideHandler">
+     Cancel
+    </button>
+    <button class="secondary" id="abortOk">
+     OK
+    </button>
+   </div>
+  </div>
+  <div class="dialogHiddenContent" id="dialogStorage">
+   <div id="containerStorage">
+   </div>
+   <div class="farSide farSideButtons">
+    <button class="secondary addHideHandler">
+     OK
+    </button>
+   </div>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpStack">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       <img src="images/help.png"/>
+      </td>
+      <td>
+      </td>
+      <td>
+       Stack a couple of 'move forward' blocks together to help me reach the goal.
+      </td>
+      <td valign="top">
+       <img class="mirrorImg" height="63" src="images/help_stack.png" width="136"/>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpOneTopBlock">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       <img src="images/help.png"/>
+      </td>
+      <td>
+      </td>
+      <td>
+       On this level, you need to stack together all of the blocks in the white workspace.
+       <div class="readonly" id="sampleOneTopBlock">
+       </div>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpRun">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       Run your program to see what happens.
+      </td>
+      <td rowspan="2">
+       <img src="images/help.png"/>
+      </td>
+     </tr>
+     <tr>
+      <td>
+       <div>
+        <img class="mirrorImg" height="27" src="images/help_run.png" width="141"/>
+       </div>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpReset">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       Your program didn't solve the maze. Press 'Reset' and try again.
+      </td>
+      <td rowspan="2">
+       <img src="images/help.png"/>
+      </td>
+     </tr>
+     <tr>
+      <td>
+       <div>
+        <img class="mirrorImg" height="27" src="images/help_run.png" width="141"/>
+       </div>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpRepeat">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       <img src="images/help_up.png"/>
+      </td>
+      <td>
+       Reach the end of this path using only two blocks. Use 'repeat' to run a block more than once.
+      </td>
+      <td>
+       <img src="images/help.png"/>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpCapacity">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       <img src="images/help.png"/>
+      </td>
+      <td>
+      </td>
+      <td>
+       You have used up all the blocks for this level. To create a new block, you first need to delete an existing block.
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpRepeatMany">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       <img src="images/help_up.png"/>
+      </td>
+      <td>
+       You can fit more than one block inside a 'repeat' block.
+      </td>
+      <td>
+       <img src="images/help.png"/>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpSkins">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       <img src="images/help.png"/>
+      </td>
+      <td width="95%">
+       Choose your favourite player from this menu.
+      </td>
+      <td>
+       <img src="images/help_up.png"/>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpIf">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       <img src="images/help_up.png"/>
+      </td>
+      <td>
+       An 'if' block will do something only if the condition is true. Try turning left if there is a path to the left.
+      </td>
+      <td>
+       <img src="images/help.png"/>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpMenu">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       <img src="images/help_up.png"/>
+      </td>
+      <td id="helpMenuText">
+       Click on %1 in the 'if' block to change its condition.
+      </td>
+      <td>
+       <img src="images/help.png"/>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpIfElse">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       <img src="images/help_down.png"/>
+      </td>
+      <td>
+       If-else blocks will do one thing or the other.
+      </td>
+      <td>
+       <img src="images/help.png"/>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="dialogHiddenContent" id="dialogHelpWallFollow">
+   <table>
+    <tbody>
+     <tr>
+      <td>
+       <img src="images/help.png"/>
+      </td>
+      <td>
+      </td>
+      <td>
+       Can you solve this complicated maze? Try following the left-hand wall. Advanced programmers only!
+       <div class="farSide farSideButtons">
+        <button class="secondary addHideHandler">
+         OK
+        </button>
+       </div>
+      </td>
+     </tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="blocklyWidgetDiv">
+  </div>
+  <div class="blocklyDropDownDiv" style="opacity: 0; transition: transform 0.25s, opacity 0.25s;">
+   <div class="blocklyDropDownContent">
+   </div>
+   <div class="blocklyDropDownArrow">
+   </div>
+  </div>
+  <div class="blocklyTooltipDiv">
+  </div>
+  <canvas class="blocklyComputeCanvas">
+  </canvas>
+ </body>
+</html>

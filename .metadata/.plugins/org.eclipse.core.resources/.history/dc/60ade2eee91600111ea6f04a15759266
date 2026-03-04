@@ -1,0 +1,227 @@
+package blocky_game;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+
+import blocky.*; // Your generated EMF Code
+
+public class GameEngine {
+
+    private Level currentLevel;
+    private Resource resource;
+
+    public void initializeGame() {
+        BlockyPackage.eINSTANCE.eClass();
+        Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl());
+
+        ResourceSet resSet = new ResourceSetImpl();
+        resource = resSet.createResource(URI.createFileURI("level1_state.xmi"));
+
+        currentLevel = BlockyFactory.eINSTANCE.createLevel();
+        currentLevel.setId(1);
+        currentLevel.setTitle("Blockly Interactive Maze");
+        currentLevel.setStartOrientation(Direction.EAST);
+
+        generateLevel1Map();
+
+        resource.getContents().add(currentLevel);
+        saveModel();
+    }
+
+    private void generateLevel1Map() {
+        GridMap map = BlockyFactory.eINSTANCE.createGridMap();
+        map.setWidth(8);
+        map.setHeight(8);
+        currentLevel.setMap(map);
+
+        Cell[][] grid = new Cell[8][8];
+
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                Cell cell = BlockyFactory.eINSTANCE.createCell();
+                cell.setType(CellType.EMPTY);
+                grid[x][y] = cell;
+                map.getCells().add(cell);
+            }
+        }
+
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                Cell cell = grid[x][y];
+                if (y > 0) cell.setTop(grid[x][y - 1]);
+                if (y < 7) cell.setBottom(grid[x][y + 1]);
+                if (x > 0) cell.setLeft(grid[x - 1][y]);
+                if (x < 7) cell.setRight(grid[x + 1][y]);
+            }
+        }
+
+        // Default initial setup
+        grid[2][4].setType(CellType.START);
+        grid[6][4].setType(CellType.GOAL);
+    }
+
+    // ==========================================
+    // UI LIVE MODIFICATION METHODS (EMF UPDATES)
+    // ==========================================
+
+    public void cycleCellType(int x, int y) {
+        int index = y * 8 + x;
+        Cell cell = currentLevel.getMap().getCells().get(index);
+        
+        // Cycle: EMPTY -> WALL -> START -> GOAL -> EMPTY
+        switch (cell.getType()) {
+            case EMPTY: cell.setType(CellType.WALL); break;
+            case WALL:  setUniqueCellType(cell, CellType.START); break;
+            case START: setUniqueCellType(cell, CellType.GOAL); break;
+            case GOAL:  cell.setType(CellType.EMPTY); break;
+        }
+        saveModel();
+    }
+
+    // Ensures there is only ONE Start and ONE Goal on the map
+    private void setUniqueCellType(Cell targetCell, CellType type) {
+        for (Cell c : currentLevel.getMap().getCells()) {
+            if (c.getType() == type) {
+                c.setType(CellType.EMPTY);
+            }
+        }
+        targetCell.setType(type);
+    }
+
+    public void addMoveForwardBlock() {
+        MoveForward block = BlockyFactory.eINSTANCE.createMoveForward();
+        appendBlock(block);
+    }
+
+    public void addTurnBlock(TurnDirection dir) {
+        Turn block = BlockyFactory.eINSTANCE.createTurn();
+        block.setDirection(dir);
+        appendBlock(block);
+    }
+
+    private void appendBlock(Block newBlock) {
+        Block current = currentLevel.getSolution();
+        if (current == null) {
+            currentLevel.setSolution(newBlock);
+        } else {
+            while (current.getNext() != null) {
+                current = current.getNext();
+            }
+            current.setNext(newBlock);
+        }
+        saveModel();
+    }
+
+    public void clearProgram() {
+        currentLevel.setSolution(null);
+        saveModel();
+    }
+
+    // ==========================================
+    // EXECUTION & TRACING
+    // ==========================================
+
+    public void simulateUserProgram() {
+        // Clear old traces
+        currentLevel.getTraces().clear();
+
+        ExecutionTrace trace = BlockyFactory.eINSTANCE.createExecutionTrace();
+        currentLevel.getTraces().add(trace);
+
+        GameState initialState = BlockyFactory.eINSTANCE.createGameState();
+        initialState.setStep(0);
+        
+        // Find the dynamic START cell
+        Cell startNode = null;
+        for (Cell c : currentLevel.getMap().getCells()) {
+            if (c.getType() == CellType.START) startNode = c;
+        }
+        if (startNode == null) startNode = currentLevel.getMap().getCells().get(0); // Fallback
+
+        initialState.setPosition(startNode);
+        initialState.setOrientation(currentLevel.getStartOrientation());
+        initialState.setStatus(GameStatus.RUNNING);
+        trace.getStates().add(initialState);
+
+        // Run the current AST
+        executeAST(currentLevel.getSolution(), initialState, trace);
+        saveModel();
+    }
+
+    private void executeAST(Block currentBlock, GameState currentState, ExecutionTrace trace) {
+        int stepCounter = currentState.getStep() + 1;
+        
+        while (currentBlock != null && currentState.getStatus() == GameStatus.RUNNING) {
+            GameState nextState = BlockyFactory.eINSTANCE.createGameState();
+            nextState.setStep(stepCounter++);
+            nextState.setOrientation(currentState.getOrientation());
+            nextState.setPosition(currentState.getPosition());
+            nextState.setStatus(GameStatus.RUNNING);
+            nextState.setExecutingBlock(currentBlock);
+            
+            nextState.setPrevious(currentState);
+            currentState.setNext(nextState);
+            
+            if (currentBlock instanceof MoveForward) {
+                Cell currentCell = nextState.getPosition();
+                Cell targetCell = null;
+                
+                switch (nextState.getOrientation()) {
+                    case NORTH: targetCell = currentCell.getTop(); break;
+                    case SOUTH: targetCell = currentCell.getBottom(); break;
+                    case EAST:  targetCell = currentCell.getRight(); break;
+                    case WEST:  targetCell = currentCell.getLeft(); break;
+                }
+                
+                if (targetCell == null || targetCell.getType() == CellType.WALL) {
+                    nextState.setStatus(GameStatus.CRASHED);
+                } else {
+                    nextState.setPosition(targetCell);
+                    if (targetCell.getType() == CellType.GOAL) {
+                        nextState.setStatus(GameStatus.WON);
+                    }
+                }
+            } 
+            else if (currentBlock instanceof Turn) {
+                Turn turnBlock = (Turn) currentBlock;
+                Direction newDir = calculateTurn(nextState.getOrientation(), turnBlock.getDirection());
+                nextState.setOrientation(newDir);
+            }
+            
+            trace.getStates().add(nextState);
+            currentState = nextState;
+            currentBlock = currentBlock.getNext();
+        }
+    }
+
+    private Direction calculateTurn(Direction currentDir, TurnDirection turn) {
+        if (turn == TurnDirection.LEFT) {
+            switch (currentDir) {
+                case NORTH: return Direction.WEST;
+                case WEST:  return Direction.SOUTH;
+                case SOUTH: return Direction.EAST;
+                case EAST:  return Direction.NORTH;
+            }
+        } else { 
+            switch (currentDir) {
+                case NORTH: return Direction.EAST;
+                case EAST:  return Direction.SOUTH;
+                case SOUTH: return Direction.WEST;
+                case WEST:  return Direction.NORTH;
+            }
+        }
+        return currentDir;
+    }
+
+    public void saveModel() {
+        try { resource.save(null); } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    public Level getCurrentLevel() { return currentLevel; }
+}

@@ -1,0 +1,149 @@
+/**
+ */
+package blocky;
+
+import org.eclipse.emf.ecore.EObject;
+
+/**
+ * <!-- begin-user-doc -->
+ * A representation of the model object '<em><b>Cell</b></em>'.
+ * <!-- end-user-doc -->
+ *
+ * <p>
+ * The following features are supported:
+ * </p>
+ * <ul>
+ *   <li>{@link blocky.Cell#getType <em>Type</em>}</li>
+ *   <li>{@link blocky.Cell#getTop <em>Top</em>}</li>
+ *   <li>{@link blocky.Cell#getBottom <em>Bottom</em>}</li>
+ *   <li>{@link blocky.Cell#getLeft <em>Left</em>}</li>
+ *   <li>{@link blocky.Cell#getRight <em>Right</em>}</li>
+ * </ul>
+ *
+ * @see blocky.BlockyPackage#getCell()
+ * @model
+ * @generated
+ */
+public interface Cell extends EObject {
+	/**
+	 * Returns the value of the '<em><b>Type</b></em>' attribute.
+	 * The literals are from the enumeration {@link blocky.CellType}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the value of the '<em>Type</em>' attribute.
+	 * @see blocky.CellType
+	 * @see #setType(CellType)
+	 * @see blocky.BlockyPackage#getCell_Type()
+	 * @model
+	 * @generated
+	 */
+	CellType getType();
+
+	/**
+	 * Sets the value of the '{@link blocky.Cell#getType <em>Type</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Type</em>' attribute.
+	 * @see blocky.CellType
+	 * @see #getType()
+	 * @generated
+	 */
+	void setType(CellType value);
+
+	/**
+	 * Returns the value of the '<em><b>Top</b></em>' reference.
+	 * It is bidirectional and its opposite is '{@link blocky.Cell#getBottom <em>Bottom</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the value of the '<em>Top</em>' reference.
+	 * @see #setTop(Cell)
+	 * @see blocky.BlockyPackage#getCell_Top()
+	 * @see blocky.Cell#getBottom
+	 * @model opposite="bottom"
+	 * @generated
+	 */
+	Cell getTop();
+
+	/**
+	 * Sets the value of the '{@link blocky.Cell#getTop <em>Top</em>}' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Top</em>' reference.
+	 * @see #getTop()
+	 * @generated
+	 */
+	void setTop(Cell value);
+
+	/**
+	 * Returns the value of the '<em><b>Bottom</b></em>' reference.
+	 * It is bidirectional and its opposite is '{@link blocky.Cell#getTop <em>Top</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the value of the '<em>Bottom</em>' reference.
+	 * @see #setBottom(Cell)
+	 * @see blocky.BlockyPackage#getCell_Bottom()
+	 * @see blocky.Cell#getTop
+	 * @model opposite="top"
+	 * @generated
+	 */
+	Cell getBottom();
+
+	/**
+	 * Sets the value of the '{@link blocky.Cell#getBottom <em>Bottom</em>}' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Bottom</em>' reference.
+	 * @see #getBottom()
+	 * @generated
+	 */
+	void setBottom(Cell value);
+
+	/**
+	 * Returns the value of the '<em><b>Left</b></em>' reference.
+	 * It is bidirectional and its opposite is '{@link blocky.Cell#getRight <em>Right</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the value of the '<em>Left</em>' reference.
+	 * @see #setLeft(Cell)
+	 * @see blocky.BlockyPackage#getCell_Left()
+	 * @see blocky.Cell#getRight
+	 * @model opposite="right"
+	 * @generated
+	 */
+	Cell getLeft();
+
+	/**
+	 * Sets the value of the '{@link blocky.Cell#getLeft <em>Left</em>}' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Left</em>' reference.
+	 * @see #getLeft()
+	 * @generated
+	 */
+	void setLeft(Cell value);
+
+	/**
+	 * Returns the value of the '<em><b>Right</b></em>' reference.
+	 * It is bidirectional and its opposite is '{@link blocky.Cell#getLeft <em>Left</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the value of the '<em>Right</em>' reference.
+	 * @see #setRight(Cell)
+	 * @see blocky.BlockyPackage#getCell_Right()
+	 * @see blocky.Cell#getLeft
+	 * @model opposite="left"
+	 * @generated
+	 */
+	Cell getRight();
+
+	/**
+	 * Sets the value of the '{@link blocky.Cell#getRight <em>Right</em>}' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Right</em>' reference.
+	 * @see #getRight()
+	 * @generated
+	 */
+	void setRight(Cell value);
+
+} // Cell
