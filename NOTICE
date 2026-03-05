@@ -1,0 +1,31 @@
+Blocky Maze
+Copyright 2025 Blocky Maze Contributors
+
+This product includes software developed by the Blocky Maze project.
+
+--------------------------------------------------------------------------------
+Third-party components and attributions
+--------------------------------------------------------------------------------
+
+This software embeds or depends on the following third-party works:
+
+1. Blockly Games
+   - Source: https://github.com/maribethb/blockly-games
+   - Used in: blocky_game/src/blocky_game/blockly-games-web/ (and equivalent under bin/)
+   - License: Apache License, Version 2.0
+   - Blockly Games is based on Google's Blockly Games; the fork used here is licensed under Apache-2.0.
+
+2. OpenJFX (JavaFX)
+   - Source: https://openjfx.io/ / https://github.com/openjdk/jfx
+   - Used as: JavaFX runtime (e.g. javafx-sdk-21.0.10)
+   - License: GNU General Public License, version 2, with the Classpath Exception
+   - See: https://openjdk.org/legal/gplv2+ce.html
+   - Legal notices and third-party licenses for JavaFX are in blocky_game/javafx-sdk-21.0.10/legal/ (when the SDK is present).
+
+3. Eclipse Modeling Framework (EMF)
+   - Source: https://www.eclipse.org/modeling/emf/
+   - Used for: blocky_model metamodel (Ecore) and generated code
+   - License: Eclipse Public License 2.0 (EPL-2.0)
+   - See: https://www.eclipse.org/legal/epl-2.0/
+
+For the full text of the Apache License 2.0 under which this project is distributed, see the LICENSE file in the root of this repository.

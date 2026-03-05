@@ -1,0 +1,25 @@
+# Local setup doc (not for repo)
+GITHUB_ORG_SETUP.md
+
+# Eclipse (machine-specific; keep .classpath, .project, .launch in repo)
+.metadata/
+.settings/
+
+# Maven
+target/
+pom.xml.tag
+
+# IntelliJ / other IDEs
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+*.tmp
+*.bak
+*~

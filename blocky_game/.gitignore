@@ -1,0 +1,4 @@
+/bin/
+
+# If you replace the trimmed JavaFX SDK with the full one, ignore sources
+javafx-sdk-21.0.10/src.zip
