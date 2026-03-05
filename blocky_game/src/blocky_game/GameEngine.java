@@ -7,6 +7,8 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -48,6 +50,9 @@ public class GameEngine {
         String[] rowStrs = mapJson.split("\\],\\[");
         int height = rowStrs.length;
         int width = rowStrs[0].split(",").length;
+
+        // Clear execution traces: they reference Cell instances from the previous map, which would become dangling after we replace the map and cause DanglingHREFException on save.
+        currentLevel.getTraces().clear();
 
         // Clear any previously-synced start orientation so syncLevelMeta will set it fresh.
         currentLevel.eUnset(BlockyPackage.Literals.LEVEL__START_ORIENTATION);
@@ -101,7 +106,6 @@ public class GameEngine {
                     cell.setRight(grid[x + 1][y]);
             }
         }
-        saveModel();
     }
 
     public void cycleCellType(int x, int y) {
@@ -122,7 +126,6 @@ public class GameEngine {
                 cell.setType(CellType.EMPTY);
                 break;
         }
-        saveModel();
     }
 
     private void setUniqueCellType(Cell targetCell, CellType type) {
@@ -142,13 +145,11 @@ public class GameEngine {
         currentLevel.setSolution(null);
         if (blockData == null || blockData.isEmpty()) {
             System.out.println("[GameEngine] Program cleared.");
-            saveModel();
             return;
         }
 
         currentLevel.setSolution(buildSequence(blockData));
         System.out.println("[GameEngine] Solution rebuilt. Main sequence length: " + blockData.size());
-        saveModel();
     }
 
     private Block createBlockFromData(Map<String, Object> data) {
@@ -266,7 +267,7 @@ public class GameEngine {
 
         executeSequence(currentLevel.getSolution(), initialState, trace);
         saveModel();
-        System.out.println("[GameEngine] Simulation finished. Model saved.\n");
+        System.out.println("[GameEngine] Simulation finished. Model (with execution trace) saved.\n");
     }
 
     private String getPosStr(Cell c) {
@@ -472,7 +473,6 @@ public class GameEngine {
                     + ", startDir=" + dir
                     + ", allowLoops=" + allowLoops
                     + ", allowConditionals=" + allowConds);
-            saveModel();
         } catch (Exception e) {
             System.err.println("[GameEngine] Failed to parse level metadata: " + e.getMessage());
         }
@@ -494,6 +494,9 @@ public class GameEngine {
 
     public void saveModel() {
         try {
+            File saveFile = new File("blocky_game/save.xmi");
+            if (!saveFile.getParentFile().exists()) saveFile = new File("save.xmi");
+            resource.setURI(URI.createFileURI(saveFile.getAbsolutePath()));
             resource.save(null);
             System.out.println("[GameEngine] Model saved to: " + resource.getURI().toFileString());
         } catch (Exception e) {
@@ -504,5 +507,214 @@ public class GameEngine {
 
     public Level getCurrentLevel() {
         return currentLevel;
+    }
+
+    public Resource getResource() {
+        return resource;
+    }
+
+    // --- XMI Load & Export for WebView ---
+
+    /**
+     * Loads a Level from an XMI file and sets it as the current level.
+     * Subsequent saveModel() will write to this file.
+     *
+     * @param file the .xmi file to load
+     * @throws IOException if the file cannot be read or parsed
+     * @throws IllegalArgumentException if the root element is not a Level or level has no map
+     */
+    public void loadFromFile(File file) throws IOException {
+        if (file == null || !file.exists()) {
+            throw new IOException("File does not exist: " + (file == null ? "null" : file.getAbsolutePath()));
+        }
+        BlockyPackage.eINSTANCE.eClass();
+        Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl());
+
+        ResourceSet resSet = new ResourceSetImpl();
+        URI uri = URI.createFileURI(file.getAbsolutePath());
+        Resource newResource = resSet.createResource(uri);
+        newResource.load(null);
+
+        if (newResource.getContents().isEmpty()) {
+            throw new IllegalArgumentException("XMI file has no root element: " + file.getAbsolutePath());
+        }
+        Object root = newResource.getContents().get(0);
+        if (!(root instanceof Level)) {
+            throw new IllegalArgumentException("XMI root is not a Level: " + (root != null ? root.getClass().getName() : "null"));
+        }
+        Level loadedLevel = (Level) root;
+        if (loadedLevel.getMap() == null) {
+            throw new IllegalArgumentException("Level has no map.");
+        }
+        this.resource = newResource;
+        this.currentLevel = loadedLevel;
+        System.out.println("[GameEngine] Loaded level id=" + loadedLevel.getId() + " from " + file.getAbsolutePath());
+    }
+
+    /**
+     * Converts the level's solution block tree to Blockly XML string (without outer &lt;xml&gt;).
+     * Returns empty string if solution is null.
+     */
+    public String blockToXml(Block block) {
+        if (block == null) return "";
+        StringBuilder sb = new StringBuilder();
+        appendBlockXml(block, sb);
+        return sb.toString();
+    }
+
+    /**
+     * Returns full Blockly XML document for the level's solution (with &lt;xml&gt; wrapper).
+     * If solution is null, returns &lt;xml&gt;&lt;/xml&gt;.
+     */
+    public String solutionToBlocklyXml(Level level) {
+        if (level == null || level.getSolution() == null) {
+            return "<xml></xml>";
+        }
+        return "<xml>" + blockToXml(level.getSolution()) + "</xml>";
+    }
+
+    private void appendBlockXml(Block block, StringBuilder sb) {
+        if (block == null) return;
+        if (block instanceof MoveForward) {
+            sb.append("<block type=\"maze_moveForward\">");
+            if (block.getNext() != null) {
+                sb.append("<next>");
+                appendBlockXml(block.getNext(), sb);
+                sb.append("</next>");
+            }
+            sb.append("</block>");
+        } else if (block instanceof Turn) {
+            Turn t = (Turn) block;
+            String dir = t.getDirection() == TurnDirection.RIGHT ? "turnRight" : "turnLeft";
+            sb.append("<block type=\"maze_turn\"><field name=\"DIR\">").append(escapeXml(dir)).append("</field>");
+            if (block.getNext() != null) {
+                sb.append("<next>");
+                appendBlockXml(block.getNext(), sb);
+                sb.append("</next>");
+            }
+            sb.append("</block>");
+        } else if (block instanceof RepeatUntilGoal) {
+            RepeatUntilGoal r = (RepeatUntilGoal) block;
+            sb.append("<block type=\"maze_forever\">");
+            sb.append("<statement name=\"DO\">");
+            if (r.getBody() != null) {
+                appendBlockXml(r.getBody(), sb);
+            }
+            sb.append("</statement>");
+            if (block.getNext() != null) {
+                sb.append("<next>");
+                appendBlockXml(block.getNext(), sb);
+                sb.append("</next>");
+            }
+            sb.append("</block>");
+        } else if (block instanceof IfStatement) {
+            IfStatement i = (IfStatement) block;
+            String dirField = conditionToBlocklyDir(i.getCondition());
+            boolean hasElse = i.getElseBranch() != null;
+            String blockType = hasElse ? "maze_ifElse" : "maze_if";
+            sb.append("<block type=\"").append(blockType).append("\">");
+            sb.append("<field name=\"DIR\">").append(escapeXml(dirField)).append("</field>");
+            sb.append("<statement name=\"DO\">");
+            if (i.getThenBranch() != null) {
+                appendBlockXml(i.getThenBranch(), sb);
+            }
+            sb.append("</statement>");
+            if (hasElse) {
+                sb.append("<statement name=\"ELSE\">");
+                appendBlockXml(i.getElseBranch(), sb);
+                sb.append("</statement>");
+            }
+            if (block.getNext() != null) {
+                sb.append("<next>");
+                appendBlockXml(block.getNext(), sb);
+                sb.append("</next>");
+            }
+            sb.append("</block>");
+        } else {
+            if (block.getNext() != null) {
+                appendBlockXml(block.getNext(), sb);
+            }
+        }
+    }
+
+    private static String conditionToBlocklyDir(SensorDirection c) {
+        if (c == null) return "isPathForward";
+        switch (c) {
+            case AHEAD: return "isPathForward";
+            case LEFT:  return "isPathLeft";
+            case RIGHT: return "isPathRight";
+            default:    return "isPathForward";
+        }
+    }
+
+    private static String escapeXml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+    }
+
+    /**
+     * Builds the 2D grid for the WebView: X[row][col], values 0=WALL, 1=EMPTY, 2=START, 3=GOAL.
+     * Dimensions are [height][width] to match JS X[row][col].
+     */
+    public int[][] buildGridForWebView(GridMap map) {
+        if (map == null) return new int[0][0];
+        int w = map.getWidth();
+        int h = map.getHeight();
+        int[][] grid = new int[h][w];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                grid[y][x] = 0; // default WALL
+            }
+        }
+        for (Cell c : map.getCells()) {
+            int x = c.getX();
+            int y = c.getY();
+            if (y >= 0 && y < h && x >= 0 && x < w) {
+                switch (c.getType()) {
+                    case WALL:  grid[y][x] = 0; break;
+                    case EMPTY: grid[y][x] = 1; break;
+                    case START: grid[y][x] = 2; break;
+                    case GOAL:  grid[y][x] = 3; break;
+                    default:   grid[y][x] = 1; break;
+                }
+            }
+        }
+        return grid;
+    }
+
+    /**
+     * Finds the START cell in the map (for nd and pegman position).
+     */
+    public Cell getStartCell(GridMap map) {
+        if (map == null) return null;
+        for (Cell c : map.getCells()) {
+            if (c.getType() == CellType.START) return c;
+        }
+        return null;
+    }
+
+    /**
+     * Finds the GOAL cell in the map (for od).
+     */
+    public Cell getGoalCell(GridMap map) {
+        if (map == null) return null;
+        for (Cell c : map.getCells()) {
+            if (c.getType() == CellType.GOAL) return c;
+        }
+        return null;
+    }
+
+    /**
+     * Blockly Maze T value: NORTH=0, EAST=1, SOUTH=2, WEST=3.
+     */
+    public int directionToT(Direction d) {
+        if (d == null) return 1;
+        switch (d) {
+            case NORTH: return 0;
+            case EAST:  return 1;
+            case SOUTH: return 2;
+            case WEST:  return 3;
+            default:    return 1;
+        }
     }
 }

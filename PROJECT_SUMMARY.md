@@ -46,9 +46,12 @@ All visuals are rendered by an embedded **JavaFX WebView** loading the Blockly G
 
 ### UI Layer – [`BlockyUI.java`](file:///c:/Users/domin/eclipse-workspace-blocky/blocky_game/src/blocky_game/BlockyUI.java)
 - Extends `javafx.application.Application`.
-- Embeds a **JavaFX WebView** to render the Blockly Games Maze web page locally.
+- Embeds a **JavaFX WebView** to render the Blockly Games Maze web page locally. There is **no menu bar**; the only UI is the WebView (including the level nav 1–10 and **Model**).
 - On WebView load, attaches a `JSBridge` instance to `window.javaBridge` and injects a JavaScript sync script (`injectSyncScript`).
 - Keeps a **strong Java reference** to the `JSBridge` (field `jsBridge`) to prevent JavaFX WebView garbage collection of the bridge object.
+- Injects a **Model** pill into the WebView level bar (next to levels 1–10). Only **Model** loads from XMI; levels 1–10 are predefined in the WebView and are not loaded from file.
+- **Load** uses a single hardcoded file: **load.xmi** (searched as `blocky_game/load.xmi` then `load.xmi`). **Save** writes to **save.xmi** (same path convention). See *JSBridge* and *Data flow* below.
+- When loading Model, applies the loaded level to the WebView via `applyLevelToWebView`: injects grid, start/goal, metadata, and Blockly XML; polls until `svgMaze` and `BlocklyInterface` exist; redraws maze with `Wd()`, recreates the `#look` element if missing (so "Run Program" does not throw), loads blocks with `BlocklyInterface.Kv()`, then resets pegman with `$d(false)`.
 - Contains a Blockly XML parser (`parseBlocklyXml` → `parseBlockElement` → `firstBlockChild`) that converts Blockly's serialised XML into `List<Map<String, Object>>` for the engine.
 
 ### Game Engine – [`GameEngine.java`](file:///c:/Users/domin/eclipse-workspace-blocky/blocky_game/src/blocky_game/GameEngine.java)
@@ -62,7 +65,8 @@ All visuals are rendered by an embedded **JavaFX WebView** loading the Blockly G
 - `executeSingle()` / `executeSequence()` – Recursive execution of blocks (Move, Turn, RepeatUntilGoal, IfStatement). Loop cap is `width × height × 2` steps.
 - `checkSensor()`, `getAdjacent()`, `getRelativeDir()`, `calculateTurn()` – Maze navigation helpers.
 - `parseCondition(String)` – Maps Blockly sensor strings (`isPathForward`, `isPathLeft`, `isPathRight`) to `SensorDirection` enum values. Case-insensitive; also recognises `"forward"` as alias for `"ahead"`.
-- `saveModel()` – Persists the EMF resource to [`level1_state.xmi`](file:///c:/Users/domin/eclipse-workspace-blocky/blocky_game/level1_state.xmi).
+- `saveModel()` – Sets the resource URI to **save.xmi** (`blocky_game/save.xmi` or `save.xmi`) and persists the EMF resource (including **execution traces**) to that file. Called **only once per "Run Program"**, at the end of `simulateUserProgram()` after the trace is built.
+- **Load from file** – `loadFromFile(File)` loads a Level from **load.xmi** (when using the Model button). The Model button resolves the path via `getModelXmiFile()` (load.xmi only).
 
 ---
 
@@ -75,10 +79,11 @@ The `JSBridge` is a public inner class of `BlockyUI`. An instance is stored in t
 | Method | Signature | Called by JS when | Java action |
 |--------|-----------|-------------------|-------------|
 | **`logJS`** | `void logJS(String msg)` | Any JS `log()` call (debug helper) | Prints to `System.out` with `[WebView JS]` prefix |
-| **`syncMap`** | `void syncMap(String mapJson)` | Workspace becomes active (500 ms after detection) | Calls `GameEngine.setMapFromJson(mapJson)` — rebuilds the EMF `GridMap` |
-| **`syncLevelMeta`** | `void syncLevelMeta(String metaJson)` | Immediately after `syncMap` (same 500 ms timeout) | Calls `GameEngine.syncLevelMeta(metaJson)` — sets level config on EMF `Level` |
-| **`syncModel`** | `void syncModel(String xml)` | Blockly workspace changes (via change listener + 1 s poll) | Parses Blockly XML → `List<Map>`, calls `GameEngine.rebuildProgram()` |
-| **`runSimulation`** | `void runSimulation()` | Run button hidden (MutationObserver on `#runButton` style) | Calls `GameEngine.simulateUserProgram()` |
+| **`syncMap`** | `void syncMap(String mapJson)` | Workspace becomes active (500 ms after detection); also when Run is clicked (before simulation) | Calls `GameEngine.setMapFromJson(mapJson)` — rebuilds the EMF `GridMap` |
+| **`syncLevelMeta`** | `void syncLevelMeta(String metaJson)` | Immediately after `syncMap`; also when Run is clicked | Calls `GameEngine.syncLevelMeta(metaJson)` — sets level config on EMF `Level` |
+| **`syncModel`** | `void syncModel(String xml)` | Blockly workspace changes (via change listener + 1 s poll); also when Run is clicked | Parses Blockly XML → `List<Map>`, calls `GameEngine.rebuildProgram()` |
+| **`loadModel`** | `void loadModel()` | User clicks the **Model** pill in the level nav | Loads **load.xmi** via `loadFromFile(getModelXmiFile())`, then navigates to maze URL and applies level to WebView |
+| **`runSimulation`** | `void runSimulation()` | Run button hidden (MutationObserver on `#runButton` style) | Syncs state (blocks, map, meta) then calls `GameEngine.simulateUserProgram()`; engine calls `saveModel()` **after** simulation (so execution trace is saved to **save.xmi**) |
 
 ### Synced Variables: JS Global → Bridge Method → EMF Attribute
 
@@ -106,13 +111,15 @@ The table below traces every piece of runtime state from its JavaScript global v
 
 ### Injected JavaScript Overview
 
-The sync script is a self-executing function injected via `WebEngine.executeScript()` after the page loads. It performs three tasks:
+The sync script is a self-executing function injected via `WebEngine.executeScript()` after the page loads. It performs four tasks:
 
 1. **Workspace polling** — Polls every 1 s for the Blockly workspace (`getWS()`). Once found, attaches a change listener and a 1 s fallback poll that both call `sync(ws)`, which serialises the workspace to XML and calls `javaBridge.syncModel(xml)` when it changes.
 
 2. **Map + metadata push** — 500 ms after the workspace is found, reads `window.X` (grid), `window.K` (level), `window.Od` (maxBlocks), and the `#toolbox` DOM (to detect `allowLoops`/`allowConditionals`), then calls `javaBridge.syncMap(JSON.stringify(X))` followed by `javaBridge.syncLevelMeta(JSON.stringify({...}))`.
 
-3. **Run-button hook** — Polls every 500 ms for `#runButton`. Once found, attaches a `MutationObserver` watching for `style` attribute changes. When Blockly hides the button (`display: none`), the observer fires `javaBridge.runSimulation()`. This approach is used because Blockly's own click handlers (registered with capture-phase `addEventListener`) prevent standard click/mousedown listeners from firing reliably in JavaFX WebView.
+3. **Run-button hook** — Polls every 500 ms for `#runButton`. Once found, attaches a `MutationObserver` watching for `style` attribute changes. When Blockly hides the button (`display: none`), the observer first syncs current state (workspace XML, map, level meta) to Java, then calls `javaBridge.runSimulation()`. The engine runs the simulation and then calls `saveModel()` once, so **save.xmi** includes the execution trace. No save is performed on block/map/meta sync outside of Run.
+
+4. **Model pill** — After the level bar is present, a "Model" span is injected next to levels 1–10. Its click handler calls `javaBridge.loadModel()`, which loads **load.xmi** and applies the level to the WebView.
 
 ---
 
@@ -143,7 +150,8 @@ The sync script is a self-executing function injected via `WebEngine.executeScri
   │  rebuildProgram()    → Level.solution (Block tree)      │
   │  simulateUserProgram → Level.traces (ExecutionTrace)    │
   │                                                         │
-  │  saveModel() ──────────────────► level1_state.xmi       │
+  │  saveModel() (after simulateUserProgram) ─► save.xmi      │
+  │  loadFromFile(load.xmi) (Model button) ◄── load.xmi      │
   └─────────────────────────────────────────────────────────┘
 ```
 
@@ -186,6 +194,10 @@ A local copy of the Blockly Games website lives inside `blocky_game/src/blocky_g
 | JSBridge silently garbage-collected | JavaFX WebView holds only weak references to Java objects | `BlockyUI` now keeps a strong `jsBridge` field |
 | Run button click not detected | Blockly captures click/mousedown events before our listener | Replaced with `MutationObserver` watching for `#runButton` `style.display` change |
 | Level metadata not stored on model | `id`, `title`, `allowLoops`, `allowConditionals` were never set | `syncLevelMeta` now sets all Level attributes from JS |
+| `c.style` null when clicking Run after loading Model | Clearing `svgMaze` children and calling `Wd()` removed the `<g id="look">` element; `$d()` and run animation expect it | After `Wd()`, inject script recreates `#look` with the three `<path>` elements if missing |
+| DanglingHREFException on save after loading Model | `GameState.position` pointed at `Cell`s from the old map after `setMapFromJson` replaced the map | `setMapFromJson` now clears `currentLevel.getTraces()` before replacing the map |
+| XMI saved too often (every sync) | `saveModel()` was called from setMapFromJson, syncLevelMeta, rebuildProgram, etc. | Save only when user clicks "Run Program"; `saveModel()` is called once at the end of `simulateUserProgram()` |
+| Execution trace not saved | Save was triggered before the simulation ran | Save moved to after `executeSequence()` in `simulateUserProgram()` so **save.xmi** includes the full trace |
 
 ---
 

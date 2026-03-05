@@ -1,15 +1,23 @@
 package blocky_game;
 
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.concurrent.Worker;
 import javafx.scene.Scene;
+import javafx.util.Duration;
+import javafx.scene.control.Alert;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import netscape.javascript.JSObject;
 
+import blocky.Cell;
+import blocky.Level;
+
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +33,10 @@ public class BlockyUI extends Application {
     private WebView webView;
     @SuppressWarnings("FieldCanBeLocal")
     private JSBridge jsBridge;
+    /** When true, after the next page load we apply currentLevel to the WebView (map, blocks, metadata). */
+    private volatile boolean pendingApplyLevel;
+    /** Suppress sync from JS to Java while we are injecting loaded state into the WebView. */
+    private volatile boolean suppressSync;
 
     @Override
     public void start(Stage primaryStage) {
@@ -40,18 +52,12 @@ public class BlockyUI extends Application {
             // Redirect JS console to Java System.out
             webEngine.setOnAlert(event -> System.out.println("[JS Alert] " + event.getData()));
 
-            // Load the local maze.html
-            File file = new File("blocky_game/src/blocky_game/blockly-games-web/maze.html");
-            if (!file.exists()) {
-                file = new File("src/blocky_game/blockly-games-web/maze.html");
+            // Load the local maze.html with an explicit level so the WebView shows that level on load
+            int initialLevel = 1;
+            if (engine.getCurrentLevel() != null && engine.getCurrentLevel().getId() >= 1 && engine.getCurrentLevel().getId() <= 10) {
+                initialLevel = engine.getCurrentLevel().getId();
             }
-            if (!file.exists()) {
-                file = new File("blockly-games-web/maze.html");
-            }
-
-            if (file.exists()) {
-                webEngine.load(file.toURI().toString());
-            }
+            webEngine.load(getMazeBaseUrl() + "?lang=en&level=" + initialLevel);
 
             // Setup the bridge
             webEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
@@ -60,6 +66,20 @@ public class BlockyUI extends Application {
                     JSObject window = (JSObject) webEngine.executeScript("window");
                     window.setMember("javaBridge", jsBridge);
                     injectSyncScript(webEngine);
+                    // Maze's init runs in window "load" event, which fires after Worker.SUCCEEDED.
+                    // Apply runs via JS polling until svgMaze + BlocklyInterface exist, then injects (no fixed delay).
+                    if (pendingApplyLevel) {
+                        try {
+                            applyLevelToWebView(engine.getCurrentLevel(), webEngine);
+                        } finally {
+                            pendingApplyLevel = false;
+                            suppressSync = false;
+                        }
+                    }
+                    // Nav "Model" pill: delay so h1 exists
+                    PauseTransition navDelay = new PauseTransition(Duration.millis(800));
+                    navDelay.setOnFinished(e2 -> injectLevelNavModelElement(webEngine));
+                    navDelay.play();
                 }
             });
 
@@ -171,9 +191,20 @@ public class BlockyUI extends Application {
                 "      var observer = new MutationObserver(function(mutations) {\n" +
                 "        for (var i = 0; i < mutations.length; i++) {\n" +
                 "          if (mutations[i].attributeName === 'style' && runBtn.style.display === 'none') {\n" +
-                "            log('Run button hidden — triggering Java simulation.');\n" +
+                "            log('Run button hidden — syncing state, saving XMI, then running simulation.');\n" +
                 "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);\n" +
-                "            if (bridge) bridge.runSimulation();\n" +
+                "            if (bridge) {\n" +
+                "              var ws = getWS(); if (ws) sync(ws);\n" +
+                "              if (typeof window.X !== 'undefined') bridge.syncMap(JSON.stringify(window.X));\n" +
+                "              try {\n" +
+                "                var lvl = (typeof window.K !== 'undefined') ? window.K : 1;\n" +
+                "                var mxb = (typeof window.Od !== 'undefined' && isFinite(window.Od)) ? window.Od : -1;\n" +
+                "                var tb = document.getElementById('toolbox'); var tbHtml = tb ? tb.innerHTML : '';\n" +
+                "                var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: (typeof window.T !== 'undefined') ? window.T : 1, allowLoops: tbHtml.indexOf('maze_forever') !== -1, allowConditionals: tbHtml.indexOf('maze_if') !== -1 });\n" +
+                "                bridge.syncLevelMeta(meta);\n" +
+                "              } catch(e) { log('syncLevelMeta: ' + e); }\n" +
+                "              bridge.runSimulation();\n" +
+                "            }\n" +
                 "            break;\n" +
                 "          }\n" +
                 "        }\n" +
@@ -191,6 +222,11 @@ public class BlockyUI extends Application {
             System.out.println("[WebView JS] " + msg);
         }
 
+        /** Saves the current model to XMI. Called only when Run Program is clicked. */
+        public void saveModelNow() {
+            engine.saveModel();
+        }
+
         public void runSimulation() {
             System.out.println("[JSBridge] 'Run' detected. Starting Java simulation...");
             engine.simulateUserProgram();
@@ -206,7 +242,13 @@ public class BlockyUI extends Application {
             engine.syncLevelMeta(metaJson);
         }
 
+        /** Called from WebView when the user clicks the "Model" pill; loads the single Model XMI from hardcoded path. */
+        public void loadModel() {
+            Platform.runLater(() -> loadModelImpl());
+        }
+
         public void syncModel(String xml) {
+            if (suppressSync) return;
             try {
                 System.out.println("[JSBridge] Syncing workspace XML:\n" + xml);
                 List<Map<String, Object>> data = parseBlocklyXml(xml);
@@ -311,5 +353,164 @@ public class BlockyUI extends Application {
             }
         }
         return null;
+    }
+
+    /** Loads the single Model XMI from hardcoded path and applies it to the WebView (levels 1–10 stay predefined in JS). */
+    private void loadModelImpl() {
+        File xmiFile = getModelXmiFile();
+        if (!xmiFile.exists()) {
+            Platform.runLater(() -> new Alert(Alert.AlertType.WARNING, "Model file not found: " + xmiFile.getPath()).showAndWait());
+            return;
+        }
+        try {
+            engine.loadFromFile(xmiFile);
+        } catch (IOException e) {
+            Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Failed to load model: " + e.getMessage()).showAndWait());
+            return;
+        } catch (IllegalArgumentException e) {
+            Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Invalid model: " + e.getMessage()).showAndWait());
+            return;
+        }
+        Level level = engine.getCurrentLevel();
+        int levelId = level != null ? Math.max(1, Math.min(10, level.getId())) : 1;
+        pendingApplyLevel = true;
+        suppressSync = true;
+        webView.getEngine().load(getMazeBaseUrl() + "?lang=en&level=" + levelId);
+    }
+
+    /** Single hardcoded XMI for "Model" (levels 1–10 are predefined in the WebView). */
+    /** Path for Model load: load.xmi (blocky_game/ or current dir). */
+    private static File getModelXmiFile() {
+        File f = new File("blocky_game/load.xmi");
+        if (f.exists()) return f;
+        f = new File("load.xmi");
+        if (f.exists()) return f;
+        return new File("blocky_game/load.xmi");
+    }
+
+    private static String getMazeBaseUrl() {
+        File mazeFile = new File("blocky_game/src/blocky_game/blockly-games-web/maze.html");
+        if (!mazeFile.exists()) mazeFile = new File("src/blocky_game/blockly-games-web/maze.html");
+        if (!mazeFile.exists()) mazeFile = new File("blockly-games-web/maze.html");
+        String url = mazeFile.toURI().toString();
+        if (url.contains("?")) url = url.substring(0, url.indexOf('?'));
+        return url;
+    }
+
+    /** Injects a "Model" option in the level nav; only this one loads from XMI (levels 1–10 are predefined in the WebView). */
+    private void injectLevelNavModelElement(WebEngine webEngine) {
+        webEngine.executeScript(
+            "(function() {" +
+            "  var h1 = document.querySelector('body table tr td h1');" +
+            "  if (!h1 || document.getElementById('levelModel')) return;" +
+            "  h1.appendChild(document.createTextNode(' '));" +
+            "  var span = document.createElement('span');" +
+            "  span.className = 'level_number level_done';" +
+            "  span.id = 'levelModel';" +
+            "  span.textContent = 'Model';" +
+            "  span.style.cursor = 'pointer';" +
+            "  span.title = 'Load level from saved XMI model';" +
+            "  span.addEventListener('click', function() {" +
+            "    if (window.javaBridge && window.javaBridge.loadModel) window.javaBridge.loadModel();" +
+            "  });" +
+            "  h1.appendChild(span);" +
+            "})();"
+        );
+    }
+
+    /**
+     * Injects the loaded level state into the WebView: map grid, nd/od, metadata (K, Od, T, Q, S),
+     * Blockly workspace XML, and resets pegman. Call with suppressSync already set and clear it after.
+     */
+    private void applyLevelToWebView(Level level, WebEngine webEngine) {
+        if (level == null || level.getMap() == null) return;
+        suppressSync = true;
+        try {
+            int[][] grid = engine.buildGridForWebView(level.getMap());
+            Cell startCell = engine.getStartCell(level.getMap());
+            Cell goalCell = engine.getGoalCell(level.getMap());
+            int levelId = Math.max(1, Math.min(10, level.getId()));
+            int maxBlocks = level.getMaxBlocks() <= 0 ? -1 : level.getMaxBlocks();
+            int t = engine.directionToT(level.getStartOrientation());
+
+            // Build JSON array for window.X: X[row][col], row-major
+            StringBuilder sb = new StringBuilder();
+            sb.append("[");
+            for (int row = 0; row < grid.length; row++) {
+                sb.append("[");
+                for (int col = 0; col < grid[row].length; col++) {
+                    if (col > 0) sb.append(",");
+                    sb.append(grid[row][col]);
+                }
+                sb.append("]");
+                if (row < grid.length - 1) sb.append(",");
+            }
+            sb.append("]");
+            String gridJson = sb.toString();
+
+            // 1) Store level data in __inject* so the poller can apply it after maze init (which overwrites X, nd, od).
+            webEngine.executeScript("window.__injectGridJson = " + gridJson + ";");
+            if (grid.length > 0 && grid[0].length > 0) {
+                int rd = grid[0].length;
+                int qd = grid.length;
+                webEngine.executeScript("window.__injectQd = " + qd + "; window.__injectRd = " + rd + ";");
+                webEngine.executeScript("window.__injectSd = " + (50 * rd) + "; window.__injectTd = " + (50 * qd) + ";");
+            }
+            if (startCell != null) {
+                webEngine.executeScript("window.__injectNd = {x: " + startCell.getX() + ", y: " + startCell.getY() + "};");
+                webEngine.executeScript("window.__injectQ = " + startCell.getX() + "; window.__injectS = " + startCell.getY() + ";");
+            }
+            if (goalCell != null) {
+                webEngine.executeScript("window.__injectOd = {x: " + goalCell.getX() + ", y: " + goalCell.getY() + "};");
+            }
+            webEngine.executeScript("window.__injectK = " + levelId + ";");
+            webEngine.executeScript("window.__injectOdVal = " + (maxBlocks < 0 ? "Infinity" : String.valueOf(maxBlocks)) + ";");
+            webEngine.executeScript("window.__injectT = " + t + ";");
+
+            String xml = engine.solutionToBlocklyXml(level);
+            String escapedForJson = xml.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
+            webEngine.executeScript("window.__loadXml = \"" + escapedForJson + "\";");
+
+            // 2) Poll until maze DOM and Blockly are ready, then apply our data (overwrite maze defaults), redraw, load blocks, reset pegman
+            webEngine.executeScript(
+                "(function(){ " +
+                "var attempts = 0, maxAttempts = 60, interval = 100; " +
+                "var id = setInterval(function() { " +
+                "  if (!document.getElementById('svgMaze') || !window.BlocklyInterface) { " +
+                "    attempts++; if (attempts >= maxAttempts) clearInterval(id); " +
+                "    return; " +
+                "  } " +
+                "  clearInterval(id); " +
+                "  if (window.__injectGridJson !== undefined) { " +
+                "    window.X = window.__injectGridJson; " +
+                "    if (window.__injectQd !== undefined) { window.Qd = window.__injectQd; window.Rd = window.__injectRd; window.Sd = window.__injectSd; window.Td = window.__injectTd; } " +
+                "    if (window.__injectNd !== undefined) { window.nd = window.__injectNd; window.Q = window.__injectQ; window.S = window.__injectS; } " +
+                "    if (window.__injectOd !== undefined) window.od = window.__injectOd; " +
+                "    if (window.__injectK !== undefined) window.K = window.__injectK; " +
+                "    if (window.__injectOdVal !== undefined) window.Od = window.__injectOdVal; " +
+                "    if (window.__injectT !== undefined) window.T = window.__injectT; " +
+                "  } " +
+                "  var c = document.getElementById('svgMaze'); " +
+                "  if (c) { while (c.firstChild) c.removeChild(c.firstChild); } " +
+                "  if (typeof Wd === 'function') Wd(); " +
+                "  if (!document.getElementById('look') && c) { " +
+                "    var ns = 'http://www.w3.org/2000/svg'; " +
+                "    var g = document.createElementNS(ns, 'g'); g.id = 'look'; " +
+                "    var p1 = document.createElementNS(ns, 'path'); p1.setAttribute('d', 'M 0,-15 a 15 15 0 0 1 15 15'); " +
+                "    var p2 = document.createElementNS(ns, 'path'); p2.setAttribute('d', 'M 0,-35 a 35 35 0 0 1 35 35'); " +
+                "    var p3 = document.createElementNS(ns, 'path'); p3.setAttribute('d', 'M 0,-55 a 55 55 0 0 1 55 55'); " +
+                "    g.appendChild(p1); g.appendChild(p2); g.appendChild(p3); c.appendChild(g); " +
+                "  } " +
+                "  if (window.BlocklyInterface.Kv && window.__loadXml !== undefined) { " +
+                "    try { window.BlocklyInterface.Kv(window.__loadXml); delete window.__loadXml; } catch(e) { if (window.javaBridge) window.javaBridge.logJS('Kv: ' + e); } " +
+                "  } " +
+                "  if (typeof $d === 'function' && document.getElementById('finish')) { try { $d(false); } catch(e) { if (window.javaBridge) window.javaBridge.logJS('$d: ' + e); } } " +
+                "  setTimeout(function() { try { var btn = document.getElementById('runButton'); if (btn) btn.click(); } catch(e) {} }, 300); " +
+                "}, interval); " +
+                "})();"
+            );
+        } finally {
+            suppressSync = false;
+        }
     }
 }
