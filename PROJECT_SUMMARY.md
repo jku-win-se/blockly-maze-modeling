@@ -10,7 +10,6 @@ A **Java/JavaFX desktop application** that recreates the [Blockly Games Maze](ht
 |---------|------|-----------------|
 | `blocky_model` | EMF metamodel & generated code | Eclipse EMF, Ecore, XMI |
 | `blocky_game` | Main application (UI + engine) | Java 17, JavaFX 21, WebView |
-| `website_0f769626` | Downloaded Blockly Games Maze pages | HTML, JS (reference/embedded UI) |
 
 ---
 
@@ -172,17 +171,6 @@ A local copy of the Blockly Games website lives inside `blocky_game/src/blocky_g
 | `Nd` | `int` | Skin index (0=pegman, 1=astro, 2=panda) |
 | `U` | `Object` | Skin config (image paths, sounds, colours) |
 | `P` | `int` | Animation step delay in ms (default 100) |
-
----
-
-## Web Reference (`website_0f769626`)
-
-Downloaded Blockly Games Maze pages used as the embedded WebView content:
-- `index.html` – Main entry
-- `html/page_2.html` … `page_11.html` – Individual level pages
-- `js/boot.js`, `compressed.js`, `en.js`, `prettify.js` – Blockly runtime
-- `css/` – Stylesheets
-- `images/` – Web assets
 
 ---
 
