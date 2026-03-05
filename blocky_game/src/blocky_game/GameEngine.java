@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 import blocky.*;
+import blocky.BlockyPackage;
 
 public class GameEngine {
 
@@ -47,6 +48,9 @@ public class GameEngine {
         String[] rowStrs = mapJson.split("\\],\\[");
         int height = rowStrs.length;
         int width = rowStrs[0].split(",").length;
+
+        // Clear any previously-synced start orientation so syncLevelMeta will set it fresh.
+        currentLevel.eUnset(BlockyPackage.Literals.LEVEL__START_ORIENTATION);
 
         GridMap map = BlockyFactory.eINSTANCE.createGridMap();
         map.setWidth(width);
@@ -101,7 +105,7 @@ public class GameEngine {
     }
 
     public void cycleCellType(int x, int y) {
-        int index = y * 8 + x;
+        int index = y * currentLevel.getMap().getWidth() + x;
         Cell cell = currentLevel.getMap().getCells().get(index);
 
         switch (cell.getType()) {
@@ -155,11 +159,12 @@ public class GameEngine {
             block = BlockyFactory.eINSTANCE.createMoveForward();
         } else if ("maze_turn".equals(type) || "turn_left".equals(type) || "turn_right".equals(type)) {
             Turn t = BlockyFactory.eINSTANCE.createTurn();
-            // Default to LEFT if not specified, but Blockly maze_turn usually has a field
             String dir = (String) data.get("DIR");
+            System.out.println("[GameEngine]   Turn block: type=" + type + ", DIR field=" + dir + ", all keys=" + data.keySet());
             if (dir == null)
-                dir = type.contains("right") ? "turn_right" : "turn_left";
-            t.setDirection(dir.contains("right") ? TurnDirection.RIGHT : TurnDirection.LEFT);
+                dir = type;
+            t.setDirection(dir.toLowerCase().contains("right") ? TurnDirection.RIGHT : TurnDirection.LEFT);
+            System.out.println("[GameEngine]   -> resolved dir=" + dir + " -> " + t.getDirection());
             block = t;
         } else if ("maze_forever".equals(type) || "repeat_until_goal".equals(type)) {
             RepeatUntilGoal r = BlockyFactory.eINSTANCE.createRepeatUntilGoal();
@@ -220,11 +225,12 @@ public class GameEngine {
     }
 
     private SensorDirection parseCondition(String type) {
-        if (type.contains("ahead"))
+        String lower = type.toLowerCase();
+        if (lower.contains("forward") || lower.contains("ahead"))
             return SensorDirection.AHEAD;
-        if (type.contains("left"))
+        if (lower.contains("left"))
             return SensorDirection.LEFT;
-        if (type.contains("right"))
+        if (lower.contains("right"))
             return SensorDirection.RIGHT;
         return SensorDirection.AHEAD;
     }
@@ -249,7 +255,9 @@ public class GameEngine {
             startNode = currentLevel.getMap().getCells().get(0);
 
         initialState.setPosition(startNode);
-        initialState.setOrientation(currentLevel.getStartOrientation());
+        Direction startDir = determineStartOrientation(startNode);
+        initialState.setOrientation(startDir);
+        currentLevel.setStartOrientation(startDir);
         initialState.setStatus(GameStatus.RUNNING);
         trace.getStates().add(initialState);
 
@@ -265,6 +273,38 @@ public class GameEngine {
         if (c == null)
             return "null";
         return "(" + c.getX() + "," + c.getY() + ")";
+    }
+
+    /**
+     * Determine a sensible starting orientation based on the map layout.
+     * If an explicit start orientation is already stored on the level, that wins.
+     * Otherwise, we look for a non-wall neighbour around the START cell and face it.
+     */
+    private Direction determineStartOrientation(Cell start) {
+        // EMF default for startOrientation is NORTH; treat it as "unset" unless explicitly set.
+        if (currentLevel != null && currentLevel.eIsSet(BlockyPackage.Literals.LEVEL__START_ORIENTATION)) {
+            return currentLevel.getStartOrientation();
+        }
+        if (start == null) {
+            return Direction.NORTH;
+        }
+
+        // Prefer any non-wall neighbour in a fixed order: NORTH, EAST, SOUTH, WEST.
+        if (start.getTop() != null && start.getTop().getType() != CellType.WALL) {
+            return Direction.NORTH;
+        }
+        if (start.getRight() != null && start.getRight().getType() != CellType.WALL) {
+            return Direction.EAST;
+        }
+        if (start.getBottom() != null && start.getBottom().getType() != CellType.WALL) {
+            return Direction.SOUTH;
+        }
+        if (start.getLeft() != null && start.getLeft().getType() != CellType.WALL) {
+            return Direction.WEST;
+        }
+
+        // Fallback: keep a deterministic default.
+        return Direction.NORTH;
     }
 
     private GameState executeSequence(Block first, GameState state, ExecutionTrace trace) {
@@ -311,10 +351,12 @@ public class GameEngine {
             System.out.println("Loop Start");
             RepeatUntilGoal r = (RepeatUntilGoal) block;
             GameState loop = next;
+            GridMap map = currentLevel.getMap();
+            int maxSteps = map.getWidth() * map.getHeight() * 2;
             while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != CellType.GOAL) {
-                if (loop.getStep() > 50) {
+                if (loop.getStep() > maxSteps) {
                     loop.setStatus(GameStatus.CRASHED);
-                    System.out.println("[GameEngine] Infinite loop detected!");
+                    System.out.println("[GameEngine] Infinite loop detected! (exceeded " + maxSteps + " steps)");
                     break;
                 }
                 int previousStep = loop.getStep();
@@ -390,6 +432,64 @@ public class GameEngine {
 
     private Direction calculateTurn(Direction d, TurnDirection td) {
         return getRelativeDir(d, td == TurnDirection.LEFT ? SensorDirection.LEFT : SensorDirection.RIGHT);
+    }
+
+    // --- Level Metadata Sync ---
+
+    /**
+     * Called from the JS bridge when the WebView reports level metadata.
+     * JSON shape: { "level": K, "maxBlocks": Od, "startDirection": T,
+     *               "allowLoops": bool, "allowConditionals": bool }
+     * T encoding: 0=NORTH, 1=EAST, 2=SOUTH, 3=WEST (Blockly Maze always resets to T=1=EAST).
+     */
+    public void syncLevelMeta(String metaJson) {
+        System.out.println("[GameEngine] Syncing level metadata: " + metaJson);
+        try {
+            int maxBlocks        = extractJsonInt(metaJson, "maxBlocks",        -1);
+            int startDirCode     = extractJsonInt(metaJson, "startDirection",    1);
+            int levelNum         = extractJsonInt(metaJson, "level",             1);
+            boolean allowLoops   = extractJsonBool(metaJson, "allowLoops",   false);
+            boolean allowConds   = extractJsonBool(metaJson, "allowConditionals", false);
+
+            currentLevel.setId(levelNum);
+            currentLevel.setTitle("Maze Level " + levelNum);
+            currentLevel.setMaxBlocks(maxBlocks < 0 ? 0 : maxBlocks);
+            currentLevel.setAllowLoops(allowLoops);
+            currentLevel.setAllowConditionals(allowConds);
+
+            Direction dir;
+            switch (startDirCode) {
+                case 0:  dir = Direction.NORTH; break;
+                case 1:  dir = Direction.EAST;  break;
+                case 2:  dir = Direction.SOUTH; break;
+                case 3:  dir = Direction.WEST;  break;
+                default: dir = Direction.EAST;
+            }
+            currentLevel.setStartOrientation(dir);
+
+            System.out.println("[GameEngine] Level=" + levelNum
+                    + ", maxBlocks=" + (maxBlocks < 0 ? "unlimited" : maxBlocks)
+                    + ", startDir=" + dir
+                    + ", allowLoops=" + allowLoops
+                    + ", allowConditionals=" + allowConds);
+            saveModel();
+        } catch (Exception e) {
+            System.err.println("[GameEngine] Failed to parse level metadata: " + e.getMessage());
+        }
+    }
+
+    private int extractJsonInt(String json, String key, int defaultVal) {
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("\"" + key + "\"\\s*:\\s*(-?[0-9]+)")
+                .matcher(json);
+        return m.find() ? Integer.parseInt(m.group(1)) : defaultVal;
+    }
+
+    private boolean extractJsonBool(String json, String key, boolean defaultVal) {
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("\"" + key + "\"\\s*:\\s*(true|false)")
+                .matcher(json);
+        return m.find() ? Boolean.parseBoolean(m.group(1)) : defaultVal;
     }
 
     public void saveModel() {

@@ -23,6 +23,8 @@ public class BlockyUI extends Application {
 
     private GameEngine engine;
     private WebView webView;
+    @SuppressWarnings("FieldCanBeLocal")
+    private JSBridge jsBridge;
 
     @Override
     public void start(Stage primaryStage) {
@@ -54,8 +56,9 @@ public class BlockyUI extends Application {
             // Setup the bridge
             webEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
                 if (newState == Worker.State.SUCCEEDED) {
+                    jsBridge = new JSBridge();
                     JSObject window = (JSObject) webEngine.executeScript("window");
-                    window.setMember("javaBridge", new JSBridge());
+                    window.setMember("javaBridge", jsBridge);
                     injectSyncScript(webEngine);
                 }
             });
@@ -135,8 +138,21 @@ public class BlockyUI extends Application {
                 "      sync(ws);\n" +
                 "      setTimeout(function() {\n" +
                 "          var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);\n" +
-                "          if (bridge && typeof window.X !== 'undefined') { bridge.syncMap(JSON.stringify(window.X)); }\n"
-                +
+                "          if (!bridge) return;\n" +
+                "          if (typeof window.X !== 'undefined') {\n" +
+                "            bridge.syncMap(JSON.stringify(window.X));\n" +
+                "          }\n" +
+                "          try {\n" +
+                "            var lvl  = (typeof window.K  !== 'undefined') ? window.K  : 1;\n" +
+                "            var mxb  = (typeof window.Od !== 'undefined' && isFinite(window.Od)) ? window.Od : -1;\n" +
+                "            var tb   = document.getElementById('toolbox');\n" +
+                "            var tbHtml = tb ? tb.innerHTML : '';\n" +
+                "            var hasLoops = tbHtml.indexOf('maze_forever') !== -1;\n" +
+                "            var hasConds = tbHtml.indexOf('maze_if') !== -1;\n" +
+                "            var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: 1,\n" +
+                "                                        allowLoops: hasLoops, allowConditionals: hasConds });\n" +
+                "            bridge.syncLevelMeta(meta);\n" +
+                "          } catch(e) { log('syncLevelMeta error: ' + e); }\n" +
                 "      }, 500);\n" +
                 "\n" +
 
@@ -151,11 +167,18 @@ public class BlockyUI extends Application {
                 "    var runBtn = document.getElementById('runButton');\n" +
                 "    if (runBtn) {\n" +
                 "      runHooked = true;\n" +
-                "      log('Attaching Java runSimulation to runButton.');\n" +
-                "      runBtn.addEventListener('click', function(e) {\n" +
-                "        var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);\n" +
-                "        if (bridge) { bridge.runSimulation(); }\n" +
+                "      log('Watching runButton via MutationObserver.');\n" +
+                "      var observer = new MutationObserver(function(mutations) {\n" +
+                "        for (var i = 0; i < mutations.length; i++) {\n" +
+                "          if (mutations[i].attributeName === 'style' && runBtn.style.display === 'none') {\n" +
+                "            log('Run button hidden — triggering Java simulation.');\n" +
+                "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);\n" +
+                "            if (bridge) bridge.runSimulation();\n" +
+                "            break;\n" +
+                "          }\n" +
+                "        }\n" +
                 "      });\n" +
+                "      observer.observe(runBtn, { attributes: true, attributeFilter: ['style'] });\n" +
                 "    }\n" +
                 "  }, 500);\n" +
                 "})();\n";
@@ -178,9 +201,14 @@ public class BlockyUI extends Application {
             engine.setMapFromJson(mapJson);
         }
 
+        public void syncLevelMeta(String metaJson) {
+            System.out.println("[JSBridge] Received level metadata: " + metaJson);
+            engine.syncLevelMeta(metaJson);
+        }
+
         public void syncModel(String xml) {
             try {
-                System.out.println("[JSBridge] Syncing workspace XML...");
+                System.out.println("[JSBridge] Syncing workspace XML:\n" + xml);
                 List<Map<String, Object>> data = parseBlocklyXml(xml);
                 engine.rebuildProgram(data);
                 // Auto-run simulation removed; it restricts to the runButton click now.
@@ -242,10 +270,13 @@ public class BlockyUI extends Application {
             org.w3c.dom.Element child = (org.w3c.dom.Element) n;
             String tag = child.getNodeName().toLowerCase();
 
+            System.out.println("[XMLParser]   block=" + el.getAttribute("type") + " child tag='" + tag + "'");
             switch (tag) {
                 case "field":
-                    // e.g. <field name="DIR">isPathLeft</field>
-                    map.put(child.getAttribute("name"), child.getTextContent().trim());
+                    String fieldName = child.getAttribute("name");
+                    String fieldVal = child.getTextContent().trim();
+                    System.out.println("[XMLParser]     field: name='" + fieldName + "' value='" + fieldVal + "'");
+                    map.put(fieldName, fieldVal);
                     break;
                 case "statement":
                     // e.g. <statement name="DO"><block .../></statement>
