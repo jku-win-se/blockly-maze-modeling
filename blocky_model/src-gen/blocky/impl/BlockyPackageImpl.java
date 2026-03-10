@@ -9,6 +9,7 @@ import blocky.Cell;
 import blocky.CellType;
 import blocky.Direction;
 import blocky.ExecutionTrace;
+import blocky.Game;
 import blocky.GameState;
 import blocky.GameStatus;
 import blocky.GridMap;
@@ -35,6 +36,13 @@ import org.eclipse.emf.ecore.impl.EPackageImpl;
  * @generated
  */
 public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass gameEClass = null;
+
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -202,6 +210,26 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		// Update the registry and return the package
 		EPackage.Registry.INSTANCE.put(BlockyPackage.eNS_URI, theBlockyPackage);
 		return theBlockyPackage;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getGame() {
+		return gameEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGame_Levels() {
+		return (EReference) gameEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -724,6 +752,9 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		isCreated = true;
 
 		// Create classes and their features
+		gameEClass = createEClass(GAME);
+		createEReference(gameEClass, GAME__LEVELS);
+
 		levelEClass = createEClass(LEVEL);
 		createEAttribute(levelEClass, LEVEL__TITLE);
 		createEAttribute(levelEClass, LEVEL__ID);
@@ -821,6 +852,11 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		ifStatementEClass.getESuperTypes().add(this.getBlock());
 
 		// Initialize classes, features, and operations; add parameters
+		initEClass(gameEClass, Game.class, "Game", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getGame_Levels(), this.getLevel(), null, "levels", null, 0, -1, Game.class, !IS_TRANSIENT,
+				!IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED,
+				IS_ORDERED);
+
 		initEClass(levelEClass, Level.class, "Level", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getLevel_Title(), ecorePackage.getEString(), "title", null, 0, 1, Level.class, !IS_TRANSIENT,
 				!IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

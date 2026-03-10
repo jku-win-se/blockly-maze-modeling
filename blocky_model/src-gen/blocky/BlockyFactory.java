@@ -22,6 +22,15 @@ public interface BlockyFactory extends EFactory {
 	BlockyFactory eINSTANCE = blocky.impl.BlockyFactoryImpl.init();
 
 	/**
+	 * Returns a new object of class '<em>Game</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Game</em>'.
+	 * @generated
+	 */
+	Game createGame();
+
+	/**
 	 * Returns a new object of class '<em>Level</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

@@ -57,6 +57,8 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 	@Override
 	public EObject create(EClass eClass) {
 		switch (eClass.getClassifierID()) {
+		case BlockyPackage.GAME:
+			return createGame();
 		case BlockyPackage.LEVEL:
 			return createLevel();
 		case BlockyPackage.GRID_MAP:
@@ -124,6 +126,17 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 		default:
 			throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Game createGame() {
+		GameImpl game = new GameImpl();
+		return game;
 	}
 
 	/**

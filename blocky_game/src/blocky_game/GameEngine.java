@@ -19,6 +19,7 @@ import blocky.BlockyPackage;
 
 public class GameEngine {
 
+    private Game currentGame;
     private Level currentLevel;
     private Resource resource;
 
@@ -35,8 +36,11 @@ public class GameEngine {
         System.out.println("[GameEngine] XMI file path: " + xmiFile.getAbsolutePath());
         resource = resSet.createResource(URI.createFileURI(xmiFile.getAbsolutePath()));
 
+        // Root object is now Game, which contains one or more Levels.
+        currentGame = BlockyFactory.eINSTANCE.createGame();
         currentLevel = BlockyFactory.eINSTANCE.createLevel();
-        resource.getContents().add(currentLevel);
+        currentGame.getLevels().add(currentLevel);
+        resource.getContents().add(currentGame);
     }
 
     public void setMapFromJson(String mapJson) {
@@ -509,6 +513,10 @@ public class GameEngine {
         return currentLevel;
     }
 
+    public Game getCurrentGame() {
+        return currentGame;
+    }
+
     public Resource getResource() {
         return resource;
     }
@@ -516,12 +524,16 @@ public class GameEngine {
     // --- XMI Load & Export for WebView ---
 
     /**
-     * Loads a Level from an XMI file and sets it as the current level.
+     * Loads a model from an XMI file and sets the current game/level.
      * Subsequent saveModel() will write to this file.
+     *
+     * Accepts both:
+     * - Game root (new model)
+     * - Level root (legacy) — will be wrapped into a Game root in-memory
      *
      * @param file the .xmi file to load
      * @throws IOException if the file cannot be read or parsed
-     * @throws IllegalArgumentException if the root element is not a Level or level has no map
+     * @throws IllegalArgumentException if the root element is not compatible or level has no map
      */
     public void loadFromFile(File file) throws IOException {
         if (file == null || !file.exists()) {
@@ -539,14 +551,32 @@ public class GameEngine {
             throw new IllegalArgumentException("XMI file has no root element: " + file.getAbsolutePath());
         }
         Object root = newResource.getContents().get(0);
-        if (!(root instanceof Level)) {
-            throw new IllegalArgumentException("XMI root is not a Level: " + (root != null ? root.getClass().getName() : "null"));
+
+        Game loadedGame;
+        Level loadedLevel;
+
+        if (root instanceof Game) {
+            loadedGame = (Game) root;
+            if (loadedGame.getLevels().isEmpty()) {
+                throw new IllegalArgumentException("Game has no levels.");
+            }
+            loadedLevel = loadedGame.getLevels().get(0);
+        } else if (root instanceof Level) {
+            loadedLevel = (Level) root;
+            loadedGame = BlockyFactory.eINSTANCE.createGame();
+            loadedGame.getLevels().add(loadedLevel);
+            newResource.getContents().clear();
+            newResource.getContents().add(loadedGame);
+        } else {
+            throw new IllegalArgumentException("XMI root is neither Game nor Level: "
+                    + (root != null ? root.getClass().getName() : "null"));
         }
-        Level loadedLevel = (Level) root;
+
         if (loadedLevel.getMap() == null) {
             throw new IllegalArgumentException("Level has no map.");
         }
         this.resource = newResource;
+        this.currentGame = loadedGame;
         this.currentLevel = loadedLevel;
         System.out.println("[GameEngine] Loaded level id=" + loadedLevel.getId() + " from " + file.getAbsolutePath());
     }

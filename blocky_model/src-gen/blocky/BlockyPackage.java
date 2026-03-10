@@ -58,6 +58,43 @@ public interface BlockyPackage extends EPackage {
 	BlockyPackage eINSTANCE = blocky.impl.BlockyPackageImpl.init();
 
 	/**
+	 * The meta object id for the '{@link blocky.impl.GameImpl <em>Game</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see blocky.impl.GameImpl
+	 * @see blocky.impl.BlockyPackageImpl#getGame()
+	 * @generated
+	 */
+	int GAME = 0;
+
+	/**
+	 * The feature id for the '<em><b>Levels</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GAME__LEVELS = 0;
+
+	/**
+	 * The number of structural features of the '<em>Game</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GAME_FEATURE_COUNT = 1;
+
+	/**
+	 * The number of operations of the '<em>Game</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GAME_OPERATION_COUNT = 0;
+
+	/**
 	 * The meta object id for the '{@link blocky.impl.LevelImpl <em>Level</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -65,7 +102,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getLevel()
 	 * @generated
 	 */
-	int LEVEL = 0;
+	int LEVEL = 1;
 
 	/**
 	 * The feature id for the '<em><b>Title</b></em>' attribute.
@@ -183,7 +220,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getGridMap()
 	 * @generated
 	 */
-	int GRID_MAP = 1;
+	int GRID_MAP = 2;
 
 	/**
 	 * The feature id for the '<em><b>Width</b></em>' attribute.
@@ -238,7 +275,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getCell()
 	 * @generated
 	 */
-	int CELL = 2;
+	int CELL = 3;
 
 	/**
 	 * The feature id for the '<em><b>X</b></em>' attribute.
@@ -329,7 +366,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getExecutionTrace()
 	 * @generated
 	 */
-	int EXECUTION_TRACE = 3;
+	int EXECUTION_TRACE = 4;
 
 	/**
 	 * The feature id for the '<em><b>States</b></em>' containment reference list.
@@ -366,7 +403,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getGameState()
 	 * @generated
 	 */
-	int GAME_STATE = 4;
+	int GAME_STATE = 5;
 
 	/**
 	 * The feature id for the '<em><b>Step</b></em>' attribute.
@@ -457,7 +494,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getBlock()
 	 * @generated
 	 */
-	int BLOCK = 5;
+	int BLOCK = 6;
 
 	/**
 	 * The feature id for the '<em><b>Next</b></em>' containment reference.
@@ -494,7 +531,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getMoveForward()
 	 * @generated
 	 */
-	int MOVE_FORWARD = 6;
+	int MOVE_FORWARD = 7;
 
 	/**
 	 * The feature id for the '<em><b>Next</b></em>' containment reference.
@@ -531,7 +568,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getTurn()
 	 * @generated
 	 */
-	int TURN = 7;
+	int TURN = 8;
 
 	/**
 	 * The feature id for the '<em><b>Next</b></em>' containment reference.
@@ -577,7 +614,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getRepeatUntilGoal()
 	 * @generated
 	 */
-	int REPEAT_UNTIL_GOAL = 8;
+	int REPEAT_UNTIL_GOAL = 9;
 
 	/**
 	 * The feature id for the '<em><b>Next</b></em>' containment reference.
@@ -623,7 +660,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getIfStatement()
 	 * @generated
 	 */
-	int IF_STATEMENT = 9;
+	int IF_STATEMENT = 10;
 
 	/**
 	 * The feature id for the '<em><b>Next</b></em>' containment reference.
@@ -687,7 +724,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getDirection()
 	 * @generated
 	 */
-	int DIRECTION = 10;
+	int DIRECTION = 11;
 
 	/**
 	 * The meta object id for the '{@link blocky.TurnDirection <em>Turn Direction</em>}' enum.
@@ -697,7 +734,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getTurnDirection()
 	 * @generated
 	 */
-	int TURN_DIRECTION = 11;
+	int TURN_DIRECTION = 12;
 
 	/**
 	 * The meta object id for the '{@link blocky.CellType <em>Cell Type</em>}' enum.
@@ -707,7 +744,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getCellType()
 	 * @generated
 	 */
-	int CELL_TYPE = 12;
+	int CELL_TYPE = 13;
 
 	/**
 	 * The meta object id for the '{@link blocky.SensorDirection <em>Sensor Direction</em>}' enum.
@@ -717,7 +754,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getSensorDirection()
 	 * @generated
 	 */
-	int SENSOR_DIRECTION = 13;
+	int SENSOR_DIRECTION = 14;
 
 	/**
 	 * The meta object id for the '{@link blocky.GameStatus <em>Game Status</em>}' enum.
@@ -727,7 +764,28 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getGameStatus()
 	 * @generated
 	 */
-	int GAME_STATUS = 14;
+	int GAME_STATUS = 15;
+
+	/**
+	 * Returns the meta object for class '{@link blocky.Game <em>Game</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Game</em>'.
+	 * @see blocky.Game
+	 * @generated
+	 */
+	EClass getGame();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link blocky.Game#getLevels <em>Levels</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Levels</em>'.
+	 * @see blocky.Game#getLevels()
+	 * @see #getGame()
+	 * @generated
+	 */
+	EReference getGame_Levels();
 
 	/**
 	 * Returns the meta object for class '{@link blocky.Level <em>Level</em>}'.
@@ -1276,6 +1334,24 @@ public interface BlockyPackage extends EPackage {
 	 * @generated
 	 */
 	interface Literals {
+		/**
+		 * The meta object literal for the '{@link blocky.impl.GameImpl <em>Game</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see blocky.impl.GameImpl
+		 * @see blocky.impl.BlockyPackageImpl#getGame()
+		 * @generated
+		 */
+		EClass GAME = eINSTANCE.getGame();
+
+		/**
+		 * The meta object literal for the '<em><b>Levels</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GAME__LEVELS = eINSTANCE.getGame_Levels();
+
 		/**
 		 * The meta object literal for the '{@link blocky.impl.LevelImpl <em>Level</em>}' class.
 		 * <!-- begin-user-doc -->

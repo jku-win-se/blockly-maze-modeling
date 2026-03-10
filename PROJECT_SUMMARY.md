@@ -25,7 +25,8 @@ Defined in [`blocky.ecore`](file:///c:/Users/domin/eclipse-workspace-blocky/bloc
 - **GameStatus** – `RUNNING`, `WON`, `CRASHED`
 
 ### Core Classes
-- **Level** – Top-level container (`id`, `title`, `description`, `maxBlocks`, `allowLoops`, `allowConditionals`, `startOrientation`). Owns a `GridMap`, a `solution` (head `Block`), and `ExecutionTrace` list.
+- **Game** – Root container. Owns a list of `Level` instances (`levels`).
+- **Level** – Level container (`id`, `title`, `description`, `maxBlocks`, `allowLoops`, `allowConditionals`, `startOrientation`). Owns a `GridMap`, a `solution` (head `Block`), and `ExecutionTrace` list.
 - **GridMap** – width × height grid. Contains `Cell` list.
 - **Cell** – Has a `CellType` and bidirectional references `top`/`bottom`/`left`/`right` to neighbouring cells.
 - **Block** *(abstract)* – Linked-list via `next` reference. Concrete subtypes:
@@ -55,7 +56,7 @@ All visuals are rendered by an embedded **JavaFX WebView** loading the Blockly G
 - Contains a Blockly XML parser (`parseBlocklyXml` → `parseBlockElement` → `firstBlockChild`) that converts Blockly's serialised XML into `List<Map<String, Object>>` for the engine.
 
 ### Game Engine – [`GameEngine.java`](file:///c:/Users/domin/eclipse-workspace-blocky/blocky_game/src/blocky_game/GameEngine.java)
-- `initializeGame()` – Creates EMF `Resource` (XMI) and an empty `Level`.
+- `initializeGame()` – Creates EMF `Resource` (XMI), a root `Game`, and an empty `Level` inside `Game.levels`.
 - `setMapFromJson(String)` – Parses a 2D JSON grid from JS, builds `Cell` objects, links neighbours. Clears `startOrientation` via `eUnset()` so it is freshly set by `syncLevelMeta`.
 - `syncLevelMeta(String)` – Parses level metadata JSON from JS, sets `id`, `title`, `startOrientation`, `maxBlocks`, `allowLoops`, `allowConditionals` on the EMF `Level`.
 - `cycleCellType(int, int)` / `setUniqueCellType()` – Cell-type editing helpers. Uses `map.getWidth()` for index calculation.
@@ -65,8 +66,8 @@ All visuals are rendered by an embedded **JavaFX WebView** loading the Blockly G
 - `executeSingle()` / `executeSequence()` – Recursive execution of blocks (Move, Turn, RepeatUntilGoal, IfStatement). Loop cap is `width × height × 2` steps.
 - `checkSensor()`, `getAdjacent()`, `getRelativeDir()`, `calculateTurn()` – Maze navigation helpers.
 - `parseCondition(String)` – Maps Blockly sensor strings (`isPathForward`, `isPathLeft`, `isPathRight`) to `SensorDirection` enum values. Case-insensitive; also recognises `"forward"` as alias for `"ahead"`.
-- `saveModel()` – Sets the resource URI to **save.xmi** (`blocky_game/save.xmi` or `save.xmi`) and persists the EMF resource (including **execution traces**) to that file. Called **only once per "Run Program"**, at the end of `simulateUserProgram()` after the trace is built.
-- **Load from file** – `loadFromFile(File)` loads a Level from **load.xmi** (when using the Model button). The Model button resolves the path via `getModelXmiFile()` (load.xmi only).
+- `saveModel()` – Sets the resource URI to **save.xmi** (`blocky_game/save.xmi` or `save.xmi`) and persists the EMF resource (root `Game`, including **execution traces**) to that file. Called **only once per "Run Program"**, at the end of `simulateUserProgram()` after the trace is built.
+- **Load from file** – `loadFromFile(File)` loads the model from **load.xmi** (when using the Model button). It accepts both **Game-root** files (new) and legacy **Level-root** files (wrapped into a Game in-memory).
 
 ---
 
@@ -151,6 +152,7 @@ The sync script is a self-executing function injected via `WebEngine.executeScri
   │  simulateUserProgram → Level.traces (ExecutionTrace)    │
   │                                                         │
   │  saveModel() (after simulateUserProgram) ─► save.xmi      │
+  │    (XMI root is Game → levels[0] is current level)       │
   │  loadFromFile(load.xmi) (Model button) ◄── load.xmi      │
   └─────────────────────────────────────────────────────────┘
 ```

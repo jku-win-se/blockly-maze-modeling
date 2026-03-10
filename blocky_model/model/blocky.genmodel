@@ -35,6 +35,9 @@
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//GameStatus/WON"/>
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//GameStatus/CRASHED"/>
     </genEnums>
+    <genClasses ecoreClass="blocky.ecore#//Game">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//Game/levels"/>
+    </genClasses>
     <genClasses ecoreClass="blocky.ecore#//Level">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute blocky.ecore#//Level/title"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute blocky.ecore#//Level/id"/>
