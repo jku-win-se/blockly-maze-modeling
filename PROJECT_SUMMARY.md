@@ -13,6 +13,34 @@ A **Java/JavaFX desktop application** that recreates the [Blockly Games Maze](ht
 
 ---
 
+## MOMoT configuration (search-based model transformation)
+
+For **generating or editing `.momot` configuration files** (MOMoT = Marrying Search-based Optimization and Model Transformation Technology), use the reference docs in this repo:
+
+- **Start here**: [docs/momot/README.md](docs/momot/README.md) — overview, file format, and which doc to read for each task.
+- **Syntax and structure**: [docs/momot/grammar-and-structure.md](docs/momot/grammar-and-structure.md) — full grammar-derived reference (sections, keywords, enums).
+- **Examples and templates**: [docs/momot/examples-and-templates.md](docs/momot/examples-and-templates.md) — minimal/full templates and case study snippets (Stack, Class Modularization, CRA).
+- **Links**: [docs/momot/references.md](docs/momot/references.md) — official MOMoT site, grammar, repo, case studies.
+
+When asked to create or modify MOMoT config, read **README.md** first, then **grammar-and-structure.md** and **examples-and-templates.md** as needed.
+
+---
+
+## Henshin transformation language (graph transformation rules)
+
+For **writing or editing Henshin transformation rules and units** (`.henshin` / `.henshin_text`), use the reference docs in this repo:
+
+- **Start here**: [docs/henshin/README.md](docs/henshin/README.md) — overview, file formats (textual vs graphical), and which doc to read for each task.
+- **Concepts**: [docs/henshin/meta-model-and-concepts.md](docs/henshin/meta-model-and-concepts.md) — transformation meta-model: rules (LHS/RHS), application conditions (PAC/NAC), rule-nesting (multi-rules), units (loop, sequential, conditional, priority, independent), parameters, annotations. Based on [Eclipse Henshin wiki](https://wiki.eclipse.org/Henshin/Transformation_Meta-Model).
+- **Textual syntax**: [docs/henshin/grammar-and-syntax.md](docs/henshin/grammar-and-syntax.md) — grammar for `.henshin_text`: `ePackageImport`, `rule`, `graph`, nodes (preserve/create/delete/forbid/require), edges, `multiRule`, `matchingFormula`, units (`while`, `for`, `if-then-else`, `priority`, `independent`).
+- **Grammar reference (Xtext)**: [docs/henshin/grammar-guide.md](docs/henshin/grammar-guide.md) — authoritative grammar derived from [Henshin_text.xtext](https://github.com/eclipse-henshin/henshin/blob/0105af629a80c225466687d8412cfa9f1672cbb9/plugins/org.eclipse.emf.henshin.text/src/org/eclipse/emf/henshin/text/Henshin_text.xtext): rules, RuleElement, GraphElements, Expression precedence, ParameterKind, Type enum, keyword list.
+- **Examples and Interpreter API**: [docs/henshin/examples-and-templates.md](docs/henshin/examples-and-templates.md) — official Bank example (NAC, VAR parameters, attribute conditions, multi-rule with checkDangling=false), Interpreter API usage. In-repo: `Henshin-bank-example/org.henshin.bank/`.
+- **Links**: [docs/henshin/references.md](docs/henshin/references.md) — official Eclipse Henshin site, wiki (Transformation Meta-Model, Textual Editor, Units, Parameters), examples, repository.
+
+When asked to create or modify Henshin rules or units, read **README.md** first, then **meta-model-and-concepts.md**, **grammar-and-syntax.md**, **grammar-guide.md** (for exact grammar), and **examples-and-templates.md** as needed. Project transformations: `blocky_momot/transformations/blocky.henshin_text`. Official Bank example: `Henshin-bank-example/org.henshin.bank/`.
+
+---
+
 ## EMF Metamodel (`blocky_model`)
 
 Defined in [`blocky.ecore`](file:///c:/Users/domin/eclipse-workspace-blocky/blocky_model/model/blocky.ecore). Generated Java API in `src-gen/blocky/`.

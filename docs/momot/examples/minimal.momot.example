@@ -1,0 +1,42 @@
+package my.project.momot
+
+import at.ac.tuwien.big.momot.^search.^fitness.dimension.TransformationLengthDimension
+import at.ac.tuwien.big.momot.^search.solution.repair.TransformationPlaceholderRepairer
+import at.ac.tuwien.big.moea.^experiment.executor.listener.SeedRuntimePrintListener
+import at.ac.tuwien.big.momot.^search.algorithm.operator.mutation.TransformationPlaceholderMutation
+import org.moeaframework.core.operator.OnePointCrossover
+import org.moeaframework.core.operator.TournamentSelection
+import my.project.metamodel.MyPackage
+
+initialization = {
+   MyPackage::eINSTANCE.eClass
+}
+
+search = {
+   model = {
+      file = "model/input.xmi"
+   }
+   solutionLength = 10
+   transformations = {
+      modules = [ "model/rules.henshin" ]
+   }
+   fitness = {
+      objectives = {
+         SolutionLength : minimize new TransformationLengthDimension
+      }
+      solutionRepairer = new TransformationPlaceholderRepairer
+   }
+   algorithms = {
+      NSGAII : moea.createNSGAII(
+         new TournamentSelection(2),
+         new OnePointCrossover(1.0),
+         new TransformationPlaceholderMutation(0.15))
+   }
+}
+
+experiment = {
+   populationSize = 50
+   maxEvaluations = 1500
+   nrRuns = 30
+   progressListeners = [ new SeedRuntimePrintListener ]
+}
