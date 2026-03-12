@@ -1,0 +1,11 @@
+# MOMoT / run output
+output/*
+!output/.gitkeep
+
+# Eclipse / build
+target/
+.settings/
+*.class
+
+# Uncomment to ignore generated .henshin (if you always regenerate from .henshin_text)
+# transformations/blocky.henshin

@@ -1,0 +1,93 @@
+import org.eclipse.emf.ecore.EPackage
+import blocky.BlockyPackage
+import blocky.Game
+import blocky.GameStatus
+import blocky_momot.BlockySimulator
+import at.ac.tuwien.big.momot.^search.^fitness.dimension.TransformationLengthDimension
+import at.ac.tuwien.big.momot.^search.solution.repair.TransformationPlaceholderRepairer
+import at.ac.tuwien.big.moea.^experiment.executor.listener.SeedRuntimePrintListener
+import at.ac.tuwien.big.momot.^search.algorithm.operator.mutation.TransformationPlaceholderMutation
+import at.ac.tuwien.big.momot.^search.algorithm.operator.mutation.TransformationParameterMutation
+import org.moeaframework.core.operator.OnePointCrossover
+import org.moeaframework.core.operator.TournamentSelection
+
+initialization = {
+	val pkg = BlockyPackage.eINSTANCE
+	EPackage.Registry.INSTANCE.put(pkg.getNsURI(), pkg)
+	EPackage.Registry.INSTANCE.put(pkg.getName(), pkg)
+	pkg.eClass
+}
+
+search = {
+	model = {
+		file = "model/input/game.xmi"
+		adapt = {
+			val game = root as Game
+			if (game.eResource() !== null) {
+				val rs = game.eResource().getResourceSet()
+				rs.getPackageRegistry().put(BlockyPackage.eINSTANCE.getNsURI(), BlockyPackage.eINSTANCE)
+				rs.getPackageRegistry().put(BlockyPackage.eINSTANCE.getName(), BlockyPackage.eINSTANCE)
+			}
+			return root
+		}
+	}
+	solutionLength = 15
+	transformations = {
+		modules = [ "../blocky_model/transformations/add_block_to_empty_slot_henshin_text.henshin" ]
+		ignoreUnits = [
+			"AddIfAheadToNext", "AddIfLeftToNext", "AddIfRightToNext", "AddRepeatUntilGoalToNext",
+			"AddIfAheadToBody", "AddIfLeftToBody", "AddIfRightToBody", "AddRepeatUntilGoalToBody",
+			"AddIfAheadToThenBranch", "AddIfLeftToThenBranch", "AddIfRightToThenBranch", "AddRepeatUntilGoalToThenBranch",
+			"AddIfAheadToElseBranch", "AddIfLeftToElseBranch", "AddIfRightToElseBranch", "AddRepeatUntilGoalToElseBranch"
+		]
+	}
+	fitness = {
+		objectives = {
+			GoalReached : maximize {
+				val game = root as Game
+				val level = if (game.levels.isEmpty) null else game.levels.get(0)
+				val status = if (level == null) GameStatus.CRASHED else BlockySimulator.run(level)
+				if (status == GameStatus.WON) 1 else 0
+			}
+			SolutionLength : minimize new TransformationLengthDimension
+		}
+		constraints = {
+			MustReachGoal : minimize {
+				val game = root as Game
+				val level = if (game.levels.isEmpty) null else game.levels.get(0)
+				val status = if (level == null) GameStatus.CRASHED else BlockySimulator.run(level)
+				if (status == GameStatus.WON) 0 else 1000
+			}
+		}
+		solutionRepairer = new TransformationPlaceholderRepairer
+	}
+	algorithms = {
+		Random : moea.createRandomSearch()
+		NSGA_II : moea.createNSGAII(
+			new TournamentSelection(2),
+			new OnePointCrossover(1.0),
+			new TransformationPlaceholderMutation(0.15),
+			new TransformationParameterMutation(0.1, orchestration.moduleManager))
+	}
+}
+
+experiment = {
+	populationSize = 50
+	maxEvaluations = 2000
+	nrRuns = 5
+	progressListeners = [ new SeedRuntimePrintListener ]
+}
+
+results = {
+	objectives = {
+		outputFile = "output/objectives.pf"
+		printOutput
+	}
+	solutions = {
+		outputFile = "output/solutions.txt"
+		outputDirectory = "output/solutions/"
+	}
+	models = {
+		outputDirectory = "output/models/"
+	}
+}
