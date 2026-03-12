@@ -8,6 +8,16 @@ MOMoT (Marrying Search-based Optimization and Model Transformation Technology) p
 - **Output**: A transformation sequence that produces a program (sequence of MoveForward/Turn blocks) that reaches the GOAL when simulated.
 - **Objective**: Minimize the number of Henshin rule applications (“least number of changes”).
 
+## Docs for agents
+
+When generating or modifying Henshin rules, MOMoT config, or WebView sync (e.g. map editing via UI), use the agent-oriented docs in this repo:
+
+- **Henshin** (`.henshin_text` rules): [docs/henshin/README.md](../docs/henshin/README.md)
+- **MOMoT** (`.momot` config): [docs/momot/README.md](../docs/momot/README.md)
+- **WebView↔Java sync** (JSBridge, extending the game UI): [docs/webview-sync/README.md](../docs/webview-sync/README.md)
+
+Transformation rules live in **blocky_model** (not in blocky_momot): see `blocky_model/transformations/` and the Project layout below.
+
 ## Prerequisites
 
 - **Eclipse IDE** with:

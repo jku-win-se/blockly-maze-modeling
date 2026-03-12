@@ -2,6 +2,8 @@
 
 A **Java/JavaFX desktop application** that recreates the [Blockly Games Maze](https://blockly.games/maze) puzzle. Players drag-and-drop programming blocks to navigate a character ("Pegman") through a grid-based maze—from the Start cell to the Goal cell.
 
+**Where to start:** For the main app and EMF model, see the workspace table below. For **search-based solution synthesis** (Henshin + MOMoT), start with [blocky_momot/README.md](blocky_momot/README.md). The **docs/henshin/** and **docs/momot/** folders contain agent-oriented reference docs used by the `blocky_momot` project. For **WebView↔Java sync** and extending the game (e.g. map editing via UI), see [docs/webview-sync/README.md](docs/webview-sync/README.md).
+
 ---
 
 ## Workspace Structure
@@ -10,6 +12,9 @@ A **Java/JavaFX desktop application** that recreates the [Blockly Games Maze](ht
 |---------|------|-----------------|
 | `blocky_model` | EMF metamodel & generated code | Eclipse EMF, Ecore, XMI |
 | `blocky_game` | Main application (UI + engine) | Java 17, JavaFX 21, WebView |
+| `blocky_momot` | Search-based solution synthesis (Henshin + MOMoT) | Eclipse MOMoT, Henshin, EMF |
+| `docs/henshin/` | Agent docs for Henshin textual rules (`.henshin_text`) | — |
+| `docs/momot/` | Agent docs for MOMoT config (`.momot`) | — |
 
 ---
 
@@ -37,7 +42,7 @@ For **writing or editing Henshin transformation rules and units** (`.henshin` / 
 - **Examples and Interpreter API**: [docs/henshin/examples-and-templates.md](docs/henshin/examples-and-templates.md) — official Bank example (NAC, VAR parameters, attribute conditions, multi-rule with checkDangling=false), Interpreter API usage. In-repo: `Henshin-bank-example/org.henshin.bank/`.
 - **Links**: [docs/henshin/references.md](docs/henshin/references.md) — official Eclipse Henshin site, wiki (Transformation Meta-Model, Textual Editor, Units, Parameters), examples, repository.
 
-When asked to create or modify Henshin rules or units, read **README.md** first, then **meta-model-and-concepts.md**, **grammar-and-syntax.md**, **grammar-guide.md** (for exact grammar), and **examples-and-templates.md** as needed. Project transformations: `blocky_momot/transformations/blocky.henshin_text`. Official Bank example: `Henshin-bank-example/org.henshin.bank/`.
+When asked to create or modify Henshin rules or units, read **README.md** first, then **meta-model-and-concepts.md**, **grammar-and-syntax.md**, **grammar-guide.md** (for exact grammar), and **examples-and-templates.md** as needed. Project transformations: `blocky_model/transformations/add_block_to_empty_slot.henshin_text`. Official Bank example: `Henshin-bank-example/org.henshin.bank/`.
 
 ---
 
@@ -100,6 +105,8 @@ All visuals are rendered by an embedded **JavaFX WebView** loading the Blockly G
 ---
 
 ## JSBridge — WebView ↔ Java Interface
+
+For agent-oriented documentation of the sync protocol and how to extend it (e.g. map editing via UI), see **[docs/webview-sync/README.md](docs/webview-sync/README.md)**.
 
 The `JSBridge` is a public inner class of `BlockyUI`. An instance is stored in the `jsBridge` field (strong reference to prevent GC) and attached to the WebView's `window.javaBridge` after each page load. The injected JavaScript calls these methods to push data from the Blockly Maze runtime into the Java/EMF model.
 
