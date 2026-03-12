@@ -1,0 +1,1876 @@
+<?xml version="1.0" encoding="ASCII"?>
+<henshin:Module xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:henshin="http://www.eclipse.org/emf/2011/Henshin" xmi:id="_k_7scB3wEfG5UdWMrLQTcA" name="HenshinDSL">
+  <imports href="http://www.example.org/blocky#/"/>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7scR3wEfG5UdWMrLQTcA" name="AddMoveForwardToSolution">
+    <lhs xmi:id="_k_7sch3wEfG5UdWMrLQTcA" name="AddMoveForwardToSolution_LHS">
+      <nodes xmi:id="_k_7scx3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7sdR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7sdB3wEfG5UdWMrLQTcA" name="level" incoming="_k_7sdR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <edges xmi:id="_k_7sdR3wEfG5UdWMrLQTcA" source="_k_7scx3wEfG5UdWMrLQTcA" target="_k_7sdB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7sdh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7sdx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7seB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7seR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7sex3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7seh3wEfG5UdWMrLQTcA" name="level" outgoing="_k_7sex3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level"/>
+            </nodes>
+            <edges xmi:id="_k_7sex3wEfG5UdWMrLQTcA" source="_k_7seh3wEfG5UdWMrLQTcA" target="_k_7seR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level/solution"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7sfB3wEfG5UdWMrLQTcA" origin="_k_7sdB3wEfG5UdWMrLQTcA" image="_k_7seh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7sfR3wEfG5UdWMrLQTcA" name="AddMoveForwardToSolution_RHS">
+      <nodes xmi:id="_k_7sfh3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7sgR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7sfx3wEfG5UdWMrLQTcA" name="level" incoming="_k_7sgR3wEfG5UdWMrLQTcA" outgoing="_k_7sgh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <nodes xmi:id="_k_7sgB3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7sgh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7sgR3wEfG5UdWMrLQTcA" source="_k_7sfh3wEfG5UdWMrLQTcA" target="_k_7sfx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <edges xmi:id="_k_7sgh3wEfG5UdWMrLQTcA" source="_k_7sfx3wEfG5UdWMrLQTcA" target="_k_7sgB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level/solution"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7sgx3wEfG5UdWMrLQTcA" origin="_k_7scx3wEfG5UdWMrLQTcA" image="_k_7sfh3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_7shB3wEfG5UdWMrLQTcA" origin="_k_7sdB3wEfG5UdWMrLQTcA" image="_k_7sfx3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7shR3wEfG5UdWMrLQTcA" name="AddTurnLeftToSolution">
+    <lhs xmi:id="_k_7shh3wEfG5UdWMrLQTcA" name="AddTurnLeftToSolution_LHS">
+      <nodes xmi:id="_k_7shx3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7siR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7siB3wEfG5UdWMrLQTcA" name="level" incoming="_k_7siR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <edges xmi:id="_k_7siR3wEfG5UdWMrLQTcA" source="_k_7shx3wEfG5UdWMrLQTcA" target="_k_7siB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7sih3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7six3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7sjB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7sjR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7sjx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7sjh3wEfG5UdWMrLQTcA" name="level" outgoing="_k_7sjx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level"/>
+            </nodes>
+            <edges xmi:id="_k_7sjx3wEfG5UdWMrLQTcA" source="_k_7sjh3wEfG5UdWMrLQTcA" target="_k_7sjR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level/solution"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7skB3wEfG5UdWMrLQTcA" origin="_k_7siB3wEfG5UdWMrLQTcA" image="_k_7sjh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7skR3wEfG5UdWMrLQTcA" name="AddTurnLeftToSolution_RHS">
+      <nodes xmi:id="_k_7skh3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7slh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7skx3wEfG5UdWMrLQTcA" name="level" incoming="_k_7slh3wEfG5UdWMrLQTcA" outgoing="_k_7slx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <nodes xmi:id="_k_7slB3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7slx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Turn"/>
+        <attributes xmi:id="_k_7slR3wEfG5UdWMrLQTcA" value="0">
+          <type href="http://www.example.org/blocky#//Turn/direction"/>
+        </attributes>
+      </nodes>
+      <edges xmi:id="_k_7slh3wEfG5UdWMrLQTcA" source="_k_7skh3wEfG5UdWMrLQTcA" target="_k_7skx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <edges xmi:id="_k_7slx3wEfG5UdWMrLQTcA" source="_k_7skx3wEfG5UdWMrLQTcA" target="_k_7slB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level/solution"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7smB3wEfG5UdWMrLQTcA" origin="_k_7shx3wEfG5UdWMrLQTcA" image="_k_7skh3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_7smR3wEfG5UdWMrLQTcA" origin="_k_7siB3wEfG5UdWMrLQTcA" image="_k_7skx3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7smh3wEfG5UdWMrLQTcA" name="AddTurnRightToSolution">
+    <lhs xmi:id="_k_7smx3wEfG5UdWMrLQTcA" name="AddTurnRightToSolution_LHS">
+      <nodes xmi:id="_k_7snB3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7snh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7snR3wEfG5UdWMrLQTcA" name="level" incoming="_k_7snh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <edges xmi:id="_k_7snh3wEfG5UdWMrLQTcA" source="_k_7snB3wEfG5UdWMrLQTcA" target="_k_7snR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7snx3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7soB3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7soR3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7soh3wEfG5UdWMrLQTcA" name="block" incoming="_k_7spB3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7sox3wEfG5UdWMrLQTcA" name="level" outgoing="_k_7spB3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level"/>
+            </nodes>
+            <edges xmi:id="_k_7spB3wEfG5UdWMrLQTcA" source="_k_7sox3wEfG5UdWMrLQTcA" target="_k_7soh3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level/solution"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7spR3wEfG5UdWMrLQTcA" origin="_k_7snR3wEfG5UdWMrLQTcA" image="_k_7sox3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7sph3wEfG5UdWMrLQTcA" name="AddTurnRightToSolution_RHS">
+      <nodes xmi:id="_k_7spx3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7sqx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7sqB3wEfG5UdWMrLQTcA" name="level" incoming="_k_7sqx3wEfG5UdWMrLQTcA" outgoing="_k_7srB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <nodes xmi:id="_k_7sqR3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7srB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Turn"/>
+        <attributes xmi:id="_k_7sqh3wEfG5UdWMrLQTcA" value="1">
+          <type href="http://www.example.org/blocky#//Turn/direction"/>
+        </attributes>
+      </nodes>
+      <edges xmi:id="_k_7sqx3wEfG5UdWMrLQTcA" source="_k_7spx3wEfG5UdWMrLQTcA" target="_k_7sqB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <edges xmi:id="_k_7srB3wEfG5UdWMrLQTcA" source="_k_7sqB3wEfG5UdWMrLQTcA" target="_k_7sqR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level/solution"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7srR3wEfG5UdWMrLQTcA" origin="_k_7snB3wEfG5UdWMrLQTcA" image="_k_7spx3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_7srh3wEfG5UdWMrLQTcA" origin="_k_7snR3wEfG5UdWMrLQTcA" image="_k_7sqB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7srx3wEfG5UdWMrLQTcA" name="AddIfAheadToSolution">
+    <lhs xmi:id="_k_7ssB3wEfG5UdWMrLQTcA" name="AddIfAheadToSolution_LHS">
+      <nodes xmi:id="_k_7ssR3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7ssx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7ssh3wEfG5UdWMrLQTcA" name="level" incoming="_k_7ssx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <edges xmi:id="_k_7ssx3wEfG5UdWMrLQTcA" source="_k_7ssR3wEfG5UdWMrLQTcA" target="_k_7ssh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7stB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7stR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7sth3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7stx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7suR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7suB3wEfG5UdWMrLQTcA" name="level" outgoing="_k_7suR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level"/>
+            </nodes>
+            <edges xmi:id="_k_7suR3wEfG5UdWMrLQTcA" source="_k_7suB3wEfG5UdWMrLQTcA" target="_k_7stx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level/solution"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7suh3wEfG5UdWMrLQTcA" origin="_k_7ssh3wEfG5UdWMrLQTcA" image="_k_7suB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7sux3wEfG5UdWMrLQTcA" name="AddIfAheadToSolution_RHS">
+      <nodes xmi:id="_k_7svB3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7swR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7svR3wEfG5UdWMrLQTcA" name="level" incoming="_k_7swR3wEfG5UdWMrLQTcA" outgoing="_k_7swh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <nodes xmi:id="_k_7svh3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7swh3wEfG5UdWMrLQTcA" outgoing="_k_7swx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7svx3wEfG5UdWMrLQTcA" value="0">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7swB3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7swx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7swR3wEfG5UdWMrLQTcA" source="_k_7svB3wEfG5UdWMrLQTcA" target="_k_7svR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <edges xmi:id="_k_7swh3wEfG5UdWMrLQTcA" source="_k_7svR3wEfG5UdWMrLQTcA" target="_k_7svh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level/solution"/>
+      </edges>
+      <edges xmi:id="_k_7swx3wEfG5UdWMrLQTcA" source="_k_7svh3wEfG5UdWMrLQTcA" target="_k_7swB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7sxB3wEfG5UdWMrLQTcA" origin="_k_7ssR3wEfG5UdWMrLQTcA" image="_k_7svB3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_7sxR3wEfG5UdWMrLQTcA" origin="_k_7ssh3wEfG5UdWMrLQTcA" image="_k_7svR3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7sxh3wEfG5UdWMrLQTcA" name="AddIfLeftToSolution">
+    <lhs xmi:id="_k_7sxx3wEfG5UdWMrLQTcA" name="AddIfLeftToSolution_LHS">
+      <nodes xmi:id="_k_7syB3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7syh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7syR3wEfG5UdWMrLQTcA" name="level" incoming="_k_7syh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <edges xmi:id="_k_7syh3wEfG5UdWMrLQTcA" source="_k_7syB3wEfG5UdWMrLQTcA" target="_k_7syR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7syx3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7szB3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7szR3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7szh3wEfG5UdWMrLQTcA" name="block" incoming="_k_7s0B3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7szx3wEfG5UdWMrLQTcA" name="level" outgoing="_k_7s0B3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level"/>
+            </nodes>
+            <edges xmi:id="_k_7s0B3wEfG5UdWMrLQTcA" source="_k_7szx3wEfG5UdWMrLQTcA" target="_k_7szh3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level/solution"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7s0R3wEfG5UdWMrLQTcA" origin="_k_7syR3wEfG5UdWMrLQTcA" image="_k_7szx3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7s0h3wEfG5UdWMrLQTcA" name="AddIfLeftToSolution_RHS">
+      <nodes xmi:id="_k_7s0x3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7s2B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7s1B3wEfG5UdWMrLQTcA" name="level" incoming="_k_7s2B3wEfG5UdWMrLQTcA" outgoing="_k_7s2R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <nodes xmi:id="_k_7s1R3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7s2R3wEfG5UdWMrLQTcA" outgoing="_k_7s2h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7s1h3wEfG5UdWMrLQTcA" value="1">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7s1x3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7s2h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7s2B3wEfG5UdWMrLQTcA" source="_k_7s0x3wEfG5UdWMrLQTcA" target="_k_7s1B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <edges xmi:id="_k_7s2R3wEfG5UdWMrLQTcA" source="_k_7s1B3wEfG5UdWMrLQTcA" target="_k_7s1R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level/solution"/>
+      </edges>
+      <edges xmi:id="_k_7s2h3wEfG5UdWMrLQTcA" source="_k_7s1R3wEfG5UdWMrLQTcA" target="_k_7s1x3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7s2x3wEfG5UdWMrLQTcA" origin="_k_7syB3wEfG5UdWMrLQTcA" image="_k_7s0x3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_7s3B3wEfG5UdWMrLQTcA" origin="_k_7syR3wEfG5UdWMrLQTcA" image="_k_7s1B3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7s3R3wEfG5UdWMrLQTcA" name="AddIfRightToSolution">
+    <lhs xmi:id="_k_7s3h3wEfG5UdWMrLQTcA" name="AddIfRightToSolution_LHS">
+      <nodes xmi:id="_k_7s3x3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7s4R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7s4B3wEfG5UdWMrLQTcA" name="level" incoming="_k_7s4R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <edges xmi:id="_k_7s4R3wEfG5UdWMrLQTcA" source="_k_7s3x3wEfG5UdWMrLQTcA" target="_k_7s4B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7s4h3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7s4x3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7s5B3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7s5R3wEfG5UdWMrLQTcA" name="block" incoming="_k_7s5x3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7s5h3wEfG5UdWMrLQTcA" name="level" outgoing="_k_7s5x3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level"/>
+            </nodes>
+            <edges xmi:id="_k_7s5x3wEfG5UdWMrLQTcA" source="_k_7s5h3wEfG5UdWMrLQTcA" target="_k_7s5R3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level/solution"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7s6B3wEfG5UdWMrLQTcA" origin="_k_7s4B3wEfG5UdWMrLQTcA" image="_k_7s5h3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7s6R3wEfG5UdWMrLQTcA" name="AddIfRightToSolution_RHS">
+      <nodes xmi:id="_k_7s6h3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7s7x3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7s6x3wEfG5UdWMrLQTcA" name="level" incoming="_k_7s7x3wEfG5UdWMrLQTcA" outgoing="_k_7s8B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <nodes xmi:id="_k_7s7B3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7s8B3wEfG5UdWMrLQTcA" outgoing="_k_7s8R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7s7R3wEfG5UdWMrLQTcA" value="2">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7s7h3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7s8R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7s7x3wEfG5UdWMrLQTcA" source="_k_7s6h3wEfG5UdWMrLQTcA" target="_k_7s6x3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <edges xmi:id="_k_7s8B3wEfG5UdWMrLQTcA" source="_k_7s6x3wEfG5UdWMrLQTcA" target="_k_7s7B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level/solution"/>
+      </edges>
+      <edges xmi:id="_k_7s8R3wEfG5UdWMrLQTcA" source="_k_7s7B3wEfG5UdWMrLQTcA" target="_k_7s7h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7s8h3wEfG5UdWMrLQTcA" origin="_k_7s3x3wEfG5UdWMrLQTcA" image="_k_7s6h3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_7s8x3wEfG5UdWMrLQTcA" origin="_k_7s4B3wEfG5UdWMrLQTcA" image="_k_7s6x3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7s9B3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToSolution">
+    <lhs xmi:id="_k_7s9R3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToSolution_LHS">
+      <nodes xmi:id="_k_7s9h3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7s-B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7s9x3wEfG5UdWMrLQTcA" name="level" incoming="_k_7s-B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <edges xmi:id="_k_7s-B3wEfG5UdWMrLQTcA" source="_k_7s9h3wEfG5UdWMrLQTcA" target="_k_7s9x3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7s-R3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7s-h3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7s-x3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7s_B3wEfG5UdWMrLQTcA" name="block" incoming="_k_7s_h3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7s_R3wEfG5UdWMrLQTcA" name="level" outgoing="_k_7s_h3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level"/>
+            </nodes>
+            <edges xmi:id="_k_7s_h3wEfG5UdWMrLQTcA" source="_k_7s_R3wEfG5UdWMrLQTcA" target="_k_7s_B3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Level/solution"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7s_x3wEfG5UdWMrLQTcA" origin="_k_7s9x3wEfG5UdWMrLQTcA" image="_k_7s_R3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tAB3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToSolution_RHS">
+      <nodes xmi:id="_k_7tAR3wEfG5UdWMrLQTcA" name="game" outgoing="_k_7tBR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_7tAh3wEfG5UdWMrLQTcA" name="level" incoming="_k_7tBR3wEfG5UdWMrLQTcA" outgoing="_k_7tBh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <nodes xmi:id="_k_7tAx3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tBh3wEfG5UdWMrLQTcA" outgoing="_k_7tBx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7tBB3wEfG5UdWMrLQTcA" name="bodyBlock" incoming="_k_7tBx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7tBR3wEfG5UdWMrLQTcA" source="_k_7tAR3wEfG5UdWMrLQTcA" target="_k_7tAh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <edges xmi:id="_k_7tBh3wEfG5UdWMrLQTcA" source="_k_7tAh3wEfG5UdWMrLQTcA" target="_k_7tAx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level/solution"/>
+      </edges>
+      <edges xmi:id="_k_7tBx3wEfG5UdWMrLQTcA" source="_k_7tAx3wEfG5UdWMrLQTcA" target="_k_7tBB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7tCB3wEfG5UdWMrLQTcA" origin="_k_7s9h3wEfG5UdWMrLQTcA" image="_k_7tAR3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_7tCR3wEfG5UdWMrLQTcA" origin="_k_7s9x3wEfG5UdWMrLQTcA" image="_k_7tAh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7tCh3wEfG5UdWMrLQTcA" name="AddMoveForwardToNext">
+    <lhs xmi:id="_k_7tCx3wEfG5UdWMrLQTcA" name="AddMoveForwardToNext_LHS">
+      <nodes xmi:id="_k_7tDB3wEfG5UdWMrLQTcA" name="parent">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7tDR3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7tDh3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7tDx3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7tEB3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tEh3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tER3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tEh3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_7tEh3wEfG5UdWMrLQTcA" source="_k_7tER3wEfG5UdWMrLQTcA" target="_k_7tEB3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tEx3wEfG5UdWMrLQTcA" origin="_k_7tDB3wEfG5UdWMrLQTcA" image="_k_7tER3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tFB3wEfG5UdWMrLQTcA" name="AddMoveForwardToNext_RHS">
+      <nodes xmi:id="_k_7tFR3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tFx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_7tFh3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tFx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7tFx3wEfG5UdWMrLQTcA" source="_k_7tFR3wEfG5UdWMrLQTcA" target="_k_7tFh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7tGB3wEfG5UdWMrLQTcA" origin="_k_7tDB3wEfG5UdWMrLQTcA" image="_k_7tFR3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7tGR3wEfG5UdWMrLQTcA" name="AddTurnLeftToNext">
+    <lhs xmi:id="_k_7tGh3wEfG5UdWMrLQTcA" name="AddTurnLeftToNext_LHS">
+      <nodes xmi:id="_k_7tGx3wEfG5UdWMrLQTcA" name="parent">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7tHB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7tHR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7tHh3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7tHx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tIR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tIB3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tIR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_7tIR3wEfG5UdWMrLQTcA" source="_k_7tIB3wEfG5UdWMrLQTcA" target="_k_7tHx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tIh3wEfG5UdWMrLQTcA" origin="_k_7tGx3wEfG5UdWMrLQTcA" image="_k_7tIB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tIx3wEfG5UdWMrLQTcA" name="AddTurnLeftToNext_RHS">
+      <nodes xmi:id="_k_7tJB3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tJx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_7tJR3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tJx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Turn"/>
+        <attributes xmi:id="_k_7tJh3wEfG5UdWMrLQTcA" value="0">
+          <type href="http://www.example.org/blocky#//Turn/direction"/>
+        </attributes>
+      </nodes>
+      <edges xmi:id="_k_7tJx3wEfG5UdWMrLQTcA" source="_k_7tJB3wEfG5UdWMrLQTcA" target="_k_7tJR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7tKB3wEfG5UdWMrLQTcA" origin="_k_7tGx3wEfG5UdWMrLQTcA" image="_k_7tJB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7tKR3wEfG5UdWMrLQTcA" name="AddTurnRightToNext">
+    <lhs xmi:id="_k_7tKh3wEfG5UdWMrLQTcA" name="AddTurnRightToNext_LHS">
+      <nodes xmi:id="_k_7tKx3wEfG5UdWMrLQTcA" name="parent">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7tLB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7tLR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7tLh3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7tLx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tMR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tMB3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tMR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_7tMR3wEfG5UdWMrLQTcA" source="_k_7tMB3wEfG5UdWMrLQTcA" target="_k_7tLx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tMh3wEfG5UdWMrLQTcA" origin="_k_7tKx3wEfG5UdWMrLQTcA" image="_k_7tMB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tMx3wEfG5UdWMrLQTcA" name="AddTurnRightToNext_RHS">
+      <nodes xmi:id="_k_7tNB3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tNx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_7tNR3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tNx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Turn"/>
+        <attributes xmi:id="_k_7tNh3wEfG5UdWMrLQTcA" value="1">
+          <type href="http://www.example.org/blocky#//Turn/direction"/>
+        </attributes>
+      </nodes>
+      <edges xmi:id="_k_7tNx3wEfG5UdWMrLQTcA" source="_k_7tNB3wEfG5UdWMrLQTcA" target="_k_7tNR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7tOB3wEfG5UdWMrLQTcA" origin="_k_7tKx3wEfG5UdWMrLQTcA" image="_k_7tNB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7tOR3wEfG5UdWMrLQTcA" name="AddIfAheadToNext">
+    <lhs xmi:id="_k_7tOh3wEfG5UdWMrLQTcA" name="AddIfAheadToNext_LHS">
+      <nodes xmi:id="_k_7tOx3wEfG5UdWMrLQTcA" name="parent">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7tPB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7tPR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7tPh3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7tPx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tQR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tQB3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tQR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_7tQR3wEfG5UdWMrLQTcA" source="_k_7tQB3wEfG5UdWMrLQTcA" target="_k_7tPx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tQh3wEfG5UdWMrLQTcA" origin="_k_7tOx3wEfG5UdWMrLQTcA" image="_k_7tQB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tQx3wEfG5UdWMrLQTcA" name="AddIfAheadToNext_RHS">
+      <nodes xmi:id="_k_7tRB3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tSB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_7tRR3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tSB3wEfG5UdWMrLQTcA" outgoing="_k_7tSR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7tRh3wEfG5UdWMrLQTcA" value="0">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7tRx3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7tSR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7tSB3wEfG5UdWMrLQTcA" source="_k_7tRB3wEfG5UdWMrLQTcA" target="_k_7tRR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+      <edges xmi:id="_k_7tSR3wEfG5UdWMrLQTcA" source="_k_7tRR3wEfG5UdWMrLQTcA" target="_k_7tRx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7tSh3wEfG5UdWMrLQTcA" origin="_k_7tOx3wEfG5UdWMrLQTcA" image="_k_7tRB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7tSx3wEfG5UdWMrLQTcA" name="AddIfLeftToNext">
+    <lhs xmi:id="_k_7tTB3wEfG5UdWMrLQTcA" name="AddIfLeftToNext_LHS">
+      <nodes xmi:id="_k_7tTR3wEfG5UdWMrLQTcA" name="parent">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7tTh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7tTx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7tUB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7tUR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tUx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tUh3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tUx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_7tUx3wEfG5UdWMrLQTcA" source="_k_7tUh3wEfG5UdWMrLQTcA" target="_k_7tUR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tVB3wEfG5UdWMrLQTcA" origin="_k_7tTR3wEfG5UdWMrLQTcA" image="_k_7tUh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tVR3wEfG5UdWMrLQTcA" name="AddIfLeftToNext_RHS">
+      <nodes xmi:id="_k_7tVh3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tWh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_7tVx3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tWh3wEfG5UdWMrLQTcA" outgoing="_k_7tWx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7tWB3wEfG5UdWMrLQTcA" value="1">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7tWR3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7tWx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7tWh3wEfG5UdWMrLQTcA" source="_k_7tVh3wEfG5UdWMrLQTcA" target="_k_7tVx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+      <edges xmi:id="_k_7tWx3wEfG5UdWMrLQTcA" source="_k_7tVx3wEfG5UdWMrLQTcA" target="_k_7tWR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7tXB3wEfG5UdWMrLQTcA" origin="_k_7tTR3wEfG5UdWMrLQTcA" image="_k_7tVh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7tXR3wEfG5UdWMrLQTcA" name="AddIfRightToNext">
+    <lhs xmi:id="_k_7tXh3wEfG5UdWMrLQTcA" name="AddIfRightToNext_LHS">
+      <nodes xmi:id="_k_7tXx3wEfG5UdWMrLQTcA" name="parent">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7tYB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7tYR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7tYh3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7tYx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tZR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tZB3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tZR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_7tZR3wEfG5UdWMrLQTcA" source="_k_7tZB3wEfG5UdWMrLQTcA" target="_k_7tYx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tZh3wEfG5UdWMrLQTcA" origin="_k_7tXx3wEfG5UdWMrLQTcA" image="_k_7tZB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tZx3wEfG5UdWMrLQTcA" name="AddIfRightToNext_RHS">
+      <nodes xmi:id="_k_7taB3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tbB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_7taR3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tbB3wEfG5UdWMrLQTcA" outgoing="_k_7tbR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7tah3wEfG5UdWMrLQTcA" value="2">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7tax3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7tbR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7tbB3wEfG5UdWMrLQTcA" source="_k_7taB3wEfG5UdWMrLQTcA" target="_k_7taR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+      <edges xmi:id="_k_7tbR3wEfG5UdWMrLQTcA" source="_k_7taR3wEfG5UdWMrLQTcA" target="_k_7tax3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7tbh3wEfG5UdWMrLQTcA" origin="_k_7tXx3wEfG5UdWMrLQTcA" image="_k_7taB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7tbx3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToNext">
+    <lhs xmi:id="_k_7tcB3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToNext_LHS">
+      <nodes xmi:id="_k_7tcR3wEfG5UdWMrLQTcA" name="parent">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7tch3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7tcx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7tdB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7tdR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tdx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tdh3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tdx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_7tdx3wEfG5UdWMrLQTcA" source="_k_7tdh3wEfG5UdWMrLQTcA" target="_k_7tdR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7teB3wEfG5UdWMrLQTcA" origin="_k_7tcR3wEfG5UdWMrLQTcA" image="_k_7tdh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7teR3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToNext_RHS">
+      <nodes xmi:id="_k_7teh3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_7tfR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_7tex3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tfR3wEfG5UdWMrLQTcA" outgoing="_k_7tfh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7tfB3wEfG5UdWMrLQTcA" name="bodyBlock" incoming="_k_7tfh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7tfR3wEfG5UdWMrLQTcA" source="_k_7teh3wEfG5UdWMrLQTcA" target="_k_7tex3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+      <edges xmi:id="_k_7tfh3wEfG5UdWMrLQTcA" source="_k_7tex3wEfG5UdWMrLQTcA" target="_k_7tfB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7tfx3wEfG5UdWMrLQTcA" origin="_k_7tcR3wEfG5UdWMrLQTcA" image="_k_7teh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7tgB3wEfG5UdWMrLQTcA" name="AddMoveForwardToBody">
+    <lhs xmi:id="_k_7tgR3wEfG5UdWMrLQTcA" name="AddMoveForwardToBody_LHS">
+      <nodes xmi:id="_k_7tgh3wEfG5UdWMrLQTcA" name="loop">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7tgx3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7thB3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7thR3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7thh3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tiB3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7thx3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7tiB3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+            </nodes>
+            <edges xmi:id="_k_7tiB3wEfG5UdWMrLQTcA" source="_k_7thx3wEfG5UdWMrLQTcA" target="_k_7thh3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tiR3wEfG5UdWMrLQTcA" origin="_k_7tgh3wEfG5UdWMrLQTcA" image="_k_7thx3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tih3wEfG5UdWMrLQTcA" name="AddMoveForwardToBody_RHS">
+      <nodes xmi:id="_k_7tix3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7tjR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7tjB3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tjR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7tjR3wEfG5UdWMrLQTcA" source="_k_7tix3wEfG5UdWMrLQTcA" target="_k_7tjB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7tjh3wEfG5UdWMrLQTcA" origin="_k_7tgh3wEfG5UdWMrLQTcA" image="_k_7tix3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7tjx3wEfG5UdWMrLQTcA" name="AddTurnLeftToBody">
+    <lhs xmi:id="_k_7tkB3wEfG5UdWMrLQTcA" name="AddTurnLeftToBody_LHS">
+      <nodes xmi:id="_k_7tkR3wEfG5UdWMrLQTcA" name="loop">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7tkh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7tkx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7tlB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7tlR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tlx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tlh3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7tlx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+            </nodes>
+            <edges xmi:id="_k_7tlx3wEfG5UdWMrLQTcA" source="_k_7tlh3wEfG5UdWMrLQTcA" target="_k_7tlR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tmB3wEfG5UdWMrLQTcA" origin="_k_7tkR3wEfG5UdWMrLQTcA" image="_k_7tlh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tmR3wEfG5UdWMrLQTcA" name="AddTurnLeftToBody_RHS">
+      <nodes xmi:id="_k_7tmh3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7tnR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7tmx3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tnR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Turn"/>
+        <attributes xmi:id="_k_7tnB3wEfG5UdWMrLQTcA" value="0">
+          <type href="http://www.example.org/blocky#//Turn/direction"/>
+        </attributes>
+      </nodes>
+      <edges xmi:id="_k_7tnR3wEfG5UdWMrLQTcA" source="_k_7tmh3wEfG5UdWMrLQTcA" target="_k_7tmx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7tnh3wEfG5UdWMrLQTcA" origin="_k_7tkR3wEfG5UdWMrLQTcA" image="_k_7tmh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7tnx3wEfG5UdWMrLQTcA" name="AddTurnRightToBody">
+    <lhs xmi:id="_k_7toB3wEfG5UdWMrLQTcA" name="AddTurnRightToBody_LHS">
+      <nodes xmi:id="_k_7toR3wEfG5UdWMrLQTcA" name="loop">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7toh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7tox3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7tpB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7tpR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tpx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tph3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7tpx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+            </nodes>
+            <edges xmi:id="_k_7tpx3wEfG5UdWMrLQTcA" source="_k_7tph3wEfG5UdWMrLQTcA" target="_k_7tpR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tqB3wEfG5UdWMrLQTcA" origin="_k_7toR3wEfG5UdWMrLQTcA" image="_k_7tph3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tqR3wEfG5UdWMrLQTcA" name="AddTurnRightToBody_RHS">
+      <nodes xmi:id="_k_7tqh3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7trR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7tqx3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7trR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Turn"/>
+        <attributes xmi:id="_k_7trB3wEfG5UdWMrLQTcA" value="1">
+          <type href="http://www.example.org/blocky#//Turn/direction"/>
+        </attributes>
+      </nodes>
+      <edges xmi:id="_k_7trR3wEfG5UdWMrLQTcA" source="_k_7tqh3wEfG5UdWMrLQTcA" target="_k_7tqx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7trh3wEfG5UdWMrLQTcA" origin="_k_7toR3wEfG5UdWMrLQTcA" image="_k_7tqh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7trx3wEfG5UdWMrLQTcA" name="AddIfAheadToBody">
+    <lhs xmi:id="_k_7tsB3wEfG5UdWMrLQTcA" name="AddIfAheadToBody_LHS">
+      <nodes xmi:id="_k_7tsR3wEfG5UdWMrLQTcA" name="loop">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7tsh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7tsx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7ttB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7ttR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7ttx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tth3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7ttx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+            </nodes>
+            <edges xmi:id="_k_7ttx3wEfG5UdWMrLQTcA" source="_k_7tth3wEfG5UdWMrLQTcA" target="_k_7ttR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tuB3wEfG5UdWMrLQTcA" origin="_k_7tsR3wEfG5UdWMrLQTcA" image="_k_7tth3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tuR3wEfG5UdWMrLQTcA" name="AddIfAheadToBody_RHS">
+      <nodes xmi:id="_k_7tuh3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7tvh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7tux3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7tvh3wEfG5UdWMrLQTcA" outgoing="_k_7tvx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7tvB3wEfG5UdWMrLQTcA" value="0">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7tvR3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7tvx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7tvh3wEfG5UdWMrLQTcA" source="_k_7tuh3wEfG5UdWMrLQTcA" target="_k_7tux3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+      <edges xmi:id="_k_7tvx3wEfG5UdWMrLQTcA" source="_k_7tux3wEfG5UdWMrLQTcA" target="_k_7tvR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7twB3wEfG5UdWMrLQTcA" origin="_k_7tsR3wEfG5UdWMrLQTcA" image="_k_7tuh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7twR3wEfG5UdWMrLQTcA" name="AddIfLeftToBody">
+    <lhs xmi:id="_k_7twh3wEfG5UdWMrLQTcA" name="AddIfLeftToBody_LHS">
+      <nodes xmi:id="_k_7twx3wEfG5UdWMrLQTcA" name="loop">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7txB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7txR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7txh3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7txx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7tyR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7tyB3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7tyR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+            </nodes>
+            <edges xmi:id="_k_7tyR3wEfG5UdWMrLQTcA" source="_k_7tyB3wEfG5UdWMrLQTcA" target="_k_7txx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7tyh3wEfG5UdWMrLQTcA" origin="_k_7twx3wEfG5UdWMrLQTcA" image="_k_7tyB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7tyx3wEfG5UdWMrLQTcA" name="AddIfLeftToBody_RHS">
+      <nodes xmi:id="_k_7tzB3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7t0B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7tzR3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7t0B3wEfG5UdWMrLQTcA" outgoing="_k_7t0R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7tzh3wEfG5UdWMrLQTcA" value="1">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7tzx3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7t0R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7t0B3wEfG5UdWMrLQTcA" source="_k_7tzB3wEfG5UdWMrLQTcA" target="_k_7tzR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+      <edges xmi:id="_k_7t0R3wEfG5UdWMrLQTcA" source="_k_7tzR3wEfG5UdWMrLQTcA" target="_k_7tzx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7t0h3wEfG5UdWMrLQTcA" origin="_k_7twx3wEfG5UdWMrLQTcA" image="_k_7tzB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7t0x3wEfG5UdWMrLQTcA" name="AddIfRightToBody">
+    <lhs xmi:id="_k_7t1B3wEfG5UdWMrLQTcA" name="AddIfRightToBody_LHS">
+      <nodes xmi:id="_k_7t1R3wEfG5UdWMrLQTcA" name="loop">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7t1h3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7t1x3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7t2B3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7t2R3wEfG5UdWMrLQTcA" name="block" incoming="_k_7t2x3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7t2h3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7t2x3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+            </nodes>
+            <edges xmi:id="_k_7t2x3wEfG5UdWMrLQTcA" source="_k_7t2h3wEfG5UdWMrLQTcA" target="_k_7t2R3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7t3B3wEfG5UdWMrLQTcA" origin="_k_7t1R3wEfG5UdWMrLQTcA" image="_k_7t2h3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7t3R3wEfG5UdWMrLQTcA" name="AddIfRightToBody_RHS">
+      <nodes xmi:id="_k_7t3h3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7t4h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7t3x3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7t4h3wEfG5UdWMrLQTcA" outgoing="_k_7t4x3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7t4B3wEfG5UdWMrLQTcA" value="2">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7t4R3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7t4x3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7t4h3wEfG5UdWMrLQTcA" source="_k_7t3h3wEfG5UdWMrLQTcA" target="_k_7t3x3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+      <edges xmi:id="_k_7t4x3wEfG5UdWMrLQTcA" source="_k_7t3x3wEfG5UdWMrLQTcA" target="_k_7t4R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7t5B3wEfG5UdWMrLQTcA" origin="_k_7t1R3wEfG5UdWMrLQTcA" image="_k_7t3h3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7t5R3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToBody">
+    <lhs xmi:id="_k_7t5h3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToBody_LHS">
+      <nodes xmi:id="_k_7t5x3wEfG5UdWMrLQTcA" name="loop">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7t6B3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7t6R3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7t6h3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7t6x3wEfG5UdWMrLQTcA" name="block" incoming="_k_7t7R3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7t7B3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7t7R3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+            </nodes>
+            <edges xmi:id="_k_7t7R3wEfG5UdWMrLQTcA" source="_k_7t7B3wEfG5UdWMrLQTcA" target="_k_7t6x3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7t7h3wEfG5UdWMrLQTcA" origin="_k_7t5x3wEfG5UdWMrLQTcA" image="_k_7t7B3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7t7x3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToBody_RHS">
+      <nodes xmi:id="_k_7t8B3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_7t8x3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7t8R3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7t8x3wEfG5UdWMrLQTcA" outgoing="_k_7t9B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7t8h3wEfG5UdWMrLQTcA" name="bodyBlock" incoming="_k_7t9B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7t8x3wEfG5UdWMrLQTcA" source="_k_7t8B3wEfG5UdWMrLQTcA" target="_k_7t8R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+      <edges xmi:id="_k_7t9B3wEfG5UdWMrLQTcA" source="_k_7t8R3wEfG5UdWMrLQTcA" target="_k_7t8h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7t9R3wEfG5UdWMrLQTcA" origin="_k_7t5x3wEfG5UdWMrLQTcA" image="_k_7t8B3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7t9h3wEfG5UdWMrLQTcA" name="AddMoveForwardToThenBranch">
+    <lhs xmi:id="_k_7t9x3wEfG5UdWMrLQTcA" name="AddMoveForwardToThenBranch_LHS">
+      <nodes xmi:id="_k_7t-B3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7t-R3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7t-h3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7t-x3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7t_B3wEfG5UdWMrLQTcA" name="block" incoming="_k_7t_h3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7t_R3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7t_h3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7t_h3wEfG5UdWMrLQTcA" source="_k_7t_R3wEfG5UdWMrLQTcA" target="_k_7t_B3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7t_x3wEfG5UdWMrLQTcA" origin="_k_7t-B3wEfG5UdWMrLQTcA" image="_k_7t_R3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7uAB3wEfG5UdWMrLQTcA" name="AddMoveForwardToThenBranch_RHS">
+      <nodes xmi:id="_k_7uAR3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uAx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7uAh3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7uAx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7uAx3wEfG5UdWMrLQTcA" source="_k_7uAR3wEfG5UdWMrLQTcA" target="_k_7uAh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7uBB3wEfG5UdWMrLQTcA" origin="_k_7t-B3wEfG5UdWMrLQTcA" image="_k_7uAR3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7uBR3wEfG5UdWMrLQTcA" name="AddTurnLeftToThenBranch">
+    <lhs xmi:id="_k_7uBh3wEfG5UdWMrLQTcA" name="AddTurnLeftToThenBranch_LHS">
+      <nodes xmi:id="_k_7uBx3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7uCB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7uCR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7uCh3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7uCx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7uDR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7uDB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uDR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7uDR3wEfG5UdWMrLQTcA" source="_k_7uDB3wEfG5UdWMrLQTcA" target="_k_7uCx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7uDh3wEfG5UdWMrLQTcA" origin="_k_7uBx3wEfG5UdWMrLQTcA" image="_k_7uDB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7uDx3wEfG5UdWMrLQTcA" name="AddTurnLeftToThenBranch_RHS">
+      <nodes xmi:id="_k_7uEB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uEx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7uER3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7uEx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Turn"/>
+        <attributes xmi:id="_k_7uEh3wEfG5UdWMrLQTcA" value="0">
+          <type href="http://www.example.org/blocky#//Turn/direction"/>
+        </attributes>
+      </nodes>
+      <edges xmi:id="_k_7uEx3wEfG5UdWMrLQTcA" source="_k_7uEB3wEfG5UdWMrLQTcA" target="_k_7uER3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7uFB3wEfG5UdWMrLQTcA" origin="_k_7uBx3wEfG5UdWMrLQTcA" image="_k_7uEB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7uFR3wEfG5UdWMrLQTcA" name="AddTurnRightToThenBranch">
+    <lhs xmi:id="_k_7uFh3wEfG5UdWMrLQTcA" name="AddTurnRightToThenBranch_LHS">
+      <nodes xmi:id="_k_7uFx3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7uGB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7uGR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7uGh3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7uGx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7uHR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7uHB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uHR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7uHR3wEfG5UdWMrLQTcA" source="_k_7uHB3wEfG5UdWMrLQTcA" target="_k_7uGx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7uHh3wEfG5UdWMrLQTcA" origin="_k_7uFx3wEfG5UdWMrLQTcA" image="_k_7uHB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7uHx3wEfG5UdWMrLQTcA" name="AddTurnRightToThenBranch_RHS">
+      <nodes xmi:id="_k_7uIB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uIx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7uIR3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7uIx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Turn"/>
+        <attributes xmi:id="_k_7uIh3wEfG5UdWMrLQTcA" value="1">
+          <type href="http://www.example.org/blocky#//Turn/direction"/>
+        </attributes>
+      </nodes>
+      <edges xmi:id="_k_7uIx3wEfG5UdWMrLQTcA" source="_k_7uIB3wEfG5UdWMrLQTcA" target="_k_7uIR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7uJB3wEfG5UdWMrLQTcA" origin="_k_7uFx3wEfG5UdWMrLQTcA" image="_k_7uIB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7uJR3wEfG5UdWMrLQTcA" name="AddIfAheadToThenBranch">
+    <lhs xmi:id="_k_7uJh3wEfG5UdWMrLQTcA" name="AddIfAheadToThenBranch_LHS">
+      <nodes xmi:id="_k_7uJx3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7uKB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7uKR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7uKh3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7uKx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7uLR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7uLB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uLR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7uLR3wEfG5UdWMrLQTcA" source="_k_7uLB3wEfG5UdWMrLQTcA" target="_k_7uKx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7uLh3wEfG5UdWMrLQTcA" origin="_k_7uJx3wEfG5UdWMrLQTcA" image="_k_7uLB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7uLx3wEfG5UdWMrLQTcA" name="AddIfAheadToThenBranch_RHS">
+      <nodes xmi:id="_k_7uMB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uNB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7uMR3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7uNB3wEfG5UdWMrLQTcA" outgoing="_k_7uNR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7uMh3wEfG5UdWMrLQTcA" value="0">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7uMx3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7uNR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7uNB3wEfG5UdWMrLQTcA" source="_k_7uMB3wEfG5UdWMrLQTcA" target="_k_7uMR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+      <edges xmi:id="_k_7uNR3wEfG5UdWMrLQTcA" source="_k_7uMR3wEfG5UdWMrLQTcA" target="_k_7uMx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7uNh3wEfG5UdWMrLQTcA" origin="_k_7uJx3wEfG5UdWMrLQTcA" image="_k_7uMB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7uNx3wEfG5UdWMrLQTcA" name="AddIfLeftToThenBranch">
+    <lhs xmi:id="_k_7uOB3wEfG5UdWMrLQTcA" name="AddIfLeftToThenBranch_LHS">
+      <nodes xmi:id="_k_7uOR3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7uOh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7uOx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7uPB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7uPR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7uPx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7uPh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uPx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7uPx3wEfG5UdWMrLQTcA" source="_k_7uPh3wEfG5UdWMrLQTcA" target="_k_7uPR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7uQB3wEfG5UdWMrLQTcA" origin="_k_7uOR3wEfG5UdWMrLQTcA" image="_k_7uPh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7uQR3wEfG5UdWMrLQTcA" name="AddIfLeftToThenBranch_RHS">
+      <nodes xmi:id="_k_7uQh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uRh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7uQx3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7uRh3wEfG5UdWMrLQTcA" outgoing="_k_7uRx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7uRB3wEfG5UdWMrLQTcA" value="1">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7uRR3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7uRx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7uRh3wEfG5UdWMrLQTcA" source="_k_7uQh3wEfG5UdWMrLQTcA" target="_k_7uQx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+      <edges xmi:id="_k_7uRx3wEfG5UdWMrLQTcA" source="_k_7uQx3wEfG5UdWMrLQTcA" target="_k_7uRR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7uSB3wEfG5UdWMrLQTcA" origin="_k_7uOR3wEfG5UdWMrLQTcA" image="_k_7uQh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7uSR3wEfG5UdWMrLQTcA" name="AddIfRightToThenBranch">
+    <lhs xmi:id="_k_7uSh3wEfG5UdWMrLQTcA" name="AddIfRightToThenBranch_LHS">
+      <nodes xmi:id="_k_7uSx3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7uTB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7uTR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7uTh3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7uTx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7uUR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7uUB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uUR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7uUR3wEfG5UdWMrLQTcA" source="_k_7uUB3wEfG5UdWMrLQTcA" target="_k_7uTx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7uUh3wEfG5UdWMrLQTcA" origin="_k_7uSx3wEfG5UdWMrLQTcA" image="_k_7uUB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7uUx3wEfG5UdWMrLQTcA" name="AddIfRightToThenBranch_RHS">
+      <nodes xmi:id="_k_7uVB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uWB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7uVR3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7uWB3wEfG5UdWMrLQTcA" outgoing="_k_7uWR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7uVh3wEfG5UdWMrLQTcA" value="2">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7uVx3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7uWR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7uWB3wEfG5UdWMrLQTcA" source="_k_7uVB3wEfG5UdWMrLQTcA" target="_k_7uVR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+      <edges xmi:id="_k_7uWR3wEfG5UdWMrLQTcA" source="_k_7uVR3wEfG5UdWMrLQTcA" target="_k_7uVx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7uWh3wEfG5UdWMrLQTcA" origin="_k_7uSx3wEfG5UdWMrLQTcA" image="_k_7uVB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7uWx3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToThenBranch">
+    <lhs xmi:id="_k_7uXB3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToThenBranch_LHS">
+      <nodes xmi:id="_k_7uXR3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7uXh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7uXx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7uYB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7uYR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7uYx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7uYh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uYx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7uYx3wEfG5UdWMrLQTcA" source="_k_7uYh3wEfG5UdWMrLQTcA" target="_k_7uYR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7uZB3wEfG5UdWMrLQTcA" origin="_k_7uXR3wEfG5UdWMrLQTcA" image="_k_7uYh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7uZR3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToThenBranch_RHS">
+      <nodes xmi:id="_k_7uZh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uaR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7uZx3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7uaR3wEfG5UdWMrLQTcA" outgoing="_k_7uah3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_7uaB3wEfG5UdWMrLQTcA" name="bodyBlock" incoming="_k_7uah3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7uaR3wEfG5UdWMrLQTcA" source="_k_7uZh3wEfG5UdWMrLQTcA" target="_k_7uZx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+      <edges xmi:id="_k_7uah3wEfG5UdWMrLQTcA" source="_k_7uZx3wEfG5UdWMrLQTcA" target="_k_7uaB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7uax3wEfG5UdWMrLQTcA" origin="_k_7uXR3wEfG5UdWMrLQTcA" image="_k_7uZh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7ubB3wEfG5UdWMrLQTcA" name="AddMoveForwardToElseBranch">
+    <lhs xmi:id="_k_7ubR3wEfG5UdWMrLQTcA" name="AddMoveForwardToElseBranch_LHS">
+      <nodes xmi:id="_k_7ubh3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7ubx3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7ucB3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7ucR3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7uch3wEfG5UdWMrLQTcA" name="block" incoming="_k_7udB3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7ucx3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7udB3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7udB3wEfG5UdWMrLQTcA" source="_k_7ucx3wEfG5UdWMrLQTcA" target="_k_7uch3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7udR3wEfG5UdWMrLQTcA" origin="_k_7ubh3wEfG5UdWMrLQTcA" image="_k_7ucx3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7udh3wEfG5UdWMrLQTcA" name="AddMoveForwardToElseBranch_RHS">
+      <nodes xmi:id="_k_7udx3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7ueR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7ueB3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7ueR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7ueR3wEfG5UdWMrLQTcA" source="_k_7udx3wEfG5UdWMrLQTcA" target="_k_7ueB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7ueh3wEfG5UdWMrLQTcA" origin="_k_7ubh3wEfG5UdWMrLQTcA" image="_k_7udx3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7uex3wEfG5UdWMrLQTcA" name="AddTurnLeftToElseBranch">
+    <lhs xmi:id="_k_7ufB3wEfG5UdWMrLQTcA" name="AddTurnLeftToElseBranch_LHS">
+      <nodes xmi:id="_k_7ufR3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7ufh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7ufx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7ugB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7ugR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7ugx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7ugh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7ugx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7ugx3wEfG5UdWMrLQTcA" source="_k_7ugh3wEfG5UdWMrLQTcA" target="_k_7ugR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7uhB3wEfG5UdWMrLQTcA" origin="_k_7ufR3wEfG5UdWMrLQTcA" image="_k_7ugh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7uhR3wEfG5UdWMrLQTcA" name="AddTurnLeftToElseBranch_RHS">
+      <nodes xmi:id="_k_7uhh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uiR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7uhx3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7uiR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Turn"/>
+        <attributes xmi:id="_k_7uiB3wEfG5UdWMrLQTcA" value="0">
+          <type href="http://www.example.org/blocky#//Turn/direction"/>
+        </attributes>
+      </nodes>
+      <edges xmi:id="_k_7uiR3wEfG5UdWMrLQTcA" source="_k_7uhh3wEfG5UdWMrLQTcA" target="_k_7uhx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7uih3wEfG5UdWMrLQTcA" origin="_k_7ufR3wEfG5UdWMrLQTcA" image="_k_7uhh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7uix3wEfG5UdWMrLQTcA" name="AddTurnRightToElseBranch">
+    <lhs xmi:id="_k_7ujB3wEfG5UdWMrLQTcA" name="AddTurnRightToElseBranch_LHS">
+      <nodes xmi:id="_k_7ujR3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7ujh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7ujx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7ukB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7ukR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7ukx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7ukh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7ukx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7ukx3wEfG5UdWMrLQTcA" source="_k_7ukh3wEfG5UdWMrLQTcA" target="_k_7ukR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7ulB3wEfG5UdWMrLQTcA" origin="_k_7ujR3wEfG5UdWMrLQTcA" image="_k_7ukh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7ulR3wEfG5UdWMrLQTcA" name="AddTurnRightToElseBranch_RHS">
+      <nodes xmi:id="_k_7ulh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7umR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7ulx3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7umR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Turn"/>
+        <attributes xmi:id="_k_7umB3wEfG5UdWMrLQTcA" value="1">
+          <type href="http://www.example.org/blocky#//Turn/direction"/>
+        </attributes>
+      </nodes>
+      <edges xmi:id="_k_7umR3wEfG5UdWMrLQTcA" source="_k_7ulh3wEfG5UdWMrLQTcA" target="_k_7ulx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7umh3wEfG5UdWMrLQTcA" origin="_k_7ujR3wEfG5UdWMrLQTcA" image="_k_7ulh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7umx3wEfG5UdWMrLQTcA" name="AddIfAheadToElseBranch">
+    <lhs xmi:id="_k_7unB3wEfG5UdWMrLQTcA" name="AddIfAheadToElseBranch_LHS">
+      <nodes xmi:id="_k_7unR3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7unh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7unx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7uoB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7uoR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7uox3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7uoh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uox3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7uox3wEfG5UdWMrLQTcA" source="_k_7uoh3wEfG5UdWMrLQTcA" target="_k_7uoR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7upB3wEfG5UdWMrLQTcA" origin="_k_7unR3wEfG5UdWMrLQTcA" image="_k_7uoh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7upR3wEfG5UdWMrLQTcA" name="AddIfAheadToElseBranch_RHS">
+      <nodes xmi:id="_k_7uph3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uqh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7upx3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7uqh3wEfG5UdWMrLQTcA" outgoing="_k_7uqx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7uqB3wEfG5UdWMrLQTcA" value="0">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7uqR3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7uqx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7uqh3wEfG5UdWMrLQTcA" source="_k_7uph3wEfG5UdWMrLQTcA" target="_k_7upx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+      </edges>
+      <edges xmi:id="_k_7uqx3wEfG5UdWMrLQTcA" source="_k_7upx3wEfG5UdWMrLQTcA" target="_k_7uqR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7urB3wEfG5UdWMrLQTcA" origin="_k_7unR3wEfG5UdWMrLQTcA" image="_k_7uph3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7urR3wEfG5UdWMrLQTcA" name="AddIfLeftToElseBranch">
+    <lhs xmi:id="_k_7urh3wEfG5UdWMrLQTcA" name="AddIfLeftToElseBranch_LHS">
+      <nodes xmi:id="_k_7urx3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7usB3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7usR3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7ush3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7usx3wEfG5UdWMrLQTcA" name="block" incoming="_k_7utR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7utB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7utR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7utR3wEfG5UdWMrLQTcA" source="_k_7utB3wEfG5UdWMrLQTcA" target="_k_7usx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7uth3wEfG5UdWMrLQTcA" origin="_k_7urx3wEfG5UdWMrLQTcA" image="_k_7utB3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7utx3wEfG5UdWMrLQTcA" name="AddIfLeftToElseBranch_RHS">
+      <nodes xmi:id="_k_7uuB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uvB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_7uuR3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_7uvB3wEfG5UdWMrLQTcA" outgoing="_k_7uvR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_7uuh3wEfG5UdWMrLQTcA" value="1">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_7uux3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_7uvR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_7uvB3wEfG5UdWMrLQTcA" source="_k_7uuB3wEfG5UdWMrLQTcA" target="_k_7uuR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+      </edges>
+      <edges xmi:id="_k_7uvR3wEfG5UdWMrLQTcA" source="_k_7uuR3wEfG5UdWMrLQTcA" target="_k_7uux3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_7uvh3wEfG5UdWMrLQTcA" origin="_k_7urx3wEfG5UdWMrLQTcA" image="_k_7uuB3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_7uvx3wEfG5UdWMrLQTcA" name="AddIfRightToElseBranch">
+    <lhs xmi:id="_k_7uwB3wEfG5UdWMrLQTcA" name="AddIfRightToElseBranch_LHS">
+      <nodes xmi:id="_k_7uwR3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_7uwh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_7uwx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_7uxB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_7uxR3wEfG5UdWMrLQTcA" name="block" incoming="_k_7uxx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_7uxh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_7uxx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_7uxx3wEfG5UdWMrLQTcA" source="_k_7uxh3wEfG5UdWMrLQTcA" target="_k_7uxR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_7uyB3wEfG5UdWMrLQTcA" origin="_k_7uwR3wEfG5UdWMrLQTcA" image="_k_7uxh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_7uyR3wEfG5UdWMrLQTcA" name="AddIfRightToElseBranch_RHS">
+      <nodes xmi:id="_k_7uyh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_8Tgx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_8TgB3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_8Tgx3wEfG5UdWMrLQTcA" outgoing="_k_8ThB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+        <attributes xmi:id="_k_8TgR3wEfG5UdWMrLQTcA" value="2">
+          <type href="http://www.example.org/blocky#//IfStatement/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_k_8Tgh3wEfG5UdWMrLQTcA" name="thenBlock" incoming="_k_8ThB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_8Tgx3wEfG5UdWMrLQTcA" source="_k_7uyh3wEfG5UdWMrLQTcA" target="_k_8TgB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+      </edges>
+      <edges xmi:id="_k_8ThB3wEfG5UdWMrLQTcA" source="_k_8TgB3wEfG5UdWMrLQTcA" target="_k_8Tgh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_8ThR3wEfG5UdWMrLQTcA" origin="_k_7uwR3wEfG5UdWMrLQTcA" image="_k_7uyh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8Thh3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToElseBranch">
+    <lhs xmi:id="_k_8Thx3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToElseBranch_LHS">
+      <nodes xmi:id="_k_8TiB3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_k_8TiR3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_8Tih3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_8Tix3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_8TjB3wEfG5UdWMrLQTcA" name="block" incoming="_k_8Tjh3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_8TjR3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_8Tjh3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement"/>
+            </nodes>
+            <edges xmi:id="_k_8Tjh3wEfG5UdWMrLQTcA" source="_k_8TjR3wEfG5UdWMrLQTcA" target="_k_8TjB3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_8Tjx3wEfG5UdWMrLQTcA" origin="_k_8TiB3wEfG5UdWMrLQTcA" image="_k_8TjR3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_8TkB3wEfG5UdWMrLQTcA" name="AddRepeatUntilGoalToElseBranch_RHS">
+      <nodes xmi:id="_k_8TkR3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_8TlB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_8Tkh3wEfG5UdWMrLQTcA" name="newBlock" incoming="_k_8TlB3wEfG5UdWMrLQTcA" outgoing="_k_8TlR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_8Tkx3wEfG5UdWMrLQTcA" name="bodyBlock" incoming="_k_8TlR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//MoveForward"/>
+      </nodes>
+      <edges xmi:id="_k_8TlB3wEfG5UdWMrLQTcA" source="_k_8TkR3wEfG5UdWMrLQTcA" target="_k_8Tkh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+      </edges>
+      <edges xmi:id="_k_8TlR3wEfG5UdWMrLQTcA" source="_k_8Tkh3wEfG5UdWMrLQTcA" target="_k_8Tkx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_8Tlh3wEfG5UdWMrLQTcA" origin="_k_8TiB3wEfG5UdWMrLQTcA" image="_k_8TkR3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8Tlx3wEfG5UdWMrLQTcA" name="DeleteBlockFromSolutionWhenLast">
+    <lhs xmi:id="_k_8TmB3wEfG5UdWMrLQTcA" name="DeleteBlockFromSolutionWhenLast_LHS">
+      <nodes xmi:id="_k_8TmR3wEfG5UdWMrLQTcA" name="game" outgoing="_k_8TnB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_8Tmh3wEfG5UdWMrLQTcA" name="level" incoming="_k_8TnB3wEfG5UdWMrLQTcA" outgoing="_k_8TnR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <nodes xmi:id="_k_8Tmx3wEfG5UdWMrLQTcA" name="block" incoming="_k_8TnR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8TnB3wEfG5UdWMrLQTcA" source="_k_8TmR3wEfG5UdWMrLQTcA" target="_k_8Tmh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <edges xmi:id="_k_8TnR3wEfG5UdWMrLQTcA" source="_k_8Tmh3wEfG5UdWMrLQTcA" target="_k_8Tmx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level/solution"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_8Tnh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_8Tnx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_8ToB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_8ToR3wEfG5UdWMrLQTcA" name="nextBlock" incoming="_k_8Tox3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_8Toh3wEfG5UdWMrLQTcA" name="block" outgoing="_k_8Tox3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_8Tox3wEfG5UdWMrLQTcA" source="_k_8Toh3wEfG5UdWMrLQTcA" target="_k_8ToR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_8TpB3wEfG5UdWMrLQTcA" origin="_k_8Tmx3wEfG5UdWMrLQTcA" image="_k_8Toh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_8TpR3wEfG5UdWMrLQTcA" name="DeleteBlockFromSolutionWhenLast_RHS">
+      <nodes xmi:id="_k_8Tph3wEfG5UdWMrLQTcA" name="game" outgoing="_k_8TqB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_8Tpx3wEfG5UdWMrLQTcA" name="level" incoming="_k_8TqB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <edges xmi:id="_k_8TqB3wEfG5UdWMrLQTcA" source="_k_8Tph3wEfG5UdWMrLQTcA" target="_k_8Tpx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_8TqR3wEfG5UdWMrLQTcA" origin="_k_8TmR3wEfG5UdWMrLQTcA" image="_k_8Tph3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_8Tqh3wEfG5UdWMrLQTcA" origin="_k_8Tmh3wEfG5UdWMrLQTcA" image="_k_8Tpx3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8Tqx3wEfG5UdWMrLQTcA" name="DeleteBlockFromSolutionWhenHasNext">
+    <lhs xmi:id="_k_8TrB3wEfG5UdWMrLQTcA" name="DeleteBlockFromSolutionWhenHasNext_LHS">
+      <nodes xmi:id="_k_8TrR3wEfG5UdWMrLQTcA" name="game" outgoing="_k_8TsR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_8Trh3wEfG5UdWMrLQTcA" name="level" incoming="_k_8TsR3wEfG5UdWMrLQTcA" outgoing="_k_8Tsh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <nodes xmi:id="_k_8Trx3wEfG5UdWMrLQTcA" name="rest" incoming="_k_8Tsx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_8TsB3wEfG5UdWMrLQTcA" name="block" incoming="_k_8Tsh3wEfG5UdWMrLQTcA" outgoing="_k_8Tsx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8TsR3wEfG5UdWMrLQTcA" source="_k_8TrR3wEfG5UdWMrLQTcA" target="_k_8Trh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <edges xmi:id="_k_8Tsh3wEfG5UdWMrLQTcA" source="_k_8Trh3wEfG5UdWMrLQTcA" target="_k_8TsB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level/solution"/>
+      </edges>
+      <edges xmi:id="_k_8Tsx3wEfG5UdWMrLQTcA" source="_k_8TsB3wEfG5UdWMrLQTcA" target="_k_8Trx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+    </lhs>
+    <rhs xmi:id="_k_8TtB3wEfG5UdWMrLQTcA" name="DeleteBlockFromSolutionWhenHasNext_RHS">
+      <nodes xmi:id="_k_8TtR3wEfG5UdWMrLQTcA" name="game" outgoing="_k_8TuB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game"/>
+      </nodes>
+      <nodes xmi:id="_k_8Tth3wEfG5UdWMrLQTcA" name="level" incoming="_k_8TuB3wEfG5UdWMrLQTcA" outgoing="_k_8TuR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level"/>
+      </nodes>
+      <nodes xmi:id="_k_8Ttx3wEfG5UdWMrLQTcA" name="rest" incoming="_k_8TuR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8TuB3wEfG5UdWMrLQTcA" source="_k_8TtR3wEfG5UdWMrLQTcA" target="_k_8Tth3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Game/levels"/>
+      </edges>
+      <edges xmi:id="_k_8TuR3wEfG5UdWMrLQTcA" source="_k_8Tth3wEfG5UdWMrLQTcA" target="_k_8Ttx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Level/solution"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_8Tuh3wEfG5UdWMrLQTcA" origin="_k_8TrR3wEfG5UdWMrLQTcA" image="_k_8TtR3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_8Tux3wEfG5UdWMrLQTcA" origin="_k_8Trh3wEfG5UdWMrLQTcA" image="_k_8Tth3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_8TvB3wEfG5UdWMrLQTcA" origin="_k_8Trx3wEfG5UdWMrLQTcA" image="_k_8Ttx3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8TvR3wEfG5UdWMrLQTcA" name="DeleteBlockFromNextWhenLast">
+    <lhs xmi:id="_k_8Tvh3wEfG5UdWMrLQTcA" name="DeleteBlockFromNextWhenLast_LHS">
+      <nodes xmi:id="_k_8Tvx3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_8TwR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_8TwB3wEfG5UdWMrLQTcA" name="block" incoming="_k_8TwR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8TwR3wEfG5UdWMrLQTcA" source="_k_8Tvx3wEfG5UdWMrLQTcA" target="_k_8TwB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_8Twh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_8Twx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_8TxB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_8TxR3wEfG5UdWMrLQTcA" name="nextBlock" incoming="_k_8Txx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_8Txh3wEfG5UdWMrLQTcA" name="block" outgoing="_k_8Txx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_8Txx3wEfG5UdWMrLQTcA" source="_k_8Txh3wEfG5UdWMrLQTcA" target="_k_8TxR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_8TyB3wEfG5UdWMrLQTcA" origin="_k_8TwB3wEfG5UdWMrLQTcA" image="_k_8Txh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_8TyR3wEfG5UdWMrLQTcA" name="DeleteBlockFromNextWhenLast_RHS">
+      <nodes xmi:id="_k_8Tyh3wEfG5UdWMrLQTcA" name="parent">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+    </rhs>
+    <mappings xmi:id="_k_8Tyx3wEfG5UdWMrLQTcA" origin="_k_8Tvx3wEfG5UdWMrLQTcA" image="_k_8Tyh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8TzB3wEfG5UdWMrLQTcA" name="DeleteBlockFromNextWhenHasNext">
+    <lhs xmi:id="_k_8TzR3wEfG5UdWMrLQTcA" name="DeleteBlockFromNextWhenHasNext_LHS">
+      <nodes xmi:id="_k_8Tzh3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_8T0R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_8Tzx3wEfG5UdWMrLQTcA" name="rest" incoming="_k_8T0h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_8T0B3wEfG5UdWMrLQTcA" name="block" incoming="_k_8T0R3wEfG5UdWMrLQTcA" outgoing="_k_8T0h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8T0R3wEfG5UdWMrLQTcA" source="_k_8Tzh3wEfG5UdWMrLQTcA" target="_k_8T0B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+      <edges xmi:id="_k_8T0h3wEfG5UdWMrLQTcA" source="_k_8T0B3wEfG5UdWMrLQTcA" target="_k_8Tzx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+    </lhs>
+    <rhs xmi:id="_k_8T0x3wEfG5UdWMrLQTcA" name="DeleteBlockFromNextWhenHasNext_RHS">
+      <nodes xmi:id="_k_8T1B3wEfG5UdWMrLQTcA" name="parent" outgoing="_k_8T1h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_8T1R3wEfG5UdWMrLQTcA" name="rest" incoming="_k_8T1h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8T1h3wEfG5UdWMrLQTcA" source="_k_8T1B3wEfG5UdWMrLQTcA" target="_k_8T1R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_8T1x3wEfG5UdWMrLQTcA" origin="_k_8Tzh3wEfG5UdWMrLQTcA" image="_k_8T1B3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_8T2B3wEfG5UdWMrLQTcA" origin="_k_8Tzx3wEfG5UdWMrLQTcA" image="_k_8T1R3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8T2R3wEfG5UdWMrLQTcA" name="DeleteBlockFromThenBranchWhenLast">
+    <lhs xmi:id="_k_8T2h3wEfG5UdWMrLQTcA" name="DeleteBlockFromThenBranchWhenLast_LHS">
+      <nodes xmi:id="_k_8T2x3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_8T3R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_8T3B3wEfG5UdWMrLQTcA" name="block" incoming="_k_8T3R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8T3R3wEfG5UdWMrLQTcA" source="_k_8T2x3wEfG5UdWMrLQTcA" target="_k_8T3B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_8T3h3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_8T3x3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_8T4B3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_8T4R3wEfG5UdWMrLQTcA" name="nextBlock" incoming="_k_8T4x3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_8T4h3wEfG5UdWMrLQTcA" name="block" outgoing="_k_8T4x3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_8T4x3wEfG5UdWMrLQTcA" source="_k_8T4h3wEfG5UdWMrLQTcA" target="_k_8T4R3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_8T5B3wEfG5UdWMrLQTcA" origin="_k_8T3B3wEfG5UdWMrLQTcA" image="_k_8T4h3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_8T5R3wEfG5UdWMrLQTcA" name="DeleteBlockFromThenBranchWhenLast_RHS">
+      <nodes xmi:id="_k_8T5h3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+    </rhs>
+    <mappings xmi:id="_k_8T5x3wEfG5UdWMrLQTcA" origin="_k_8T2x3wEfG5UdWMrLQTcA" image="_k_8T5h3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8T6B3wEfG5UdWMrLQTcA" name="DeleteBlockFromThenBranchWhenHasNext">
+    <lhs xmi:id="_k_8T6R3wEfG5UdWMrLQTcA" name="DeleteBlockFromThenBranchWhenHasNext_LHS">
+      <nodes xmi:id="_k_8T6h3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_8T7R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_8T6x3wEfG5UdWMrLQTcA" name="rest" incoming="_k_8T7h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_8T7B3wEfG5UdWMrLQTcA" name="block" incoming="_k_8T7R3wEfG5UdWMrLQTcA" outgoing="_k_8T7h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8T7R3wEfG5UdWMrLQTcA" source="_k_8T6h3wEfG5UdWMrLQTcA" target="_k_8T7B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+      <edges xmi:id="_k_8T7h3wEfG5UdWMrLQTcA" source="_k_8T7B3wEfG5UdWMrLQTcA" target="_k_8T6x3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+    </lhs>
+    <rhs xmi:id="_k_8T7x3wEfG5UdWMrLQTcA" name="DeleteBlockFromThenBranchWhenHasNext_RHS">
+      <nodes xmi:id="_k_8T8B3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_8T8h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_8T8R3wEfG5UdWMrLQTcA" name="rest" incoming="_k_8T8h3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8T8h3wEfG5UdWMrLQTcA" source="_k_8T8B3wEfG5UdWMrLQTcA" target="_k_8T8R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/thenBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_8T8x3wEfG5UdWMrLQTcA" origin="_k_8T6h3wEfG5UdWMrLQTcA" image="_k_8T8B3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_8T9B3wEfG5UdWMrLQTcA" origin="_k_8T6x3wEfG5UdWMrLQTcA" image="_k_8T8R3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8T9R3wEfG5UdWMrLQTcA" name="DeleteBlockFromElseBranchWhenLast">
+    <lhs xmi:id="_k_8T9h3wEfG5UdWMrLQTcA" name="DeleteBlockFromElseBranchWhenLast_LHS">
+      <nodes xmi:id="_k_8T9x3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_8T-R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_8T-B3wEfG5UdWMrLQTcA" name="block" incoming="_k_8T-R3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8T-R3wEfG5UdWMrLQTcA" source="_k_8T9x3wEfG5UdWMrLQTcA" target="_k_8T-B3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_8T-h3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_8T-x3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_8T_B3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_8T_R3wEfG5UdWMrLQTcA" name="nextBlock" incoming="_k_8T_x3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_8T_h3wEfG5UdWMrLQTcA" name="block" outgoing="_k_8T_x3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_8T_x3wEfG5UdWMrLQTcA" source="_k_8T_h3wEfG5UdWMrLQTcA" target="_k_8T_R3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_8UAB3wEfG5UdWMrLQTcA" origin="_k_8T-B3wEfG5UdWMrLQTcA" image="_k_8T_h3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_8UAR3wEfG5UdWMrLQTcA" name="DeleteBlockFromElseBranchWhenLast_RHS">
+      <nodes xmi:id="_k_8UAh3wEfG5UdWMrLQTcA" name="ifStmt">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+    </rhs>
+    <mappings xmi:id="_k_8UAx3wEfG5UdWMrLQTcA" origin="_k_8T9x3wEfG5UdWMrLQTcA" image="_k_8UAh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8UBB3wEfG5UdWMrLQTcA" name="DeleteBlockFromElseBranchWhenHasNext">
+    <lhs xmi:id="_k_8UBR3wEfG5UdWMrLQTcA" name="DeleteBlockFromElseBranchWhenHasNext_LHS">
+      <nodes xmi:id="_k_8UBh3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_8UCR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_8UBx3wEfG5UdWMrLQTcA" name="rest" incoming="_k_8UCh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_8UCB3wEfG5UdWMrLQTcA" name="block" incoming="_k_8UCR3wEfG5UdWMrLQTcA" outgoing="_k_8UCh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8UCR3wEfG5UdWMrLQTcA" source="_k_8UBh3wEfG5UdWMrLQTcA" target="_k_8UCB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+      </edges>
+      <edges xmi:id="_k_8UCh3wEfG5UdWMrLQTcA" source="_k_8UCB3wEfG5UdWMrLQTcA" target="_k_8UBx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+    </lhs>
+    <rhs xmi:id="_k_8UCx3wEfG5UdWMrLQTcA" name="DeleteBlockFromElseBranchWhenHasNext_RHS">
+      <nodes xmi:id="_k_8UDB3wEfG5UdWMrLQTcA" name="ifStmt" outgoing="_k_8UDh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement"/>
+      </nodes>
+      <nodes xmi:id="_k_8UDR3wEfG5UdWMrLQTcA" name="rest" incoming="_k_8UDh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8UDh3wEfG5UdWMrLQTcA" source="_k_8UDB3wEfG5UdWMrLQTcA" target="_k_8UDR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//IfStatement/elseBranch"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_8UDx3wEfG5UdWMrLQTcA" origin="_k_8UBh3wEfG5UdWMrLQTcA" image="_k_8UDB3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_8UEB3wEfG5UdWMrLQTcA" origin="_k_8UBx3wEfG5UdWMrLQTcA" image="_k_8UDR3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8UER3wEfG5UdWMrLQTcA" name="DeleteBlockFromBodyWhenLast">
+    <lhs xmi:id="_k_8UEh3wEfG5UdWMrLQTcA" name="DeleteBlockFromBodyWhenLast_LHS">
+      <nodes xmi:id="_k_8UEx3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_8UFR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_8UFB3wEfG5UdWMrLQTcA" name="block" incoming="_k_8UFR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8UFR3wEfG5UdWMrLQTcA" source="_k_8UEx3wEfG5UdWMrLQTcA" target="_k_8UFB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+      <formula xsi:type="henshin:Not" xmi:id="_k_8UFh3wEfG5UdWMrLQTcA">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_k_8UFx3wEfG5UdWMrLQTcA">
+          <conclusion xmi:id="_k_8UGB3wEfG5UdWMrLQTcA" name="forbid">
+            <nodes xmi:id="_k_8UGR3wEfG5UdWMrLQTcA" name="nextBlock" incoming="_k_8UGx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <nodes xmi:id="_k_8UGh3wEfG5UdWMrLQTcA" name="block" outgoing="_k_8UGx3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block"/>
+            </nodes>
+            <edges xmi:id="_k_8UGx3wEfG5UdWMrLQTcA" source="_k_8UGh3wEfG5UdWMrLQTcA" target="_k_8UGR3wEfG5UdWMrLQTcA">
+              <type href="http://www.example.org/blocky#//Block/next"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_k_8UHB3wEfG5UdWMrLQTcA" origin="_k_8UFB3wEfG5UdWMrLQTcA" image="_k_8UGh3wEfG5UdWMrLQTcA"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_k_8UHR3wEfG5UdWMrLQTcA" name="DeleteBlockFromBodyWhenLast_RHS">
+      <nodes xmi:id="_k_8UHh3wEfG5UdWMrLQTcA" name="loop">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+    </rhs>
+    <mappings xmi:id="_k_8UHx3wEfG5UdWMrLQTcA" origin="_k_8UEx3wEfG5UdWMrLQTcA" image="_k_8UHh3wEfG5UdWMrLQTcA"/>
+  </units>
+  <units xsi:type="henshin:Rule" xmi:id="_k_8UIB3wEfG5UdWMrLQTcA" name="DeleteBlockFromBodyWhenHasNext">
+    <lhs xmi:id="_k_8UIR3wEfG5UdWMrLQTcA" name="DeleteBlockFromBodyWhenHasNext_LHS">
+      <nodes xmi:id="_k_8UIh3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_8UJR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_8UIx3wEfG5UdWMrLQTcA" name="rest" incoming="_k_8UJh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <nodes xmi:id="_k_8UJB3wEfG5UdWMrLQTcA" name="block" incoming="_k_8UJR3wEfG5UdWMrLQTcA" outgoing="_k_8UJh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8UJR3wEfG5UdWMrLQTcA" source="_k_8UIh3wEfG5UdWMrLQTcA" target="_k_8UJB3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+      <edges xmi:id="_k_8UJh3wEfG5UdWMrLQTcA" source="_k_8UJB3wEfG5UdWMrLQTcA" target="_k_8UIx3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block/next"/>
+      </edges>
+    </lhs>
+    <rhs xmi:id="_k_8UJx3wEfG5UdWMrLQTcA" name="DeleteBlockFromBodyWhenHasNext_RHS">
+      <nodes xmi:id="_k_8UKB3wEfG5UdWMrLQTcA" name="loop" outgoing="_k_8UKh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal"/>
+      </nodes>
+      <nodes xmi:id="_k_8UKR3wEfG5UdWMrLQTcA" name="rest" incoming="_k_8UKh3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//Block"/>
+      </nodes>
+      <edges xmi:id="_k_8UKh3wEfG5UdWMrLQTcA" source="_k_8UKB3wEfG5UdWMrLQTcA" target="_k_8UKR3wEfG5UdWMrLQTcA">
+        <type href="http://www.example.org/blocky#//RepeatUntilGoal/body"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_k_8UKx3wEfG5UdWMrLQTcA" origin="_k_8UIh3wEfG5UdWMrLQTcA" image="_k_8UKB3wEfG5UdWMrLQTcA"/>
+    <mappings xmi:id="_k_8ULB3wEfG5UdWMrLQTcA" origin="_k_8UIx3wEfG5UdWMrLQTcA" image="_k_8UKR3wEfG5UdWMrLQTcA"/>
+  </units>
+</henshin:Module>

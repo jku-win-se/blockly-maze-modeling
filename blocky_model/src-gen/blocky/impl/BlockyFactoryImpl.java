@@ -263,10 +263,19 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @generated
+	 * @generated NOT
+	 * Accepts literal names (LEFT, RIGHT) or numeric strings (0, 1) for Henshin compatibility.
 	 */
 	public TurnDirection createTurnDirectionFromString(EDataType eDataType, String initialValue) {
 		TurnDirection result = TurnDirection.get(initialValue);
+		if (result == null) {
+			try {
+				int value = Integer.parseInt(initialValue);
+				result = TurnDirection.get(value);
+			} catch (NumberFormatException e) {
+				// fall through to throw
+			}
+		}
 		if (result == null)
 			throw new IllegalArgumentException(
 					"The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
@@ -307,10 +316,19 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @generated
+	 * @generated NOT
+	 * Accepts literal names or numeric strings (0, 1, 2) for Henshin compatibility.
 	 */
 	public SensorDirection createSensorDirectionFromString(EDataType eDataType, String initialValue) {
 		SensorDirection result = SensorDirection.get(initialValue);
+		if (result == null) {
+			try {
+				int value = Integer.parseInt(initialValue);
+				result = SensorDirection.get(value);
+			} catch (NumberFormatException e) {
+				// fall through to throw
+			}
+		}
 		if (result == null)
 			throw new IllegalArgumentException(
 					"The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");

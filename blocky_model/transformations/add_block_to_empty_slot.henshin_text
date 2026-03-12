@@ -1,0 +1,470 @@
+ePackageImport blocky
+
+// =============================================================================
+// Add any fittable block to any empty slot (next, body, thenBranch, elseBranch)
+// =============================================================================
+
+rule AddMoveForwardToSolution (){
+	graph {
+		node game : blocky.Game
+		node level : blocky.Level
+		edges [(game->level:levels)]
+		forbid node block : blocky.Block
+		edges [(forbid level->block:solution)]
+		create node newBlock : blocky.MoveForward
+		edges [(create level->newBlock:solution)]
+	}
+}
+rule AddTurnLeftToSolution (){
+	graph {
+		node game : blocky.Game
+		node level : blocky.Level
+		edges [(game->level:levels)]
+		forbid node block : blocky.Block
+		edges [(forbid level->block:solution)]
+		create node newBlock : blocky.Turn { direction = 0 }
+		edges [(create level->newBlock:solution)]
+	}
+}
+rule AddTurnRightToSolution (){
+	graph {
+		node game : blocky.Game
+		node level : blocky.Level
+		edges [(game->level:levels)]
+		forbid node block : blocky.Block
+		edges [(forbid level->block:solution)]
+		create node newBlock : blocky.Turn { direction = 1 }
+		edges [(create level->newBlock:solution)]
+	}
+}
+rule AddIfAheadToSolution (){
+	graph {
+		node game : blocky.Game
+		node level : blocky.Level
+		edges [(game->level:levels)]
+		forbid node block : blocky.Block
+		edges [(forbid level->block:solution)]
+		create node newBlock : blocky.IfStatement { condition = 0 }
+		edges [(create level->newBlock:solution)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddIfLeftToSolution (){
+	graph {
+		node game : blocky.Game
+		node level : blocky.Level
+		edges [(game->level:levels)]
+		forbid node block : blocky.Block
+		edges [(forbid level->block:solution)]
+		create node newBlock : blocky.IfStatement { condition = 1 }
+		edges [(create level->newBlock:solution)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddIfRightToSolution (){
+	graph {
+		node game : blocky.Game
+		node level : blocky.Level
+		edges [(game->level:levels)]
+		forbid node block : blocky.Block
+		edges [(forbid level->block:solution)]
+		create node newBlock : blocky.IfStatement { condition = 2 }
+		edges [(create level->newBlock:solution)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddRepeatUntilGoalToSolution (){
+	graph {
+		node game : blocky.Game
+		node level : blocky.Level
+		edges [(game->level:levels)]
+		forbid node block : blocky.Block
+		edges [(forbid level->block:solution)]
+		create node newBlock : blocky.RepeatUntilGoal
+		edges [(create level->newBlock:solution)]
+		create node bodyBlock : blocky.MoveForward
+		edges [(create newBlock->bodyBlock:body)]
+	}
+}
+rule AddMoveForwardToNext (){
+	graph {
+		node parent : blocky.Block
+		forbid node block : blocky.Block
+		edges [(forbid parent->block:next)]
+		create node newBlock : blocky.MoveForward
+		edges [(create parent->newBlock:next)]
+	}
+}
+rule AddTurnLeftToNext (){
+	graph {
+		node parent : blocky.Block
+		forbid node block : blocky.Block
+		edges [(forbid parent->block:next)]
+		create node newBlock : blocky.Turn { direction = 0 }
+		edges [(create parent->newBlock:next)]
+	}
+}
+rule AddTurnRightToNext (){
+	graph {
+		node parent : blocky.Block
+		forbid node block : blocky.Block
+		edges [(forbid parent->block:next)]
+		create node newBlock : blocky.Turn { direction = 1 }
+		edges [(create parent->newBlock:next)]
+	}
+}
+rule AddIfAheadToNext (){
+	graph {
+		node parent : blocky.Block
+		forbid node block : blocky.Block
+		edges [(forbid parent->block:next)]
+		create node newBlock : blocky.IfStatement { condition = 0 }
+		edges [(create parent->newBlock:next)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddIfLeftToNext (){
+	graph {
+		node parent : blocky.Block
+		forbid node block : blocky.Block
+		edges [(forbid parent->block:next)]
+		create node newBlock : blocky.IfStatement { condition = 1 }
+		edges [(create parent->newBlock:next)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddIfRightToNext (){
+	graph {
+		node parent : blocky.Block
+		forbid node block : blocky.Block
+		edges [(forbid parent->block:next)]
+		create node newBlock : blocky.IfStatement { condition = 2 }
+		edges [(create parent->newBlock:next)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddRepeatUntilGoalToNext (){
+	graph {
+		node parent : blocky.Block
+		forbid node block : blocky.Block
+		edges [(forbid parent->block:next)]
+		create node newBlock : blocky.RepeatUntilGoal
+		edges [(create parent->newBlock:next)]
+		create node bodyBlock : blocky.MoveForward
+		edges [(create newBlock->bodyBlock:body)]
+	}
+}
+rule AddMoveForwardToBody (){
+	graph {
+		node loop : blocky.RepeatUntilGoal
+		forbid node block : blocky.Block
+		edges [(forbid loop->block:body)]
+		create node newBlock : blocky.MoveForward
+		edges [(create loop->newBlock:body)]
+	}
+}
+rule AddTurnLeftToBody (){
+	graph {
+		node loop : blocky.RepeatUntilGoal
+		forbid node block : blocky.Block
+		edges [(forbid loop->block:body)]
+		create node newBlock : blocky.Turn { direction = 0 }
+		edges [(create loop->newBlock:body)]
+	}
+}
+rule AddTurnRightToBody (){
+	graph {
+		node loop : blocky.RepeatUntilGoal
+		forbid node block : blocky.Block
+		edges [(forbid loop->block:body)]
+		create node newBlock : blocky.Turn { direction = 1 }
+		edges [(create loop->newBlock:body)]
+	}
+}
+rule AddIfAheadToBody (){
+	graph {
+		node loop : blocky.RepeatUntilGoal
+		forbid node block : blocky.Block
+		edges [(forbid loop->block:body)]
+		create node newBlock : blocky.IfStatement { condition = 0 }
+		edges [(create loop->newBlock:body)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddIfLeftToBody (){
+	graph {
+		node loop : blocky.RepeatUntilGoal
+		forbid node block : blocky.Block
+		edges [(forbid loop->block:body)]
+		create node newBlock : blocky.IfStatement { condition = 1 }
+		edges [(create loop->newBlock:body)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddIfRightToBody (){
+	graph {
+		node loop : blocky.RepeatUntilGoal
+		forbid node block : blocky.Block
+		edges [(forbid loop->block:body)]
+		create node newBlock : blocky.IfStatement { condition = 2 }
+		edges [(create loop->newBlock:body)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddRepeatUntilGoalToBody (){
+	graph {
+		node loop : blocky.RepeatUntilGoal
+		forbid node block : blocky.Block
+		edges [(forbid loop->block:body)]
+		create node newBlock : blocky.RepeatUntilGoal
+		edges [(create loop->newBlock:body)]
+		create node bodyBlock : blocky.MoveForward
+		edges [(create newBlock->bodyBlock:body)]
+	}
+}
+rule AddMoveForwardToThenBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:thenBranch)]
+		create node newBlock : blocky.MoveForward
+		edges [(create ifStmt->newBlock:thenBranch)]
+	}
+}
+rule AddTurnLeftToThenBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:thenBranch)]
+		create node newBlock : blocky.Turn { direction = 0 }
+		edges [(create ifStmt->newBlock:thenBranch)]
+	}
+}
+rule AddTurnRightToThenBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:thenBranch)]
+		create node newBlock : blocky.Turn { direction = 1 }
+		edges [(create ifStmt->newBlock:thenBranch)]
+	}
+}
+rule AddIfAheadToThenBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:thenBranch)]
+		create node newBlock : blocky.IfStatement { condition = 0 }
+		edges [(create ifStmt->newBlock:thenBranch)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddIfLeftToThenBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:thenBranch)]
+		create node newBlock : blocky.IfStatement { condition = 1 }
+		edges [(create ifStmt->newBlock:thenBranch)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddIfRightToThenBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:thenBranch)]
+		create node newBlock : blocky.IfStatement { condition = 2 }
+		edges [(create ifStmt->newBlock:thenBranch)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddRepeatUntilGoalToThenBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:thenBranch)]
+		create node newBlock : blocky.RepeatUntilGoal
+		edges [(create ifStmt->newBlock:thenBranch)]
+		create node bodyBlock : blocky.MoveForward
+		edges [(create newBlock->bodyBlock:body)]
+	}
+}
+rule AddMoveForwardToElseBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:elseBranch)]
+		create node newBlock : blocky.MoveForward
+		edges [(create ifStmt->newBlock:elseBranch)]
+	}
+}
+rule AddTurnLeftToElseBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:elseBranch)]
+		create node newBlock : blocky.Turn { direction = 0 }
+		edges [(create ifStmt->newBlock:elseBranch)]
+	}
+}
+rule AddTurnRightToElseBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:elseBranch)]
+		create node newBlock : blocky.Turn { direction = 1 }
+		edges [(create ifStmt->newBlock:elseBranch)]
+	}
+}
+rule AddIfAheadToElseBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:elseBranch)]
+		create node newBlock : blocky.IfStatement { condition = 0 }
+		edges [(create ifStmt->newBlock:elseBranch)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddIfLeftToElseBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:elseBranch)]
+		create node newBlock : blocky.IfStatement { condition = 1 }
+		edges [(create ifStmt->newBlock:elseBranch)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddIfRightToElseBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:elseBranch)]
+		create node newBlock : blocky.IfStatement { condition = 2 }
+		edges [(create ifStmt->newBlock:elseBranch)]
+		create node thenBlock : blocky.MoveForward
+		edges [(create newBlock->thenBlock:thenBranch)]
+	}
+}
+rule AddRepeatUntilGoalToElseBranch (){
+	graph {
+		node ifStmt : blocky.IfStatement
+		forbid node block : blocky.Block
+		edges [(forbid ifStmt->block:elseBranch)]
+		create node newBlock : blocky.RepeatUntilGoal
+		edges [(create ifStmt->newBlock:elseBranch)]
+		create node bodyBlock : blocky.MoveForward
+		edges [(create newBlock->bodyBlock:body)]
+	}
+}
+// =============================================================================
+// Delete any block from anywhere (reparent successor when block has next)
+// =============================================================================
+
+rule DeleteBlockFromSolutionWhenLast () {
+	graph {
+		node game : blocky.Game
+		node level : blocky.Level
+		delete node block : blocky.Block
+		forbid node nextBlock : blocky.Block
+		edges [(game->level:levels), (forbid block->nextBlock:next), (delete level->block:solution)]
+	}
+}
+
+rule DeleteBlockFromSolutionWhenHasNext () {
+	graph {
+		node game : blocky.Game
+		node level : blocky.Level
+		delete node block : blocky.Block
+		node rest : blocky.Block
+		edges [(game->level:levels), (create level->rest:solution), (delete level->block:solution), (delete block->rest:next)]
+	}
+}
+
+rule DeleteBlockFromNextWhenLast () {
+	graph {
+		node parent : blocky.Block
+		delete node block : blocky.Block
+		forbid node nextBlock : blocky.Block
+		edges [(forbid block->nextBlock:next), (delete parent->block:next)]
+	}
+}
+
+rule DeleteBlockFromNextWhenHasNext () {
+	graph {
+		node parent : blocky.Block
+		delete node block : blocky.Block
+		node rest : blocky.Block
+		edges [(create parent->rest:next), (delete parent->block:next), (delete block->rest:next)]
+	}
+}
+
+rule DeleteBlockFromThenBranchWhenLast () {
+	graph {
+		node ifStmt : blocky.IfStatement
+		delete node block : blocky.Block
+		forbid node nextBlock : blocky.Block
+		edges [(forbid block->nextBlock:next), (delete ifStmt->block:thenBranch)]
+	}
+}
+
+rule DeleteBlockFromThenBranchWhenHasNext () {
+	graph {
+		node ifStmt : blocky.IfStatement
+		delete node block : blocky.Block
+		node rest : blocky.Block
+		edges [(create ifStmt->rest:thenBranch), (delete ifStmt->block:thenBranch), (delete block->rest:next)]
+	}
+}
+
+rule DeleteBlockFromElseBranchWhenLast () {
+	graph {
+		node ifStmt : blocky.IfStatement
+		delete node block : blocky.Block
+		forbid node nextBlock : blocky.Block
+		edges [(forbid block->nextBlock:next), (delete ifStmt->block:elseBranch)]
+	}
+}
+
+rule DeleteBlockFromElseBranchWhenHasNext () {
+	graph {
+		node ifStmt : blocky.IfStatement
+		delete node block : blocky.Block
+		node rest : blocky.Block
+		edges [(create ifStmt->rest:elseBranch), (delete ifStmt->block:elseBranch), (delete block->rest:next)]
+	}
+}
+
+rule DeleteBlockFromBodyWhenLast () {
+	graph {
+		node loop : blocky.RepeatUntilGoal
+		delete node block : blocky.Block
+		forbid node nextBlock : blocky.Block
+		edges [(forbid block->nextBlock:next), (delete loop->block:body)]
+	}
+}
+
+rule DeleteBlockFromBodyWhenHasNext () {
+	graph {
+		node loop : blocky.RepeatUntilGoal
+		delete node block : blocky.Block
+		node rest : blocky.Block
+		edges [(create loop->rest:body), (delete loop->block:body), (delete block->rest:next)]
+	}
+}
