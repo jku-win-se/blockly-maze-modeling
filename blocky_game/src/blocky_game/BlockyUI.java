@@ -5,9 +5,12 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Worker;
 import javafx.scene.Scene;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.util.Duration;
 import javafx.scene.control.Alert;
-import javafx.scene.layout.BorderPane;
+import javafx.scene.control.Button;
+import javafx.scene.layout.StackPane;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
@@ -31,12 +34,15 @@ public class BlockyUI extends Application {
 
     private GameEngine engine;
     private WebView webView;
+    private BlockySnapshotService snapshotService;
     @SuppressWarnings("FieldCanBeLocal")
     private JSBridge jsBridge;
     /** When true, after the next page load we apply currentLevel to the WebView (map, blocks, metadata). */
     private volatile boolean pendingApplyLevel;
     /** Suppress sync from JS to Java while we are injecting loaded state into the WebView. */
     private volatile boolean suppressSync;
+    /** True while loading/injecting a model, until JS confirms injection complete. */
+    private volatile boolean awaitingInjectComplete;
 
     @Override
     public void start(Stage primaryStage) {
@@ -47,7 +53,22 @@ public class BlockyUI extends Application {
             engine.initializeGame();
 
             webView = new WebView();
+            snapshotService = new BlockySnapshotService(webView);
             WebEngine webEngine = webView.getEngine();
+
+            // Manual snapshot control overlay (top-right corner).
+            Button snapshotButton = new Button("Snapshot");
+            snapshotButton.setOnAction(e2 -> {
+                if (awaitingInjectComplete) {
+                    System.err.println("[BlockyUI] Snapshot skipped: WebView injection not complete yet.");
+                    return;
+                }
+                // Snapshots are best-effort; failures are logged inside BlockySnapshotService.
+                snapshotService.saveWebViewSvgSnapshot();
+                snapshotService.saveWebViewPngSnapshotByFx();
+            });
+            StackPane.setAlignment(snapshotButton, Pos.BOTTOM_LEFT);
+            StackPane.setMargin(snapshotButton, new Insets(10));
 
             // Redirect JS console to Java System.out
             webEngine.setOnAlert(event -> System.out.println("[JS Alert] " + event.getData()));
@@ -73,7 +94,7 @@ public class BlockyUI extends Application {
                             applyLevelToWebView(engine.getCurrentLevel(), webEngine);
                         } finally {
                             pendingApplyLevel = false;
-                            suppressSync = false;
+                            // Keep suppressSync until WebView confirms injection completed.
                         }
                     }
                     // Nav "Model" pill: delay so h1 exists
@@ -83,7 +104,7 @@ public class BlockyUI extends Application {
                 }
             });
 
-            BorderPane root = new BorderPane(webView);
+            StackPane root = new StackPane(webView, snapshotButton);
             Scene scene = new Scene(root, 1200, 800);
 
             primaryStage.setTitle("Blockly Games : Maze (Web Sync to XMI)");
@@ -169,7 +190,7 @@ public class BlockyUI extends Application {
                 "            var tbHtml = tb ? tb.innerHTML : '';\n" +
                 "            var hasLoops = tbHtml.indexOf('maze_forever') !== -1;\n" +
                 "            var hasConds = tbHtml.indexOf('maze_if') !== -1;\n" +
-                "            var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: 1,\n" +
+                "            var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: (typeof window.T !== 'undefined') ? window.T : 1,\n" +
                 "                                        allowLoops: hasLoops, allowConditionals: hasConds });\n" +
                 "            bridge.syncLevelMeta(meta);\n" +
                 "          } catch(e) { log('syncLevelMeta error: ' + e); }\n" +
@@ -203,6 +224,7 @@ public class BlockyUI extends Application {
                 "                var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: (typeof window.T !== 'undefined') ? window.T : 1, allowLoops: tbHtml.indexOf('maze_forever') !== -1, allowConditionals: tbHtml.indexOf('maze_if') !== -1 });\n" +
                 "                bridge.syncLevelMeta(meta);\n" +
                 "              } catch(e) { log('syncLevelMeta: ' + e); }\n" +
+                "              try { if (bridge.saveModelNow) bridge.saveModelNow(); } catch(e) { log('saveModelNow: ' + e); }\n" +
                 "              bridge.runSimulation();\n" +
                 "            }\n" +
                 "            break;\n" +
@@ -225,6 +247,19 @@ public class BlockyUI extends Application {
         /** Saves the current model to XMI. Called only when Run Program is clicked. */
         public void saveModelNow() {
             engine.saveModel();
+            System.out.println("[JSBridge] saveModelNow -> save XMI");
+        }
+
+        /** Receives a base64 dataUrl PNG generated in the WebView. */
+        public void receivePngDataUrl(String dataUrl) {
+            snapshotService.receivePngDataUrl(dataUrl);
+        }
+
+        /** Called by WebView after loaded model state is injected and stable. */
+        public void injectComplete() {
+            awaitingInjectComplete = false;
+            suppressSync = false;
+            System.out.println("[JSBridge] Injection complete; sync re-enabled.");
         }
 
         public void runSimulation() {
@@ -233,11 +268,13 @@ public class BlockyUI extends Application {
         }
 
         public void syncMap(String mapJson) {
+            if (suppressSync) return;
             System.out.println("[JSBridge] Received map JSON from JS: " + mapJson);
             engine.setMapFromJson(mapJson);
         }
 
         public void syncLevelMeta(String metaJson) {
+            if (suppressSync) return;
             System.out.println("[JSBridge] Received level metadata: " + metaJson);
             engine.syncLevelMeta(metaJson);
         }
@@ -425,6 +462,7 @@ public class BlockyUI extends Application {
     private void applyLevelToWebView(Level level, WebEngine webEngine) {
         if (level == null || level.getMap() == null) return;
         suppressSync = true;
+        awaitingInjectComplete = true;
         try {
             int[][] grid = engine.buildGridForWebView(level.getMap());
             Cell startCell = engine.getStartCell(level.getMap());
@@ -488,7 +526,6 @@ public class BlockyUI extends Application {
                 "    if (window.__injectOd !== undefined) window.od = window.__injectOd; " +
                 "    if (window.__injectK !== undefined) window.K = window.__injectK; " +
                 "    if (window.__injectOdVal !== undefined) window.Od = window.__injectOdVal; " +
-                "    if (window.__injectT !== undefined) window.T = window.__injectT; " +
                 "  } " +
                 "  var c = document.getElementById('svgMaze'); " +
                 "  if (c) { while (c.firstChild) c.removeChild(c.firstChild); } " +
@@ -504,13 +541,38 @@ public class BlockyUI extends Application {
                 "  if (window.BlocklyInterface.Kv && window.__loadXml !== undefined) { " +
                 "    try { window.BlocklyInterface.Kv(window.__loadXml); delete window.__loadXml; } catch(e) { if (window.javaBridge) window.javaBridge.logJS('Kv: ' + e); } " +
                 "  } " +
+                "  try { " +
+                "    if (window.__injectT !== undefined) window.__forcedT = window.__injectT; " +
+                "    if (!window.__patchedMazeReset && typeof $d === 'function') { " +
+                "      window.__patchedMazeReset = true; " +
+                "      window.__origMazeReset = $d; " +
+                "      $d = function(run) { " +
+                "        var r = window.__origMazeReset(run); " +
+                "        try { " +
+                "          if (!run && window.__forcedT !== undefined) { " +
+                "            window.T = window.__forcedT; " +
+                "            if (typeof Z === 'function') Z(window.Q, window.S, 4 * window.T); " +
+                "          } " +
+                "        } catch(e) {} " +
+                "        return r; " +
+                "      }; " +
+                "    } " +
+                "  } catch(e) { if (window.javaBridge) window.javaBridge.logJS('patch $d: ' + e); } " +
                 "  if (typeof $d === 'function' && document.getElementById('finish')) { try { $d(false); } catch(e) { if (window.javaBridge) window.javaBridge.logJS('$d: ' + e); } } " +
+                "  try { " +
+                "    if (window.__forcedT !== undefined) { " +
+                "      window.T = window.__forcedT; " +
+                "      if (typeof Z === 'function') Z(window.Q, window.S, 4 * window.T); " +
+                "    } " +
+                "  } catch(e) { if (window.javaBridge) window.javaBridge.logJS('set T/Z: ' + e); } " +
+                "  try { var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); if (bridge && bridge.injectComplete) bridge.injectComplete(); } catch(e) {} " +
                 "  setTimeout(function() { try { var btn = document.getElementById('runButton'); if (btn) btn.click(); } catch(e) {} }, 300); " +
                 "}, interval); " +
                 "})();"
             );
         } finally {
-            suppressSync = false;
+            // keep suppressSync until injectComplete() callback
+            if (!awaitingInjectComplete) suppressSync = false;
         }
     }
 }
