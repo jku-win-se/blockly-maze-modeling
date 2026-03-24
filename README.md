@@ -16,6 +16,15 @@ This project embeds a local copy of the [Blockly Games](https://github.com/marib
 
 See [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) for detailed architecture, JSBridge API, and data flow.
 
+For WebView sync behavior and recent additions (Immediate Feedback overlays + debug controls), see:
+- [docs/webview-sync/README.md](docs/webview-sync/README.md)
+- [docs/webview-sync/03-immediate-feedback-debug.md](docs/webview-sync/03-immediate-feedback-debug.md)
+
+Debug controls highlights:
+- Java-driven `Step` / `Skip End` with deterministic start direction seeding for XMI-loaded models.
+- Cumulative debug-path overlay during stepping (previous segments are preserved).
+- Terminal-state handling: `Step`/`Skip End` auto-disable at `GOAL`/`CRASH`/`INFINITE_LOOP`.
+
 **Installation:** For step-by-step setup in **Eclipse (with EMF)** or **IntelliJ / any Maven-based IDE**, see **[INSTALL.md](INSTALL.md)**.
 
 ## Prerequisites

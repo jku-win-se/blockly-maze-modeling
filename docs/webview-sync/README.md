@@ -33,5 +33,6 @@ This folder documents how the **Blockly Maze WebView** and the **Java/EMF game m
 |----------|---------|
 | [01-current-sync-protocol.md](01-current-sync-protocol.md) | Bridge methods, payload formats, and EMF mapping (source of truth in code). |
 | [02-extension-map-editing-via-ui.md](02-extension-map-editing-via-ui.md) | How to add UI-driven map editing: new bridge method, JS hooks, invariants, patch format, testing. |
+| [03-immediate-feedback-debug.md](03-immediate-feedback-debug.md) | Immediate feedback (old/new trace overlays) and Java-driven debug controls (Pause/Resume/Stop/Step/Skip End). |
 
 When extending the game (e.g. map editing via UI), read **README.md** (this file) first, then **01-current-sync-protocol.md**, then **02-extension-map-editing-via-ui.md**.

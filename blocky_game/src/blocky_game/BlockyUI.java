@@ -86,12 +86,29 @@ public class BlockyUI extends Application {
                     jsBridge = new JSBridge();
                     JSObject window = (JSObject) webEngine.executeScript("window");
                     window.setMember("javaBridge", jsBridge);
-                    injectSyncScript(webEngine);
+                    try {
+                        injectSyncScript(webEngine);
+                    } catch (Exception e) {
+                        System.err.println("[BlockyUI] injectSyncScript failed: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                    // Debugger buttons must be available for both:
+                    // - default WebView levels (no XMI loaded)
+                    // - loaded XMI models (applyLevelToWebView)
+                    try {
+                        injectDebugControls(webEngine);
+                    } catch (Exception e) {
+                        System.err.println("[BlockyUI] injectDebugControls failed: " + e.getMessage());
+                        e.printStackTrace();
+                    }
                     // Maze's init runs in window "load" event, which fires after Worker.SUCCEEDED.
                     // Apply runs via JS polling until svgMaze + BlocklyInterface exist, then injects (no fixed delay).
                     if (pendingApplyLevel) {
                         try {
                             applyLevelToWebView(engine.getCurrentLevel(), webEngine);
+                        } catch (Exception e) {
+                            System.err.println("[BlockyUI] applyLevelToWebView failed: " + e.getMessage());
+                            e.printStackTrace();
                         } finally {
                             pendingApplyLevel = false;
                             // Keep suppressSync until WebView confirms injection completed.
@@ -212,6 +229,10 @@ public class BlockyUI extends Application {
                 "      var observer = new MutationObserver(function(mutations) {\n" +
                 "        for (var i = 0; i < mutations.length; i++) {\n" +
                 "          if (mutations[i].attributeName === 'style' && runBtn.style.display === 'none') {\n" +
+                "            if (window.__dbgActive || window.__dbgSessionStarted) {\n" +
+                "              log('Run observer ignored while debug session is active.');\n" +
+                "              continue;\n" +
+                "            }\n" +
                 "            log('Run button hidden — syncing state, saving XMI, then running simulation.');\n" +
                 "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);\n" +
                 "            if (bridge) {\n" +
@@ -237,6 +258,194 @@ public class BlockyUI extends Application {
                 "})();\n";
 
         webEngine.executeScript(script);
+    }
+
+    /**
+     * Inject debugger UI + JS-side glue for Pause/Resume/Stop/Step.
+     * This runs for every Maze page load (default levels included), not only for XMI loads.
+     */
+    private void injectDebugControls(WebEngine webEngine) {
+        try {
+            webEngine.executeScript(
+                "(function(){ " +
+                "  try { "
+                + "    if (window.__dbgButtonsBound) return; "
+                + "  } catch(e) {} "
+                + "  window.__dbgDisableAutoRun = true; "
+                + "  var attempts = 0, maxAttempts = 60, interval = 100; "
+                + "  var id = setInterval(function() { "
+                + "    try { "
+                + "      var runBtn = document.getElementById('runButton'); "
+                + "      if (!runBtn) { attempts++; return; } "
+                + "      var container = runBtn.parentNode; "
+                + "      if (container && !window.__dbgButtonsBound) { "
+                + "        window.__dbgButtonsBound = true; "
+                + "        window.__dbgTimer = null; "
+                + "        window.__dbgTurnTimers = []; "
+                + "        window.__dbgSessionStarted = false; "
+                + "        window.__dbgActive = false; "
+                + "        window.__dbgStepInFlight = false; "
+                + "        " + blocky_game.DebuggingService.renderDebugOverlayJsSnippet() + " "
+                + "        function __dbgSync() { "
+                + "          try { "
+                + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
+                + "            if (!bridge) return; "
+                + "            if (typeof getWS === 'function' && typeof sync === 'function') { "
+                + "              var ws = getWS(); if (ws) sync(ws); "
+                + "            } "
+                + "            /* intentionally skip syncMap/syncLevelMeta during debug stepping */ "
+                + "          } catch(e) {} "
+                + "        } "
+                + "        function __dbgSetPegman(q, s, t) { "
+                + "          try { "
+                + "            if (window.__dbgTurnTimers && window.__dbgTurnTimers.length) { "
+                + "              for (var k=0; k<window.__dbgTurnTimers.length; k++) { clearTimeout(window.__dbgTurnTimers[k]); } "
+                + "              window.__dbgTurnTimers = []; "
+                + "            } "
+                + "            var oldQ = window.Q, oldS = window.S, oldT = window.T; "
+                + "            if (typeof oldT !== 'number') oldT = t; "
+                + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgSetPegman oldT=' + oldT + ' -> newT=' + t + ' oldQ=' + oldQ + ' oldS=' + oldS + ' newQ=' + q + ' newS=' + s); } catch(e) {} "
+                + "            var oldD = 4 * oldT; "
+                + "            var newD = 4 * t; "
+                + "            window.Q = q; window.S = s; window.T = t; "
+                + "            if (typeof Z === 'function') { "
+                + "              if (oldQ === q && oldS === s && oldT !== t) { "
+                + "                var frames = 4, frameDelay = 50; "
+                + "                for (var i=1; i<=frames; i++) { "
+                + "                  (function(step){ "
+                + "                    var tid = setTimeout(function() { "
+                + "                      var d = Math.round(oldD + (newD - oldD) * (step/frames)); "
+                + "                      if (typeof Z === 'function') Z(q, s, d); "
+                + "                    }, step * frameDelay); "
+                + "                    window.__dbgTurnTimers.push(tid); "
+                + "                  })(i); "
+                + "                } "
+                + "              } else { "
+                + "                Z(q, s, newD); "
+                + "              } "
+                + "            } "
+                + "          } catch(e) {} "
+                + "        } "
+                + "        function __dbgRenderFrame(fr) { "
+                + "          try { "
+                + "            if (!fr) return; "
+                + "            window.__dbgSessionStarted = true; "
+                + "            if (typeof __dbgRenderOverlay === 'function') __dbgRenderOverlay(fr.prefix); "
+                + "            __dbgSetPegman(fr.q, fr.s, fr.t); "
+                + "            var pauseBtn = document.getElementById('debugPauseResumeButton'); "
+                + "            var stepBtn = document.getElementById('debugStepButton'); "
+                + "            var skipBtn = document.getElementById('debugSkipEndButton'); "
+                + "            var terminal = !!fr.result && fr.result !== 'RUNNING'; "
+                + "            if (pauseBtn) pauseBtn.textContent = fr.paused ? 'Resume' : 'Pause'; "
+                + "            if (pauseBtn && terminal) pauseBtn.textContent = 'Resume'; "
+                + "            if (stepBtn) { stepBtn.disabled = terminal; stepBtn.title = terminal ? ('Debugger finished: ' + fr.result) : 'Execute one step'; } "
+                + "            if (skipBtn) { skipBtn.disabled = terminal; skipBtn.title = terminal ? ('Debugger finished: ' + fr.result) : 'Jump to final outcome'; } "
+                + "            if (fr.paused && window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
+                + "            if (terminal) { "
+                + "              window.__dbgActive = false; "
+                + "              if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
+                + "            } "
+                + "          } catch(e) {} "
+                + "        } "
+                + "        function __dbgStart() { "
+                + "          try { "
+                + "            var stepBtn = document.getElementById('debugStepButton'); "
+                + "            var skipBtn = document.getElementById('debugSkipEndButton'); "
+                + "            if (stepBtn) { stepBtn.disabled = false; stepBtn.title = 'Execute one step'; } "
+                + "            if (skipBtn) { skipBtn.disabled = false; skipBtn.title = 'Jump to final outcome'; } "
+                + "            window.__dbgStepInFlight = false; "
+                + "            var seedQ = window.Q, seedS = window.S; "
+                + "            var seedT = (window.__modelStartT !== undefined) ? window.__modelStartT : window.T; "
+                + "            if (window.__modelStartT !== undefined) { window.T = seedT; } "
+                + "            window.__dbgActive = true; __dbgSync(); "
+                + "            if (!window.javaBridge || !window.javaBridge.debugStart) return null; "
+                + "            try { window.javaBridge.logJS('__dbgStart call q=' + seedQ + ' s=' + seedS + ' t=' + seedT); } catch(e) {} "
+                + "            var fr = JSON.parse(window.javaBridge.debugStart(seedQ, seedS, seedT)); "
+                + "            try { window.javaBridge.logJS('__dbgStart frame q=' + fr.q + ' s=' + fr.s + ' t=' + fr.t + ' paused=' + fr.paused + ' result=' + fr.result); } catch(e) {} "
+                + "            __dbgRenderFrame(fr); "
+                + "            return fr; "
+                + "          } catch(e) { window.__dbgActive = false; return null; } "
+                + "        } "
+                + "        function __dbgTogglePause() { "
+                + "          try { "
+                + "            if (!window.__dbgSessionStarted) { __dbgStart(); } "
+                + "            __dbgSync(); "
+                + "            var fr = JSON.parse(window.javaBridge.debugTogglePause()); "
+                + "            __dbgRenderFrame(fr); "
+                + "            if (!fr.paused && !window.__dbgTimer) { "
+                + "              window.__dbgTimer = setInterval(function() { "
+                + "                try { "
+                + "                  var fr2 = JSON.parse(window.javaBridge.debugTick()); "
+                + "                  __dbgRenderFrame(fr2); "
+                + "                  if (fr2.paused && window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
+                + "                } catch(e) {} "
+                + "              }, " + blocky_game.DebuggingService.DEBUG_TICK_MS + "); "
+                + "            } "
+                + "          } catch(e) {} "
+                + "        } "
+                + "        function __dbgStep() { "
+                + "          try { "
+                + "            if (window.__dbgStepInFlight) return; "
+                + "            if (!window.__dbgSessionStarted) { __dbgStart(); } "
+                + "            var stepBtn = document.getElementById('debugStepButton'); "
+                + "            if (stepBtn) { stepBtn.disabled = true; stepBtn.title = 'Stepping...'; } "
+                + "            window.__dbgStepInFlight = true; "
+                + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgStep before call T=' + window.T + ' Q=' + window.Q + ' S=' + window.S); } catch(e) {} "
+                + "            __dbgSync(); "
+                + "            var fr = JSON.parse(window.javaBridge.debugStep()); "
+                + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgStep frame q=' + fr.q + ' s=' + fr.s + ' t=' + fr.t + ' paused=' + fr.paused + ' result=' + fr.result); } catch(e) {} "
+                + "            __dbgRenderFrame(fr); "
+                + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgStep after render T=' + window.T + ' Q=' + window.Q + ' S=' + window.S); } catch(e) {} "
+                + "            if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
+                + "          } catch(e) {} finally { "
+                + "            window.__dbgStepInFlight = false; "
+                + "            var stepBtn2 = document.getElementById('debugStepButton'); "
+                + "            if (stepBtn2 && !stepBtn2.disabled) stepBtn2.title = 'Execute one step'; "
+                + "          } "
+                + "        } "
+                + "        function __dbgStop() { "
+                + "          try { "
+                + "            if (!window.javaBridge || !window.javaBridge.debugStop) return; "
+                + "            __dbgSync(); "
+                + "            var fr = JSON.parse(window.javaBridge.debugStop()); "
+                + "            __dbgRenderFrame(fr); "
+                + "            window.__dbgActive = false; "
+                + "            if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
+                + "          } catch(e) {} "
+                + "        } "
+                + "        function __dbgMkBtn(id, label, title) { "
+                + "          var b = document.getElementById(id); "
+                + "          if (!b) { b = document.createElement('button'); b.id = id; b.className = 'primary'; b.textContent = label; b.title = title; container.appendChild(b); } "
+                + "          return b; "
+                + "        } "
+                + "        var debugPauseResumeBtn = __dbgMkBtn('debugPauseResumeButton', 'Resume', 'Pause/Resume debugging'); "
+                + "        var debugStopBtn = __dbgMkBtn('debugStopButton', 'Stop', 'Stop debugging and reset'); "
+                + "        var debugStepBtn = __dbgMkBtn('debugStepButton', 'Step', 'Execute one step'); "
+                + "        var debugSkipBtn = __dbgMkBtn('debugSkipEndButton', 'Skip End', 'Jump to final outcome'); "
+                + "        debugPauseResumeBtn.addEventListener('click', function() { __dbgTogglePause(); }); "
+                + "        debugStopBtn.addEventListener('click', function() { __dbgStop(); }); "
+                + "        debugStepBtn.addEventListener('click', function() { __dbgStep(); }); "
+                + "        debugSkipBtn.addEventListener('click', function() { "
+                + "          try { "
+                + "            if (!window.__dbgSessionStarted) __dbgStart(); "
+                + "            __dbgSync(); "
+                + "            var fr = JSON.parse(window.javaBridge.debugSkipToEnd()); "
+                + "            __dbgRenderFrame(fr); "
+                + "            if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
+                + "          } catch(e) {} "
+                + "        }); "
+                + "      } "
+                + "      if (window.__dbgButtonsBound) clearInterval(id); "
+                + "      attempts++; "
+                + "      if (attempts >= maxAttempts) clearInterval(id); "
+                + "    } catch(e) {} "
+                + "  }, interval); "
+                + "})();"
+            );
+        } catch (Exception e) {
+            System.err.println("[BlockyUI] injectDebugControls executeScript failed: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public class JSBridge {
@@ -265,6 +474,37 @@ public class BlockyUI extends Application {
         public void runSimulation() {
             System.out.println("[JSBridge] 'Run' detected. Starting Java simulation...");
             engine.simulateUserProgram();
+        }
+
+        // --- Debugger controls (Java-driven stepping) ---
+
+        /**
+         * Starts a debug session from the WebView’s current pegman state.
+         * Q,S are cell coordinates; T is direction code (0=N,1=E,2=S,3=W).
+         */
+        public String debugStart(int q, int s, int t) {
+            System.out.println("[JSBridge] debugStart q=" + q + " s=" + s + " t=" + t);
+            return engine.debugStart(q, s, t);
+        }
+
+        public String debugTogglePause() {
+            return engine.debugTogglePause();
+        }
+
+        public String debugStop() {
+            return engine.debugStop();
+        }
+
+        public String debugStep() {
+            return engine.debugStepOnce();
+        }
+
+        public String debugSkipToEnd() {
+            return engine.debugSkipToEnd();
+        }
+
+        public String debugTick() {
+            return engine.debugTick();
         }
 
         public void syncMap(String mapJson) {
@@ -469,7 +709,6 @@ public class BlockyUI extends Application {
             Cell goalCell = engine.getGoalCell(level.getMap());
             int levelId = Math.max(1, Math.min(10, level.getId()));
             int maxBlocks = level.getMaxBlocks() <= 0 ? -1 : level.getMaxBlocks();
-            int t = engine.directionToT(level.getStartOrientation());
 
             // Build JSON array for window.X: X[row][col], row-major
             StringBuilder sb = new StringBuilder();
@@ -503,7 +742,9 @@ public class BlockyUI extends Application {
             }
             webEngine.executeScript("window.__injectK = " + levelId + ";");
             webEngine.executeScript("window.__injectOdVal = " + (maxBlocks < 0 ? "Infinity" : String.valueOf(maxBlocks)) + ";");
-            webEngine.executeScript("window.__injectT = " + t + ";");
+            webEngine.executeScript("window.__modelStartT = " + engine.directionToT(level.getStartOrientation()) + ";");
+            // Immediate feedback overlay data (old stored trace vs new simulated trace).
+            webEngine.executeScript(ImmediateFeedbackService.buildWindowInjectPathsScript(engine.getPastPath(), engine.getNewPath()));
 
             String xml = engine.solutionToBlocklyXml(level);
             String escapedForJson = xml.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
@@ -512,6 +753,7 @@ public class BlockyUI extends Application {
             // 2) Poll until maze DOM and Blockly are ready, then apply our data (overwrite maze defaults), redraw, load blocks, reset pegman
             webEngine.executeScript(
                 "(function(){ " +
+                "window.__dbgDisableAutoRun = true; " +
                 "var attempts = 0, maxAttempts = 60, interval = 100; " +
                 "var id = setInterval(function() { " +
                 "  if (!document.getElementById('svgMaze') || !window.BlocklyInterface) { " +
@@ -541,32 +783,18 @@ public class BlockyUI extends Application {
                 "  if (window.BlocklyInterface.Kv && window.__loadXml !== undefined) { " +
                 "    try { window.BlocklyInterface.Kv(window.__loadXml); delete window.__loadXml; } catch(e) { if (window.javaBridge) window.javaBridge.logJS('Kv: ' + e); } " +
                 "  } " +
-                "  try { " +
-                "    if (window.__injectT !== undefined) window.__forcedT = window.__injectT; " +
-                "    if (!window.__patchedMazeReset && typeof $d === 'function') { " +
-                "      window.__patchedMazeReset = true; " +
-                "      window.__origMazeReset = $d; " +
-                "      $d = function(run) { " +
-                "        var r = window.__origMazeReset(run); " +
-                "        try { " +
-                "          if (!run && window.__forcedT !== undefined) { " +
-                "            window.T = window.__forcedT; " +
-                "            if (typeof Z === 'function') Z(window.Q, window.S, 4 * window.T); " +
-                "          } " +
-                "        } catch(e) {} " +
-                "        return r; " +
-                "      }; " +
-                "    } " +
-                "  } catch(e) { if (window.javaBridge) window.javaBridge.logJS('patch $d: ' + e); } " +
+                "  try { window.__forcedT = undefined; } catch(e) {} " +
                 "  if (typeof $d === 'function' && document.getElementById('finish')) { try { $d(false); } catch(e) { if (window.javaBridge) window.javaBridge.logJS('$d: ' + e); } } " +
-                "  try { " +
-                "    if (window.__forcedT !== undefined) { " +
-                "      window.T = window.__forcedT; " +
-                "      if (typeof Z === 'function') Z(window.Q, window.S, 4 * window.T); " +
-                "    } " +
-                "  } catch(e) { if (window.javaBridge) window.javaBridge.logJS('set T/Z: ' + e); } " +
+                "  try { "
+                + "    if (window.__modelStartT !== undefined) { "
+                + "      window.T = window.__modelStartT; "
+                + "      if (typeof Z === 'function') Z(window.Q, window.S, 4 * window.T); "
+                + "    } "
+                + "  } catch(e) { if (window.javaBridge) window.javaBridge.logJS('set modelStartT: ' + e); } " +
+                ImmediateFeedbackService.buildOverlayRenderJs() +
+                blocky_game.DebuggingService.renderDebugOverlayJsSnippet() +
+                "  /* Debug buttons are injected by injectDebugControls() on every page load. */ " +
                 "  try { var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); if (bridge && bridge.injectComplete) bridge.injectComplete(); } catch(e) {} " +
-                "  setTimeout(function() { try { var btn = document.getElementById('runButton'); if (btn) btn.click(); } catch(e) {} }, 300); " +
                 "}, interval); " +
                 "})();"
             );

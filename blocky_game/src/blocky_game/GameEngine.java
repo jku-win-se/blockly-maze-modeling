@@ -23,6 +23,24 @@ public class GameEngine {
     private Level currentLevel;
     private Resource resource;
 
+    // Immediate feedback overlays (old vs new execution traces).
+    // Computed when loading an XMI model.
+    private int[][] pastPath = new int[0][0];
+    private int[][] newPath = new int[0][0];
+
+    // --- Debugger session state (Java-driven stepping) ---
+    private ExecutionTrace debugTrace;
+    private int debugIndex; // index into debugTrace.getStates()
+    private boolean debugPaused;
+    private boolean debugDirtySolution;
+    private int debugStartX;
+    private int debugStartY;
+    private Direction debugStartDir;
+    private int debugCurrentX;
+    private int debugCurrentY;
+    private Direction debugCurrentDir;
+    private boolean debugSessionActive;
+
     public void initializeGame() {
         BlockyPackage.eINSTANCE.eClass();
         Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl());
@@ -145,6 +163,12 @@ public class GameEngine {
 
     public void rebuildProgram(java.util.List<Map<String, Object>> blockData) {
         System.out.println("[GameEngine] Rebuilding model solution...");
+        // If the user is editing while paused in the debugger, we need to recompute on the next
+        // Resume/Step using the updated solution blocks.
+        if (debugTrace != null && debugPaused) {
+            debugDirtySolution = true;
+        }
+
         currentLevel.getTraces().clear(); // Clear old traces—they reference old solution blocks
         currentLevel.setSolution(null);
         if (blockData == null || blockData.isEmpty()) {
@@ -470,7 +494,11 @@ public class GameEngine {
                 case 3:  dir = Direction.WEST;  break;
                 default: dir = Direction.EAST;
             }
-            currentLevel.setStartOrientation(dir);
+            if (!debugSessionActive) {
+                currentLevel.setStartOrientation(dir);
+            } else {
+                System.out.println("[GameEngine] Ignoring startDirection update during active debug session.");
+            }
 
             System.out.println("[GameEngine] Level=" + levelNum
                     + ", maxBlocks=" + (maxBlocks < 0 ? "unlimited" : maxBlocks)
@@ -519,6 +547,15 @@ public class GameEngine {
 
     public Resource getResource() {
         return resource;
+    }
+
+    // --- Immediate Feedback getters (old vs new path) ---
+    public int[][] getPastPath() {
+        return pastPath != null ? pastPath : new int[0][0];
+    }
+
+    public int[][] getNewPath() {
+        return newPath != null ? newPath : new int[0][0];
     }
 
     // --- XMI Load & Export for WebView ---
@@ -578,7 +615,227 @@ public class GameEngine {
         this.resource = newResource;
         this.currentGame = loadedGame;
         this.currentLevel = loadedLevel;
+        try {
+            // Compute old (stored) vs new (re-simulated) paths for immediate feedback.
+            ImmediateFeedbackService.Paths paths = ImmediateFeedbackService.computePaths(loadedLevel);
+            this.pastPath = paths.pastPath;
+            this.newPath = paths.newPath;
+        } catch (Exception e) {
+            System.err.println("[GameEngine] ImmediateFeedback compute failed: " + e.getMessage());
+            this.pastPath = new int[0][0];
+            this.newPath = new int[0][0];
+        }
+
         System.out.println("[GameEngine] Loaded level id=" + loadedLevel.getId() + " from " + file.getAbsolutePath());
+    }
+
+    // --- Debugger Controls (Java-driven stepping) ---
+
+    /**
+     * Start a debug session from a specific WebView pegman state.
+     * This computes a full trace and resets debugIndex to 0.
+     *
+     * @param startX cell x (WebView "Q")
+     * @param startY cell y (WebView "S")
+     * @param startT direction code (WebView "T": 0=N,1=E,2=S,3=W)
+     * @return JSON frame describing current debug state for the UI
+     */
+    public String debugStart(int startX, int startY, int startT) {
+        if (currentLevel == null) {
+            return "{\"index\":0,\"total\":0}";
+        }
+        debugStartX = startX;
+        debugStartY = startY;
+        debugStartDir = blocky_game.DebuggingService.tToDirection(startT);
+        debugCurrentX = startX;
+        debugCurrentY = startY;
+        debugCurrentDir = debugStartDir;
+        debugPaused = true;
+        debugDirtySolution = false;
+        debugSessionActive = true;
+
+        blocky_game.DebuggingService.DebugTraceResult result =
+                blocky_game.DebuggingService.computeTraceFromState(currentLevel, startX, startY, debugStartDir);
+        debugTrace = result.trace;
+        debugIndex = 0;
+
+        // Return frame for UI rendering.
+        return debugFrameJson();
+    }
+
+    public String debugTogglePause() {
+        if (debugTrace == null) {
+            // Not started yet; UI should call debugStart first.
+            return debugFrameJson();
+        }
+        debugPaused = !debugPaused;
+        if (!debugPaused && debugDirtySolution) {
+            // Recompute from the current state snapshot with updated solution blocks.
+            recomputeDebugTraceFromCurrentState();
+            debugIndex = 0;
+            debugDirtySolution = false;
+        }
+        return debugFrameJson();
+    }
+
+    public String debugStepOnce() {
+        if (currentLevel == null) return "{\"index\":0,\"total\":0}";
+        if (debugTrace == null) {
+            // Can't step without a trace; UI should have called debugStart.
+            return debugFrameJson();
+        }
+
+        if (debugDirtySolution) {
+            recomputeDebugTraceFromCurrentState();
+            debugIndex = 0;
+            debugDirtySolution = false;
+        }
+
+        int lastIndex = debugTrace.getStates().size() - 1;
+        if (debugIndex < lastIndex) {
+            debugIndex++;
+        }
+        debugPaused = true;
+        syncCurrentStateSnapshotFromTraceIndex();
+        return debugFrameJson();
+    }
+
+    public String debugStop() {
+        if (currentLevel == null) return "{\"index\":0,\"total\":0}";
+        if (debugTrace == null) return debugFrameJson();
+
+        debugPaused = true;
+        debugCurrentX = debugStartX;
+        debugCurrentY = debugStartY;
+        debugCurrentDir = debugStartDir;
+        debugIndex = 0;
+
+        // If solution changed while paused, recompute immediately so overlays/pegman stay consistent.
+        if (debugDirtySolution) {
+            recomputeDebugTraceFromCurrentState();
+            debugDirtySolution = false;
+        }
+        debugSessionActive = false;
+
+        return debugFrameJson();
+    }
+
+    /**
+     * Jump directly to the final debug state and pause there.
+     * Useful for quickly reaching GOAL/CRASH/INFINITE_LOOP outcome.
+     */
+    public String debugSkipToEnd() {
+        if (debugTrace == null || debugTrace.getStates() == null || debugTrace.getStates().isEmpty()) {
+            return debugFrameJson();
+        }
+        debugIndex = debugTrace.getStates().size() - 1;
+        debugPaused = true;
+        syncCurrentStateSnapshotFromTraceIndex();
+        return debugFrameJson();
+    }
+
+    /**
+     * Called periodically while running (Resume pressed).
+     * If paused or at end, returns the current frame.
+     */
+    public String debugTick() {
+        if (debugTrace == null) return debugFrameJson();
+        if (debugPaused) return debugFrameJson();
+
+        // Advance one state.
+        int lastIndex = debugTrace.getStates().size() - 1;
+        if (debugIndex < lastIndex) {
+            debugIndex++;
+            syncCurrentStateSnapshotFromTraceIndex();
+        } else {
+            // End reached; pause.
+            debugPaused = true;
+        }
+
+        if (debugDirtySolution) {
+            // If user edited blocks while we were running, pause + recompute from current snapshot.
+            recomputeDebugTraceFromCurrentState();
+            debugIndex = 0;
+            debugDirtySolution = false;
+            debugPaused = true;
+        }
+
+        return debugFrameJson();
+    }
+
+    private void recomputeDebugTraceFromCurrentState() {
+        if (currentLevel == null) return;
+        Direction dir = debugCurrentDir != null ? debugCurrentDir : Direction.EAST;
+        blocky_game.DebuggingService.DebugTraceResult result =
+                blocky_game.DebuggingService.computeTraceFromState(currentLevel, debugCurrentX, debugCurrentY, dir);
+        debugTrace = result.trace;
+        debugIndex = 0;
+    }
+
+    private void syncCurrentStateSnapshotFromTraceIndex() {
+        if (debugTrace == null || debugTrace.getStates() == null || debugTrace.getStates().isEmpty()) return;
+        int safeIndex = Math.max(0, Math.min(debugIndex, debugTrace.getStates().size() - 1));
+        GameState s = debugTrace.getStates().get(safeIndex);
+        Cell pos = s != null ? s.getPosition() : null;
+        if (pos != null) {
+            debugCurrentX = pos.getX();
+            debugCurrentY = pos.getY();
+        }
+        debugCurrentDir = s != null ? s.getOrientation() : debugCurrentDir;
+    }
+
+    private String debugFrameJson() {
+        if (currentLevel == null || debugTrace == null || debugTrace.getStates() == null) {
+            return "{\"index\":0,\"total\":0,\"q\":0,\"s\":0,\"t\":0,\"prefix\":[]}";
+        }
+        List<GameState> states = debugTrace.getStates();
+        int total = states.size();
+        int safeIndex = Math.max(0, Math.min(debugIndex, total - 1));
+        GameState s = states.get(safeIndex);
+        Cell pos = s != null ? s.getPosition() : null;
+        Direction dir = s != null ? s.getOrientation() : debugCurrentDir;
+        int q = pos != null ? pos.getX() : debugCurrentX;
+        int r = pos != null ? pos.getY() : debugCurrentY;
+        int t = blocky_game.DebuggingService.directionToT(dir);
+
+        // Prefix path up to current index (in trace-state order).
+        int prefixLen = safeIndex + 1;
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < prefixLen; i++) {
+            GameState ps = states.get(i);
+            Cell ppos = ps != null ? ps.getPosition() : null;
+            int px = ppos != null ? ppos.getX() : 0;
+            int py = ppos != null ? ppos.getY() : 0;
+            if (i > 0) sb.append(",");
+            sb.append("[").append(px).append(",").append(py).append("]");
+        }
+        sb.append("]");
+
+        String result = "RUNNING";
+        if (safeIndex >= total - 1) {
+            GameStatus st = s != null ? s.getStatus() : null;
+            if (st == GameStatus.WON) {
+                result = "GOAL";
+            } else if (st == GameStatus.CRASHED) {
+                // Heuristic: crashes near/above loop bound are typically infinite loops.
+                int loopBound = 0;
+                if (currentLevel != null && currentLevel.getMap() != null) {
+                    loopBound = currentLevel.getMap().getWidth() * currentLevel.getMap().getHeight() * 2;
+                }
+                result = (s != null && loopBound > 0 && s.getStep() >= loopBound) ? "INFINITE_LOOP" : "CRASH";
+            }
+        }
+
+        return "{\"index\":" + safeIndex
+                + ",\"total\":" + total
+                + ",\"q\":" + q
+                + ",\"s\":" + r
+                + ",\"t\":" + t
+                + ",\"prefix\":" + sb.toString()
+                + ",\"paused\":" + debugPaused
+                + ",\"result\":\"" + result + "\""
+                + "}";
     }
 
     /**
