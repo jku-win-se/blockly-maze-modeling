@@ -207,7 +207,8 @@ public class BlockyUI extends Application {
                 "            var tbHtml = tb ? tb.innerHTML : '';\n" +
                 "            var hasLoops = tbHtml.indexOf('maze_forever') !== -1;\n" +
                 "            var hasConds = tbHtml.indexOf('maze_if') !== -1;\n" +
-                "            var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: (typeof window.T !== 'undefined') ? window.T : 1,\n" +
+                "            var sd = (typeof window.__stableStartT === 'number') ? window.__stableStartT : ((typeof window.T !== 'undefined') ? window.T : 1);\n" +
+                "            var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: sd,\n" +
                 "                                        allowLoops: hasLoops, allowConditionals: hasConds });\n" +
                 "            bridge.syncLevelMeta(meta);\n" +
                 "          } catch(e) { log('syncLevelMeta error: ' + e); }\n" +
@@ -242,7 +243,8 @@ public class BlockyUI extends Application {
                 "                var lvl = (typeof window.K !== 'undefined') ? window.K : 1;\n" +
                 "                var mxb = (typeof window.Od !== 'undefined' && isFinite(window.Od)) ? window.Od : -1;\n" +
                 "                var tb = document.getElementById('toolbox'); var tbHtml = tb ? tb.innerHTML : '';\n" +
-                "                var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: (typeof window.T !== 'undefined') ? window.T : 1, allowLoops: tbHtml.indexOf('maze_forever') !== -1, allowConditionals: tbHtml.indexOf('maze_if') !== -1 });\n" +
+                "                var sd = (typeof window.__stableStartT === 'number') ? window.__stableStartT : ((typeof window.T !== 'undefined') ? window.T : 1);\n" +
+                "                var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: sd, allowLoops: tbHtml.indexOf('maze_forever') !== -1, allowConditionals: tbHtml.indexOf('maze_if') !== -1 });\n" +
                 "                bridge.syncLevelMeta(meta);\n" +
                 "              } catch(e) { log('syncLevelMeta: ' + e); }\n" +
                 "              try { if (bridge.saveModelNow) bridge.saveModelNow(); } catch(e) { log('saveModelNow: ' + e); }\n" +
@@ -285,6 +287,24 @@ public class BlockyUI extends Application {
                 + "        window.__dbgSessionStarted = false; "
                 + "        window.__dbgActive = false; "
                 + "        window.__dbgStepInFlight = false; "
+                + "        try { "
+                + "          if (typeof $d === 'function' && document.getElementById('finish')) { $d(false); } "
+                + "          window.__stableStartT = (typeof window.T === 'number') ? window.T : 1; "
+                + "        } catch(e) { window.__stableStartT = 1; } "
+                + "        window.__dbgLastT = undefined; "
+                + "        if (!window.__dbgTWatchdog) { "
+                + "          window.__dbgTWatchdog = setInterval(function() { "
+                + "            try { "
+                + "              if (!window.__dbgSessionStarted) return; "
+                + "              if (typeof window.T !== 'number') return; "
+                + "              if (typeof window.__dbgLastT !== 'number') { window.__dbgLastT = window.T; return; } "
+                + "              if (window.__dbgLastT !== window.T) { "
+                + "                window.__dbgLastT = window.T; "
+                + "                if (window.javaBridge) window.javaBridge.logJS('__dbgWatch T changed to ' + window.T + ' (Q=' + window.Q + ' S=' + window.S + ')'); "
+                + "              } "
+                + "            } catch(e) {} "
+                + "          }, 50); "
+                + "        } "
                 + "        " + blocky_game.DebuggingService.renderDebugOverlayJsSnippet() + " "
                 + "        function __dbgSync() { "
                 + "          try { "
@@ -355,10 +375,11 @@ public class BlockyUI extends Application {
                 + "            if (skipBtn) { skipBtn.disabled = false; skipBtn.title = 'Jump to final outcome'; } "
                 + "            window.__dbgStepInFlight = false; "
                 + "            var seedQ = window.Q, seedS = window.S; "
-                + "            var seedT = (window.__modelStartT !== undefined) ? window.__modelStartT : window.T; "
+                + "            var seedT = (window.__modelStartT !== undefined) ? window.__modelStartT : ((typeof window.__stableStartT === 'number') ? window.__stableStartT : window.T); "
                 + "            if (window.__modelStartT !== undefined) { window.T = seedT; } "
                 + "            window.__dbgActive = true; __dbgSync(); "
                 + "            if (!window.javaBridge || !window.javaBridge.debugStart) return null; "
+                + "            try { window.javaBridge.logJS('__dbgSeed level=' + window.K + ' metaStartT=' + window.T + ' modelStartT=' + window.__modelStartT + ' seedT=' + seedT); } catch(e) {} "
                 + "            try { window.javaBridge.logJS('__dbgStart call q=' + seedQ + ' s=' + seedS + ' t=' + seedT); } catch(e) {} "
                 + "            var fr = JSON.parse(window.javaBridge.debugStart(seedQ, seedS, seedT)); "
                 + "            try { window.javaBridge.logJS('__dbgStart frame q=' + fr.q + ' s=' + fr.s + ' t=' + fr.t + ' paused=' + fr.paused + ' result=' + fr.result); } catch(e) {} "
@@ -369,13 +390,16 @@ public class BlockyUI extends Application {
                 + "        function __dbgTogglePause() { "
                 + "          try { "
                 + "            if (!window.__dbgSessionStarted) { __dbgStart(); } "
+                + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgTogglePause before paused=' + (!!window.__dbgTimer ? 'running' : 'paused') + ' T=' + window.T + ' Q=' + window.Q + ' S=' + window.S); } catch(e) {} "
                 + "            __dbgSync(); "
                 + "            var fr = JSON.parse(window.javaBridge.debugTogglePause()); "
+                + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgTogglePause frame q=' + fr.q + ' s=' + fr.s + ' t=' + fr.t + ' paused=' + fr.paused + ' result=' + fr.result); } catch(e) {} "
                 + "            __dbgRenderFrame(fr); "
                 + "            if (!fr.paused && !window.__dbgTimer) { "
                 + "              window.__dbgTimer = setInterval(function() { "
                 + "                try { "
                 + "                  var fr2 = JSON.parse(window.javaBridge.debugTick()); "
+                + "                  try { if (window.javaBridge) window.javaBridge.logJS('__dbgTick frame q=' + fr2.q + ' s=' + fr2.s + ' t=' + fr2.t + ' paused=' + fr2.paused + ' result=' + fr2.result); } catch(e) {} "
                 + "                  __dbgRenderFrame(fr2); "
                 + "                  if (fr2.paused && window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
                 + "                } catch(e) {} "
