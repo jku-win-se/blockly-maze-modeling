@@ -30,6 +30,7 @@ public class GameEngine {
 
     // --- Debugger session state (Java-driven stepping) ---
     private ExecutionTrace debugTrace;
+    private List<String> debugLogLines;
     private int debugIndex; // index into debugTrace.getStates()
     private boolean debugPaused;
     private boolean debugDirtySolution;
@@ -267,7 +268,18 @@ public class GameEngine {
     // --- Simulation ---
 
     public void simulateUserProgram() {
+        // Keep existing behavior (stdout + save) for callers that don't need logs.
+        simulateUserProgramWithLogs();
+    }
+
+    /**
+     * Runs the current solution and returns a high-level, step-by-step log.
+     * Also saves the model (including execution trace) at the end (same as simulateUserProgram()).
+     */
+    public List<String> simulateUserProgramWithLogs() {
+        List<String> logs = new ArrayList<>();
         System.out.println("\n[GameEngine] Starting simulation...");
+        logs.add("Simulation start");
         currentLevel.getTraces().clear();
         ExecutionTrace trace = BlockyFactory.eINSTANCE.createExecutionTrace();
         currentLevel.getTraces().add(trace);
@@ -292,10 +304,18 @@ public class GameEngine {
 
         System.out.println(
                 "[GameEngine] Initial State: Pos=" + getPosStr(startNode) + ", Dir=" + initialState.getOrientation());
+        logs.add("Start: " + getPosStr(startNode) + " dir=" + initialState.getOrientation());
 
-        executeSequence(currentLevel.getSolution(), initialState, trace);
+        executeSequenceWithLogs(currentLevel.getSolution(), initialState, trace, logs);
         saveModel();
         System.out.println("[GameEngine] Simulation finished. Model (with execution trace) saved.\n");
+        GameState last = trace.getStates().isEmpty() ? null : trace.getStates().get(trace.getStates().size() - 1);
+        if (last != null) {
+            if (last.getStatus() == GameStatus.WON) logs.add("Result: GOAL");
+            else if (last.getStatus() == GameStatus.CRASHED) logs.add("Result: CRASH");
+            else logs.add("Result: " + last.getStatus());
+        }
+        return logs;
     }
 
     private String getPosStr(Cell c) {
@@ -341,6 +361,16 @@ public class GameEngine {
         GameState last = state;
         while (current != null && last.getStatus() == GameStatus.RUNNING) {
             last = executeSingle(current, last, trace);
+            current = current.getNext();
+        }
+        return last;
+    }
+
+    private GameState executeSequenceWithLogs(Block first, GameState state, ExecutionTrace trace, List<String> logs) {
+        Block current = first;
+        GameState last = state;
+        while (current != null && last.getStatus() == GameStatus.RUNNING) {
+            last = executeSingleWithLogs(current, last, trace, logs);
             current = current.getNext();
         }
         return last;
@@ -407,6 +437,77 @@ public class GameEngine {
                 return executeSequence(i.getElseBranch(), next, trace);
             }
         }
+        return next;
+    }
+
+    private GameState executeSingleWithLogs(Block block, GameState prev, ExecutionTrace trace, List<String> logs) {
+        GameState next = BlockyFactory.eINSTANCE.createGameState();
+        next.setStep(prev.getStep() + 1);
+        next.setOrientation(prev.getOrientation());
+        next.setPosition(prev.getPosition());
+        next.setStatus(GameStatus.RUNNING);
+        next.setExecutingBlock(block);
+        next.setPrevious(prev);
+        trace.getStates().add(next);
+
+        String typeName = block != null ? block.getClass().getSimpleName().replace("Impl", "") : "null";
+
+        if (block instanceof MoveForward) {
+            Cell target = getAdjacent(next.getPosition(), next.getOrientation());
+            if (target == null || target.getType() == CellType.WALL) {
+                next.setStatus(GameStatus.CRASHED);
+                if (logs != null) logs.add("Step " + next.getStep() + ": " + typeName + " -> CRASH at " + getPosStr(next.getPosition()));
+            } else {
+                next.setPosition(target);
+                if (target.getType() == CellType.GOAL) {
+                    next.setStatus(GameStatus.WON);
+                    if (logs != null) logs.add("Step " + next.getStep() + ": " + typeName + " -> " + getPosStr(target) + " GOAL");
+                } else {
+                    if (logs != null) logs.add("Step " + next.getStep() + ": " + typeName + " -> " + getPosStr(target));
+                }
+            }
+        } else if (block instanceof Turn) {
+            Turn t = (Turn) block;
+            Direction before = next.getOrientation();
+            next.setOrientation(calculateTurn(next.getOrientation(), t.getDirection()));
+            if (logs != null) logs.add("Step " + next.getStep() + ": Turn " + t.getDirection() + " -> " + before + "→" + next.getOrientation());
+        } else if (block instanceof RepeatUntilGoal) {
+            if (logs != null) logs.add("Step " + next.getStep() + ": RepeatUntilGoal");
+            RepeatUntilGoal r = (RepeatUntilGoal) block;
+            GameState loop = next;
+            GridMap map = currentLevel.getMap();
+            int maxSteps = map.getWidth() * map.getHeight() * 2;
+            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != CellType.GOAL) {
+                if (loop.getStep() > maxSteps) {
+                    loop.setStatus(GameStatus.CRASHED);
+                    if (logs != null) logs.add("Result: INFINITE_LOOP (bound " + maxSteps + " exceeded)");
+                    break;
+                }
+                int previousStep = loop.getStep();
+                loop = executeSequenceWithLogs(r.getBody(), loop, trace, logs);
+                if (loop.getStep() == previousStep) {
+                    loop.setStatus(GameStatus.CRASHED);
+                    if (logs != null) logs.add("Result: CRASH (empty loop body / no progress)");
+                    break;
+                }
+            }
+            return loop;
+        } else if (block instanceof IfStatement) {
+            IfStatement i = (IfStatement) block;
+            boolean cond = checkSensor(next, i.getCondition());
+            if (logs != null) {
+                String branch = cond ? "then" : (i.getElseBranch() != null ? "else" : "skip");
+                logs.add("Step " + next.getStep() + ": If " + i.getCondition() + " -> " + cond + " (" + branch + ")");
+            }
+            if (cond) {
+                return executeSequenceWithLogs(i.getThenBranch(), next, trace, logs);
+            } else if (i.getElseBranch() != null) {
+                return executeSequenceWithLogs(i.getElseBranch(), next, trace, logs);
+            }
+        } else {
+            if (logs != null) logs.add("Step " + next.getStep() + ": " + typeName);
+        }
+
         return next;
     }
 
@@ -657,6 +758,7 @@ public class GameEngine {
         blocky_game.DebuggingService.DebugTraceResult result =
                 blocky_game.DebuggingService.computeTraceFromState(currentLevel, startX, startY, debugStartDir);
         debugTrace = result.trace;
+        debugLogLines = result.logLines;
         debugIndex = 0;
 
         // Return frame for UI rendering.
@@ -769,6 +871,7 @@ public class GameEngine {
         blocky_game.DebuggingService.DebugTraceResult result =
                 blocky_game.DebuggingService.computeTraceFromState(currentLevel, debugCurrentX, debugCurrentY, dir);
         debugTrace = result.trace;
+        debugLogLines = result.logLines;
         debugIndex = 0;
     }
 
@@ -827,6 +930,15 @@ public class GameEngine {
             }
         }
 
+        String logLine = null;
+        if (debugLogLines != null && safeIndex >= 0 && safeIndex < debugLogLines.size()) {
+            logLine = debugLogLines.get(safeIndex);
+        }
+        if (logLine == null) {
+            logLine = "Step " + (s != null ? s.getStep() : safeIndex) + ": (no log)";
+        }
+        logLine = escapeJsonString(logLine);
+
         return "{\"index\":" + safeIndex
                 + ",\"total\":" + total
                 + ",\"q\":" + q
@@ -835,7 +947,16 @@ public class GameEngine {
                 + ",\"prefix\":" + sb.toString()
                 + ",\"paused\":" + debugPaused
                 + ",\"result\":\"" + result + "\""
+                + ",\"logLine\":\"" + logLine + "\""
                 + "}";
+    }
+
+    private static String escapeJsonString(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\r", "\\r")
+                .replace("\n", "\\n");
     }
 
     /**

@@ -4,6 +4,7 @@ This document describes the current implementation of:
 
 - **Immediate feedback overlays** (old trace vs new simulated trace when loading XMI)
 - **Java-driven debug controls** in the WebView (`Pause/Resume`, `Stop`, `Step`, `Skip End`)
+- **Execution log panel** in the WebView (step-by-step commands shown below the blocks)
 
 It is intended for contributors/agents extending `blocky_game` without breaking sync behavior.
 
@@ -95,6 +96,41 @@ Primary methods:
 - current prefix path
 - paused flag
 - result status (`RUNNING`, `GOAL`, `CRASH`, `INFINITE_LOOP`)
+- current step log line (`logLine`)
+
+## Execution log panel
+
+### Goal
+
+Show comprehensive, step-by-step execution logs directly inside the Maze WebView in the large whitespace **below the blocks** and **above the trashcan**.
+
+This panel is populated for:
+
+- Debugger actions: `Step`, `Resume` (via `debugTick`), `Skip End`, `Stop`
+- Normal `Run` execution (Java simulation)
+
+### WebView UI injection
+
+Injected by `BlockyUI.injectDebugControls(...)`:
+
+- `div#__execLogPanel` (container)
+- `pre#__execLogBody` (scrollable log output)
+- helpers:
+  - `window.__execLogClear()`
+  - `window.__execLogAppend(linesOrArray)`
+
+The log panel is intentionally implemented as injected DOM/CSS so we don’t have to modify the minified Maze HTML generator.
+
+### Data flow
+
+- **Debugger**:
+  - Java computes a trace from arbitrary `(q,s,dir)` via `DebuggingService.computeTraceFromState(...)`.
+  - `GameEngine.debugFrameJson()` returns `logLine` aligned with the current trace index.
+  - Injected JS appends `fr.logLine` exactly once per new `fr.index` (tracked by `window.__dbgLastLoggedIndex`).
+
+- **Normal Run**:
+  - `JSBridge.runSimulation()` clears the panel then calls `GameEngine.simulateUserProgramWithLogs()`.
+  - The returned `List<String>` is appended into the WebView in one batch.
 
 ### WebView behavior
 

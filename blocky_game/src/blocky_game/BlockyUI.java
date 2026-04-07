@@ -43,6 +43,10 @@ public class BlockyUI extends Application {
     private volatile boolean suppressSync;
     /** True while loading/injecting a model, until JS confirms injection complete. */
     private volatile boolean awaitingInjectComplete;
+    /** Monotonically increasing generation id for each successful page load. */
+    private final java.util.concurrent.atomic.AtomicInteger pageGen = new java.util.concurrent.atomic.AtomicInteger(0);
+    /** Current generation id for the currently loaded page. */
+    private volatile int currentPageGen;
 
     @Override
     public void start(Stage primaryStage) {
@@ -87,6 +91,9 @@ public class BlockyUI extends Application {
                     JSObject window = (JSObject) webEngine.executeScript("window");
                     window.setMember("javaBridge", jsBridge);
                     try {
+                        // Generation guard for fast level switching: stale JS must not call into a new engine state.
+                        currentPageGen = pageGen.incrementAndGet();
+                        webEngine.executeScript("window.__javaPageGen = " + currentPageGen + ";");
                         injectSyncScript(webEngine);
                     } catch (Exception e) {
                         System.err.println("[BlockyUI] injectSyncScript failed: " + e.getMessage());
@@ -248,7 +255,11 @@ public class BlockyUI extends Application {
                 "                bridge.syncLevelMeta(meta);\n" +
                 "              } catch(e) { log('syncLevelMeta: ' + e); }\n" +
                 "              try { if (bridge.saveModelNow) bridge.saveModelNow(); } catch(e) { log('saveModelNow: ' + e); }\n" +
-                "              bridge.runSimulation();\n" +
+                "              try {\n" +
+                "                var gen = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0;\n" +
+                "                if (bridge.runSimulationWithGen) bridge.runSimulationWithGen(gen);\n" +
+                "                else bridge.runSimulation();\n" +
+                "              } catch(e) { bridge.runSimulation(); }\n" +
                 "            }\n" +
                 "            break;\n" +
                 "          }\n" +
@@ -274,9 +285,188 @@ public class BlockyUI extends Application {
                 + "    if (window.__dbgButtonsBound) return; "
                 + "  } catch(e) {} "
                 + "  window.__dbgDisableAutoRun = true; "
+                + "  function __execLogEnsure() { "
+                + "    try { "
+                + "      if (window.__execLogReady) return true; "
+                + "      var host = document.getElementById('blockly'); "
+                + "      if (!host) return false; "
+                + "      var existing = document.getElementById('__execLogPanel'); "
+                + "      if (!existing) { "
+                + "        var panel = document.createElement('div'); panel.id = '__execLogPanel'; "
+                + "        panel.style.position = 'absolute'; "
+                + "        panel.style.left = '10px'; "
+                + "        panel.style.bottom = '70px'; "
+                + "        panel.style.top = 'auto'; "
+                + "        panel.style.width = '380px'; "
+                + "        panel.style.height = '220px'; "
+                + "        panel.style.minWidth = '260px'; "
+                + "        panel.style.minHeight = '120px'; "
+                + "        panel.style.maxWidth = '560px'; "
+                + "        panel.style.maxHeight = '520px'; "
+                + "        panel.style.overflow = 'hidden'; "
+                + "        panel.style.background = 'rgba(64,64,64,0.85)'; "
+                + "        panel.style.borderRadius = '8px'; "
+                + "        panel.style.border = '1px solid rgba(255,255,255,0.15)'; "
+                + "        panel.style.boxShadow = '2px 2px 5px rgba(0,0,0,0.35)'; "
+                + "        panel.style.zIndex = '999'; "
+                + "        var header = document.createElement('div'); header.id = '__execLogHeader'; "
+                + "        header.style.display = 'flex'; header.style.alignItems = 'center'; header.style.justifyContent = 'space-between'; "
+                + "        header.style.padding = '6px 8px'; header.style.color = '#fff'; header.style.fontSize = '14px'; "
+                + "        header.style.cursor = 'move'; "
+                + "        header.style.userSelect = 'none'; "
+                + "        var title = document.createElement('div'); title.textContent = 'Execution log'; title.style.fontWeight = 'bold'; "
+                + "        var btn = document.createElement('button'); btn.id = '__execLogClearBtn'; btn.textContent = 'Clear'; "
+                + "        btn.style.margin = '0'; btn.style.padding = '4px 8px'; btn.style.fontSize = '12px'; "
+                + "        btn.style.borderRadius = '4px'; btn.style.border = '1px solid rgba(255,255,255,0.25)'; "
+                + "        btn.style.background = 'rgba(255,255,255,0.10)'; btn.style.color = '#fff'; "
+                + "        btn.addEventListener('click', function(){ try { if (window.__execLogClear) window.__execLogClear(); } catch(e) {} }); "
+                + "        header.appendChild(title); header.appendChild(btn); "
+                + "        var body = document.createElement('pre'); body.id = '__execLogBody'; "
+                + "        body.style.margin = '0'; body.style.padding = '6px 8px'; "
+                + "        body.style.height = 'calc(100% - 38px)'; body.style.overflow = 'auto'; "
+                + "        body.style.color = '#fff'; body.style.fontFamily = 'Consolas, Menlo, Monaco, monospace'; body.style.fontSize = '12px'; "
+                + "        body.style.whiteSpace = 'pre-wrap'; body.style.wordBreak = 'break-word'; "
+                + "        panel.appendChild(header); panel.appendChild(body); "
+                + "        var rh = document.createElement('div'); rh.id = '__execLogResizeHandle'; "
+                + "        rh.style.position = 'absolute'; rh.style.right = '2px'; rh.style.bottom = '2px'; "
+                + "        rh.style.width = '14px'; rh.style.height = '14px'; "
+                + "        rh.style.cursor = 'se-resize'; "
+                + "        rh.style.opacity = '0.85'; "
+                + "        rh.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.0) 45%, rgba(255,255,255,0.35) 46%, rgba(255,255,255,0.35) 55%, rgba(255,255,255,0.0) 56%, rgba(255,255,255,0.0) 100%)'; "
+                + "        panel.appendChild(rh); "
+                + "        host.appendChild(panel); "
+                + "      } "
+                + "      window.__execLogReady = true; "
+                + "      if (!window.__execLogMaxLines) window.__execLogMaxLines = 500; "
+                + "      if (!window.__execLogDragBound) { "
+                + "        window.__execLogDragBound = true; "
+                + "        (function(){ "
+                + "          try { "
+                + "            var panel = document.getElementById('__execLogPanel'); "
+                + "            var header = document.getElementById('__execLogHeader'); "
+                  + "            var handle = document.getElementById('__execLogResizeHandle'); "
+                + "            if (!panel || !header) return; "
+                + "            var dragging = false; "
+                  + "            var resizing = false; "
+                + "            var startX = 0, startY = 0, startLeft = 0, startTop = 0; "
+                  + "            var startW = 0, startH = 0; "
+                + "            function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); } "
+                + "            function onMove(ev) { "
+                + "              try { "
+                  + "                var host = document.getElementById('blockly'); "
+                  + "                if (!host) return; "
+                  + "                var hb = host.getBoundingClientRect(); "
+                  + "                if (resizing) { "
+                  + "                  var dx = ev.clientX - startX; "
+                  + "                  var dy = ev.clientY - startY; "
+                  + "                  var newW = startW + dx; "
+                  + "                  var newH = startH + dy; "
+                  + "                  var minW = 260, minH = 120, maxW = 560, maxH = 520; "
+                  + "                  newW = clamp(newW, minW, maxW); "
+                  + "                  newH = clamp(newH, minH, maxH); "
+                  + "                  // Clamp so we stay within host bounds.\n"
+                  + "                  var pb = panel.getBoundingClientRect(); "
+                  + "                  var leftInHost = pb.left - hb.left; "
+                  + "                  var topInHost = pb.top - hb.top; "
+                  + "                  newW = clamp(newW, minW, Math.max(minW, hb.width - leftInHost)); "
+                  + "                  newH = clamp(newH, minH, Math.max(minH, hb.height - topInHost)); "
+                  + "                  panel.style.width = Math.round(newW) + 'px'; "
+                  + "                  panel.style.height = Math.round(newH) + 'px'; "
+                  + "                  return; "
+                  + "                } "
+                  + "                if (dragging) { "
+                  + "                  var dx2 = ev.clientX - startX; "
+                  + "                  var dy2 = ev.clientY - startY; "
+                  + "                  var pb2 = panel.getBoundingClientRect(); "
+                  + "                  var newLeft = startLeft + dx2; "
+                  + "                  var newTop  = startTop + dy2; "
+                  + "                  var maxLeft = Math.max(0, hb.width  - pb2.width); "
+                  + "                  var maxTop  = Math.max(0, hb.height - pb2.height); "
+                  + "                  newLeft = clamp(newLeft, 0, maxLeft); "
+                  + "                  newTop  = clamp(newTop,  0, maxTop); "
+                  + "                  panel.style.left = newLeft + 'px'; "
+                  + "                  panel.style.top = newTop + 'px'; "
+                  + "                  panel.style.bottom = 'auto'; "
+                  + "                } "
+                + "              } catch(e) {} "
+                + "            } "
+                + "            function onUp() { "
+                + "              dragging = false; "
+                  + "              resizing = false; "
+                + "              try { document.removeEventListener('mousemove', onMove, true); document.removeEventListener('mouseup', onUp, true); } catch(e) {} "
+                + "            } "
+                + "            header.addEventListener('mousedown', function(ev){ "
+                + "              try { "
+                + "                if (ev && ev.button !== 0) return; "
+                + "                if (ev && ev.target && ev.target.id === '__execLogClearBtn') return; "
+                + "                var host = document.getElementById('blockly'); "
+                + "                if (!host) return; "
+                + "                var hb = host.getBoundingClientRect(); "
+                + "                var pb = panel.getBoundingClientRect(); "
+                + "                dragging = true; "
+                + "                startX = ev.clientX; startY = ev.clientY; "
+                + "                startLeft = pb.left - hb.left; "
+                + "                startTop  = pb.top  - hb.top; "
+                + "                panel.style.left = startLeft + 'px'; "
+                + "                panel.style.top = startTop + 'px'; "
+                + "                panel.style.bottom = 'auto'; "
+                + "                document.addEventListener('mousemove', onMove, true); "
+                + "                document.addEventListener('mouseup', onUp, true); "
+                + "                if (ev && ev.preventDefault) ev.preventDefault(); "
+                + "              } catch(e) {} "
+                + "            }, true); "
+                  + "            if (handle) { "
+                  + "              handle.addEventListener('mousedown', function(ev){ "
+                  + "                try { "
+                  + "                  if (ev && ev.button !== 0) return; "
+                  + "                  var host = document.getElementById('blockly'); "
+                  + "                  if (!host) return; "
+                  + "                  var hb = host.getBoundingClientRect(); "
+                  + "                  var pb = panel.getBoundingClientRect(); "
+                  + "                  resizing = true; "
+                  + "                  startX = ev.clientX; startY = ev.clientY; "
+                  + "                  startW = pb.width; startH = pb.height; "
+                  + "                  // Make sure top/left anchoring is active during resize.\n"
+                  + "                  panel.style.left = (pb.left - hb.left) + 'px'; "
+                  + "                  panel.style.top = (pb.top - hb.top) + 'px'; "
+                  + "                  panel.style.bottom = 'auto'; "
+                  + "                  document.addEventListener('mousemove', onMove, true); "
+                  + "                  document.addEventListener('mouseup', onUp, true); "
+                  + "                  if (ev && ev.preventDefault) ev.preventDefault(); "
+                  + "                } catch(e) {} "
+                  + "              }, true); "
+                  + "            } "
+                + "          } catch(e) {} "
+                + "        })(); "
+                + "      } "
+                + "      window.__execLogClear = function() { "
+                + "        try { var b = document.getElementById('__execLogBody'); if (b) b.textContent = ''; window.__execLogLineCount = 0; } catch(e) {} "
+                + "      }; "
+                + "      window.__execLogAppend = function(lines) { "
+                + "        try { "
+                + "          var b = document.getElementById('__execLogBody'); if (!b) return; "
+                + "          if (lines === undefined || lines === null) return; "
+                + "          if (typeof lines === 'string') lines = [lines]; "
+                + "          if (!lines.length) return; "
+                + "          var txt = b.textContent || ''; "
+                + "          for (var i=0; i<lines.length; i++) { "
+                + "            var line = (lines[i] === undefined || lines[i] === null) ? '' : String(lines[i]); "
+                + "            txt += (txt.length ? '\\n' : '') + line; "
+                + "          } "
+                + "          var parts = txt.split(/\\n/); "
+                + "          var max = window.__execLogMaxLines || 500; "
+                + "          if (parts.length > max) parts = parts.slice(parts.length - max); "
+                + "          b.textContent = parts.join('\\n'); "
+                + "          b.scrollTop = b.scrollHeight + 1000; "
+                + "        } catch(e) {} "
+                + "      }; "
+                + "      return true; "
+                + "    } catch(e) { return false; } "
+                + "  } "
                 + "  var attempts = 0, maxAttempts = 60, interval = 100; "
                 + "  var id = setInterval(function() { "
                 + "    try { "
+                + "      __execLogEnsure(); "
                 + "      var runBtn = document.getElementById('runButton'); "
                 + "      if (!runBtn) { attempts++; return; } "
                 + "      var container = runBtn.parentNode; "
@@ -369,11 +559,13 @@ public class BlockyUI extends Application {
                 + "        } "
                 + "        function __dbgStart() { "
                 + "          try { "
+                + "            try { if (window.__execLogClear) window.__execLogClear(); } catch(e) {} "
                 + "            var stepBtn = document.getElementById('debugStepButton'); "
                 + "            var skipBtn = document.getElementById('debugSkipEndButton'); "
                 + "            if (stepBtn) { stepBtn.disabled = false; stepBtn.title = 'Execute one step'; } "
                 + "            if (skipBtn) { skipBtn.disabled = false; skipBtn.title = 'Jump to final outcome'; } "
                 + "            window.__dbgStepInFlight = false; "
+                + "            window.__dbgLastLoggedIndex = -1; "
                 + "            var seedQ = window.Q, seedS = window.S; "
                 + "            var seedT = (window.__modelStartT !== undefined) ? window.__modelStartT : ((typeof window.__stableStartT === 'number') ? window.__stableStartT : window.T); "
                 + "            if (window.__modelStartT !== undefined) { window.T = seedT; } "
@@ -381,9 +573,11 @@ public class BlockyUI extends Application {
                 + "            if (!window.javaBridge || !window.javaBridge.debugStart) return null; "
                 + "            try { window.javaBridge.logJS('__dbgSeed level=' + window.K + ' metaStartT=' + window.T + ' modelStartT=' + window.__modelStartT + ' seedT=' + seedT); } catch(e) {} "
                 + "            try { window.javaBridge.logJS('__dbgStart call q=' + seedQ + ' s=' + seedS + ' t=' + seedT); } catch(e) {} "
-                + "            var fr = JSON.parse(window.javaBridge.debugStart(seedQ, seedS, seedT)); "
+                + "            var gen = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0; "
+                + "            var fr = JSON.parse((window.javaBridge.debugStartWithGen ? window.javaBridge.debugStartWithGen(seedQ, seedS, seedT, gen) : window.javaBridge.debugStart(seedQ, seedS, seedT))); "
                 + "            try { window.javaBridge.logJS('__dbgStart frame q=' + fr.q + ' s=' + fr.s + ' t=' + fr.t + ' paused=' + fr.paused + ' result=' + fr.result); } catch(e) {} "
                 + "            __dbgRenderFrame(fr); "
+                + "            try { if (fr && typeof fr.index === 'number' && window.__dbgLastLoggedIndex !== fr.index) { window.__dbgLastLoggedIndex = fr.index; if (fr.logLine && window.__execLogAppend) window.__execLogAppend(fr.logLine); } } catch(e) {} "
                 + "            return fr; "
                 + "          } catch(e) { window.__dbgActive = false; return null; } "
                 + "        } "
@@ -392,15 +586,19 @@ public class BlockyUI extends Application {
                 + "            if (!window.__dbgSessionStarted) { __dbgStart(); } "
                 + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgTogglePause before paused=' + (!!window.__dbgTimer ? 'running' : 'paused') + ' T=' + window.T + ' Q=' + window.Q + ' S=' + window.S); } catch(e) {} "
                 + "            __dbgSync(); "
-                + "            var fr = JSON.parse(window.javaBridge.debugTogglePause()); "
+                + "            var gen = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0; "
+                + "            var fr = JSON.parse((window.javaBridge.debugTogglePauseWithGen ? window.javaBridge.debugTogglePauseWithGen(gen) : window.javaBridge.debugTogglePause())); "
                 + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgTogglePause frame q=' + fr.q + ' s=' + fr.s + ' t=' + fr.t + ' paused=' + fr.paused + ' result=' + fr.result); } catch(e) {} "
                 + "            __dbgRenderFrame(fr); "
+                + "            try { if (fr && typeof fr.index === 'number' && window.__dbgLastLoggedIndex !== fr.index) { window.__dbgLastLoggedIndex = fr.index; if (fr.logLine && window.__execLogAppend) window.__execLogAppend(fr.logLine); } } catch(e) {} "
                 + "            if (!fr.paused && !window.__dbgTimer) { "
                 + "              window.__dbgTimer = setInterval(function() { "
                 + "                try { "
-                + "                  var fr2 = JSON.parse(window.javaBridge.debugTick()); "
+                + "                  var gen2 = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0; "
+                + "                  var fr2 = JSON.parse((window.javaBridge.debugTickWithGen ? window.javaBridge.debugTickWithGen(gen2) : window.javaBridge.debugTick())); "
                 + "                  try { if (window.javaBridge) window.javaBridge.logJS('__dbgTick frame q=' + fr2.q + ' s=' + fr2.s + ' t=' + fr2.t + ' paused=' + fr2.paused + ' result=' + fr2.result); } catch(e) {} "
                 + "                  __dbgRenderFrame(fr2); "
+                + "                  try { if (fr2 && typeof fr2.index === 'number' && window.__dbgLastLoggedIndex !== fr2.index) { window.__dbgLastLoggedIndex = fr2.index; if (fr2.logLine && window.__execLogAppend) window.__execLogAppend(fr2.logLine); } } catch(e) {} "
                 + "                  if (fr2.paused && window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
                 + "                } catch(e) {} "
                 + "              }, " + blocky_game.DebuggingService.DEBUG_TICK_MS + "); "
@@ -416,9 +614,11 @@ public class BlockyUI extends Application {
                 + "            window.__dbgStepInFlight = true; "
                 + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgStep before call T=' + window.T + ' Q=' + window.Q + ' S=' + window.S); } catch(e) {} "
                 + "            __dbgSync(); "
-                + "            var fr = JSON.parse(window.javaBridge.debugStep()); "
+                + "            var gen = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0; "
+                + "            var fr = JSON.parse((window.javaBridge.debugStepWithGen ? window.javaBridge.debugStepWithGen(gen) : window.javaBridge.debugStep())); "
                 + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgStep frame q=' + fr.q + ' s=' + fr.s + ' t=' + fr.t + ' paused=' + fr.paused + ' result=' + fr.result); } catch(e) {} "
                 + "            __dbgRenderFrame(fr); "
+                + "            try { if (fr && typeof fr.index === 'number' && window.__dbgLastLoggedIndex !== fr.index) { window.__dbgLastLoggedIndex = fr.index; if (fr.logLine && window.__execLogAppend) window.__execLogAppend(fr.logLine); } } catch(e) {} "
                 + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgStep after render T=' + window.T + ' Q=' + window.Q + ' S=' + window.S); } catch(e) {} "
                 + "            if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
                 + "          } catch(e) {} finally { "
@@ -431,8 +631,11 @@ public class BlockyUI extends Application {
                 + "          try { "
                 + "            if (!window.javaBridge || !window.javaBridge.debugStop) return; "
                 + "            __dbgSync(); "
-                + "            var fr = JSON.parse(window.javaBridge.debugStop()); "
+                + "            var gen = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0; "
+                + "            var fr = JSON.parse((window.javaBridge.debugStopWithGen ? window.javaBridge.debugStopWithGen(gen) : window.javaBridge.debugStop())); "
                 + "            __dbgRenderFrame(fr); "
+                + "            try { if (window.__execLogClear) window.__execLogClear(); } catch(e) {} "
+                + "            window.__dbgLastLoggedIndex = -1; "
                 + "            window.__dbgActive = false; "
                 + "            if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
                 + "          } catch(e) {} "
@@ -453,8 +656,10 @@ public class BlockyUI extends Application {
                 + "          try { "
                 + "            if (!window.__dbgSessionStarted) __dbgStart(); "
                 + "            __dbgSync(); "
-                + "            var fr = JSON.parse(window.javaBridge.debugSkipToEnd()); "
+                + "            var gen = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0; "
+                + "            var fr = JSON.parse((window.javaBridge.debugSkipToEndWithGen ? window.javaBridge.debugSkipToEndWithGen(gen) : window.javaBridge.debugSkipToEnd())); "
                 + "            __dbgRenderFrame(fr); "
+                + "            try { if (fr && typeof fr.index === 'number' && window.__dbgLastLoggedIndex !== fr.index) { window.__dbgLastLoggedIndex = fr.index; if (fr.logLine && window.__execLogAppend) window.__execLogAppend(fr.logLine); } } catch(e) {} "
                 + "            if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
                 + "          } catch(e) {} "
                 + "        }); "
@@ -497,7 +702,26 @@ public class BlockyUI extends Application {
 
         public void runSimulation() {
             System.out.println("[JSBridge] 'Run' detected. Starting Java simulation...");
-            engine.simulateUserProgram();
+            try {
+                webView.getEngine().executeScript("try { if (window.__execLogClear) window.__execLogClear(); } catch(e) {}");
+            } catch (Exception e) {
+                System.err.println("[JSBridge] Failed to clear exec log: " + e.getMessage());
+            }
+            List<String> logs = engine.simulateUserProgramWithLogs();
+            try {
+                webView.getEngine().executeScript("try { if (window.__execLogAppend) window.__execLogAppend(" + toJsonStringArrayLiteral(logs) + "); } catch(e) {}");
+            } catch (Exception e) {
+                System.err.println("[JSBridge] Failed to append exec log: " + e.getMessage());
+            }
+        }
+
+        /** Same as runSimulation(), but ignores calls from stale WebView pages or while injecting a model. */
+        public void runSimulationWithGen(int gen) {
+            if (gen != currentPageGen || awaitingInjectComplete) {
+                System.out.println("[JSBridge] runSimulationWithGen ignored. gen=" + gen + " current=" + currentPageGen + " injecting=" + awaitingInjectComplete);
+                return;
+            }
+            runSimulation();
         }
 
         // --- Debugger controls (Java-driven stepping) ---
@@ -511,24 +735,57 @@ public class BlockyUI extends Application {
             return engine.debugStart(q, s, t);
         }
 
+        public String debugStartWithGen(int q, int s, int t, int gen) {
+            if (gen != currentPageGen || awaitingInjectComplete) {
+                System.out.println("[JSBridge] debugStartWithGen ignored. gen=" + gen + " current=" + currentPageGen + " injecting=" + awaitingInjectComplete);
+                return engine.debugStop();
+            }
+            return debugStart(q, s, t);
+        }
+
         public String debugTogglePause() {
             return engine.debugTogglePause();
+        }
+
+        public String debugTogglePauseWithGen(int gen) {
+            if (gen != currentPageGen || awaitingInjectComplete) return engine.debugStop();
+            return debugTogglePause();
         }
 
         public String debugStop() {
             return engine.debugStop();
         }
 
+        public String debugStopWithGen(int gen) {
+            if (gen != currentPageGen) return engine.debugStop();
+            return debugStop();
+        }
+
         public String debugStep() {
             return engine.debugStepOnce();
+        }
+
+        public String debugStepWithGen(int gen) {
+            if (gen != currentPageGen || awaitingInjectComplete) return engine.debugStop();
+            return debugStep();
         }
 
         public String debugSkipToEnd() {
             return engine.debugSkipToEnd();
         }
 
+        public String debugSkipToEndWithGen(int gen) {
+            if (gen != currentPageGen || awaitingInjectComplete) return engine.debugStop();
+            return debugSkipToEnd();
+        }
+
         public String debugTick() {
             return engine.debugTick();
+        }
+
+        public String debugTickWithGen(int gen) {
+            if (gen != currentPageGen || awaitingInjectComplete) return engine.debugStop();
+            return debugTick();
         }
 
         public void syncMap(String mapJson) {
@@ -565,6 +822,26 @@ public class BlockyUI extends Application {
                 e.printStackTrace();
             }
         }
+    }
+
+    private static String toJsonStringArrayLiteral(List<String> lines) {
+        if (lines == null || lines.isEmpty()) return "[]";
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < lines.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append("\"").append(escapeJsonString(lines.get(i))).append("\"");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private static String escapeJsonString(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\r", "\\r")
+                .replace("\n", "\\n");
     }
 
     // --- Blockly XML parser ---

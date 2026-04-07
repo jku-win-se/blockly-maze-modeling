@@ -90,10 +90,20 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="body" eType="#//Block"
         containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="IfStatement" eSuperTypes="#//Block">
+  <!--
+    Conditionals are split into two concrete types:
+    - If: simple conditional with only thenBranch
+    - IfElse: conditional with thenBranch and elseBranch
+
+    Both share condition + thenBranch via an abstract supertype IfStatement.
+  -->
+  <eClassifiers xsi:type="ecore:EClass" name="IfStatement" abstract="true" eSuperTypes="#//Block">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="condition" eType="#//SensorDirection"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="thenBranch" eType="#//Block"
         containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="If" eSuperTypes="#//IfStatement"/>
+  <eClassifiers xsi:type="ecore:EClass" name="IfElse" eSuperTypes="#//IfStatement">
     <eStructuralFeatures xsi:type="ecore:EReference" name="elseBranch" eType="#//Block"
         containment="true"/>
   </eClassifiers>

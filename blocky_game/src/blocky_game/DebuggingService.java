@@ -16,6 +16,7 @@ import blocky.SensorDirection;
 import blocky.Turn;
 import blocky.TurnDirection;
 import blocky.BlockyFactory;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -38,16 +39,18 @@ public final class DebuggingService {
     public static final class DebugTraceResult {
         public final ExecutionTrace trace;
         public final int[][] statePositions; // 1-to-1 with trace.getStates()
+        public final List<String> logLines;  // 1-to-1 with trace.getStates()
 
-        private DebugTraceResult(ExecutionTrace trace, int[][] statePositions) {
+        private DebugTraceResult(ExecutionTrace trace, int[][] statePositions, List<String> logLines) {
             this.trace = trace;
             this.statePositions = statePositions;
+            this.logLines = logLines;
         }
     }
 
     public static DebugTraceResult computeTraceFromState(Level level, int startX, int startY, Direction startDir) {
         if (level == null || level.getMap() == null) {
-            return new DebugTraceResult(BlockyFactory.eINSTANCE.createExecutionTrace(), new int[0][0]);
+            return new DebugTraceResult(BlockyFactory.eINSTANCE.createExecutionTrace(), new int[0][0], new ArrayList<>());
         }
 
         GridMap map = level.getMap();
@@ -65,23 +68,25 @@ public final class DebuggingService {
         }
 
         ExecutionTrace trace = BlockyFactory.eINSTANCE.createExecutionTrace();
+        List<String> logLines = new ArrayList<>();
         GameState initialState = BlockyFactory.eINSTANCE.createGameState();
         initialState.setStep(0);
         initialState.setPosition(startCell);
         initialState.setOrientation(startDir);
         initialState.setStatus(GameStatus.RUNNING);
         trace.getStates().add(initialState);
+        logLines.add("Start: (" + startCell.getX() + "," + startCell.getY() + ") dir=" + startDir);
 
         Block solution = level.getSolution();
         if (solution != null) {
-            GameState last = executeSequence(solution, initialState, trace, map);
+            GameState last = executeSequence(solution, initialState, trace, map, logLines);
             // Keep trace as-is; the UI will just show positions up to the current debug index.
             if (last == null) {
                 // no-op
             }
         }
 
-        return new DebugTraceResult(trace, extractStatePositions(trace));
+        return new DebugTraceResult(trace, extractStatePositions(trace), logLines);
     }
 
     /**
@@ -203,17 +208,17 @@ public final class DebuggingService {
         return null;
     }
 
-    private static GameState executeSequence(Block first, GameState state, ExecutionTrace trace, GridMap map) {
+    private static GameState executeSequence(Block first, GameState state, ExecutionTrace trace, GridMap map, List<String> logLines) {
         Block current = first;
         GameState last = state;
         while (current != null && last.getStatus() == GameStatus.RUNNING) {
-            last = executeSingle(current, last, trace, map);
+            last = executeSingle(current, last, trace, map, logLines);
             current = current.getNext();
         }
         return last;
     }
 
-    private static GameState executeSingle(Block block, GameState prev, ExecutionTrace trace, GridMap map) {
+    private static GameState executeSingle(Block block, GameState prev, ExecutionTrace trace, GridMap map, List<String> logLines) {
         GameState next = BlockyFactory.eINSTANCE.createGameState();
         next.setStep(prev.getStep() + 1);
         next.setOrientation(prev.getOrientation());
@@ -227,18 +232,35 @@ public final class DebuggingService {
             Cell target = getAdjacent(next.getPosition(), next.getOrientation());
             if (target == null || target.getType() == CellType.WALL) {
                 next.setStatus(GameStatus.CRASHED);
+                if (logLines != null) {
+                    logLines.add("Step " + next.getStep() + ": MoveForward -> CRASH at (" + safeX(next.getPosition()) + "," + safeY(next.getPosition()) + ")");
+                }
             } else {
                 next.setPosition(target);
                 if (target.getType() == CellType.GOAL) {
                     next.setStatus(GameStatus.WON);
+                    if (logLines != null) {
+                        logLines.add("Step " + next.getStep() + ": MoveForward -> (" + target.getX() + "," + target.getY() + ") GOAL");
+                    }
+                } else {
+                    if (logLines != null) {
+                        logLines.add("Step " + next.getStep() + ": MoveForward -> (" + target.getX() + "," + target.getY() + ")");
+                    }
                 }
             }
         } else if (block instanceof Turn) {
             Turn t = (Turn) block;
+            Direction before = next.getOrientation();
             next.setOrientation(calculateTurn(next.getOrientation(), t.getDirection()));
+            if (logLines != null) {
+                logLines.add("Step " + next.getStep() + ": Turn " + t.getDirection() + " -> " + before + "→" + next.getOrientation());
+            }
         } else if (block instanceof RepeatUntilGoal) {
             RepeatUntilGoal r = (RepeatUntilGoal) block;
             GameState loop = next;
+            if (logLines != null) {
+                logLines.add("Step " + next.getStep() + ": RepeatUntilGoal");
+            }
             int maxSteps = map.getWidth() * map.getHeight() * 2;
             while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != CellType.GOAL) {
                 if (loop.getStep() > maxSteps) {
@@ -246,7 +268,7 @@ public final class DebuggingService {
                     break;
                 }
                 int previousStep = loop.getStep();
-                loop = executeSequence(r.getBody(), loop, trace, map);
+                loop = executeSequence(r.getBody(), loop, trace, map, logLines);
                 if (loop.getStep() == previousStep) {
                     loop.setStatus(GameStatus.CRASHED);
                     break;
@@ -256,14 +278,26 @@ public final class DebuggingService {
         } else if (block instanceof IfStatement) {
             IfStatement i = (IfStatement) block;
             boolean cond = checkSensor(next, i.getCondition());
+            if (logLines != null) {
+                String branch = cond ? "then" : (i.getElseBranch() != null ? "else" : "skip");
+                logLines.add("Step " + next.getStep() + ": If " + i.getCondition() + " -> " + cond + " (" + branch + ")");
+            }
             if (cond) {
-                return executeSequence(i.getThenBranch(), next, trace, map);
+                return executeSequence(i.getThenBranch(), next, trace, map, logLines);
             } else if (i.getElseBranch() != null) {
-                return executeSequence(i.getElseBranch(), next, trace, map);
+                return executeSequence(i.getElseBranch(), next, trace, map, logLines);
             }
         }
 
         return next;
+    }
+
+    private static int safeX(Cell c) {
+        return c != null ? c.getX() : 0;
+    }
+
+    private static int safeY(Cell c) {
+        return c != null ? c.getY() : 0;
     }
 
     private static boolean checkSensor(GameState state, SensorDirection sensor) {
