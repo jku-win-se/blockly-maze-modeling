@@ -83,3 +83,7 @@ experiment = {
 ```
 
 Replace `my.project.momot`, `my.project.metamodel.MyPackage`, `model/input.xmi`, and `model/rules.henshin` with values derived from the given .ecore and .henshin files and project layout. See [07-generation-guide](07-generation-guide.md) for the full procedure.
+
+## Eclipse tooling (human developers)
+
+This folder documents the **`.momot` language** for agents. To **run** MoMoT in Eclipse (as in the **`blocky_momot`** project), install Henshin, Papyrus, and MoMoT — easiest via the shared target platform in **[INSTALL.md](../../INSTALL.md)** §1.2 and [`releng/blocky-modeling-2026-06.target`](../../releng/blocky-modeling-2026-06.target).

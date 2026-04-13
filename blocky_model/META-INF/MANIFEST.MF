@@ -12,5 +12,4 @@ Export-Package: blocky,
  blocky.impl,
  blocky.util
 Require-Bundle: org.eclipse.emf.ecore;visibility:=reexport,
- org.eclipse.core.runtime,
- javax.inject;bundle-version="1.0.0"
+ org.eclipse.core.runtime

@@ -20,14 +20,15 @@ Transformation rules live in **blocky_model** (not in blocky_momot): see `blocky
 
 ## Prerequisites
 
-- **Eclipse IDE** with:
-  - EMF (Ecore)
-  - **Henshin** (model transformation)
-  - **MOMoT** (search-based optimization)
-- **blocky_model** project built (EMF code generation) in the same workspace.
-- Java 17.
+- **Eclipse IDE** with **PDE** and **EMF** (e.g. [Eclipse Modeling Tools](https://www.eclipse.org/downloads/packages/)).
+- **Henshin** (transformation engine + textual editor) and **Papyrus** (Henshin SDK depends on Papyrus GMF infrastructure).
+- **MOMoT 2.0** from the develop update site.
+- **blocky_model** in the same workspace (built / EMF code present).
+- **Java 17**.
 
-Install MOMoT and Henshin from their Eclipse update sites (see [docs/momot/references.md](../docs/momot/references.md)).
+**Recommended:** Load the shared target platform so p2 resolves everything in one step — see [INSTALL.md](../INSTALL.md) §1.2 and open [`releng/blocky-modeling-2026-06.target`](../releng/blocky-modeling-2026-06.target) → **Set as Active Target Platform**.
+
+MoMoT is published from [momot-2.0 `gh-pages`](https://github.com/hadiDHD/momot-2.0/tree/gh-pages/eclipse/updates/latest/develop); the p2 URL used in the target is `https://www.dehghani.online/momot-2.0/eclipse/updates/latest/develop/`. For manual installation order (Papyrus → Henshin → MoMoT), see [INSTALL.md](../INSTALL.md) §1.3.
 
 ## Project layout
 
@@ -48,7 +49,7 @@ The Henshin rules are in the **blocky_model** project:
 ## Setup
 
 1. **Import the project**  
-   In Eclipse: File → Import → Existing Projects → select the `blocky_momot` folder. Ensure **blocky_model** is in the same workspace and built.
+   In Eclipse: **File → Import → Existing Projects into Workspace** → select the repo root or the `blocky_momot` folder. Ensure **blocky_model** is imported and built. Activate the [target platform](../releng/blocky-modeling-2026-06.target) (or install plug-ins per [INSTALL.md](../INSTALL.md) §1.3) so **Plug-in Dependencies** resolve for `blocky_momot`.
 
 2. **Set the input XMI**  
    - Copy a Blocky Game XMI into `model/input/` (e.g. from **blocky_game/save.xmi** or **load.xmi**) and name it **game.xmi**, or  

@@ -10,9 +10,11 @@ This project embeds a local copy of the [Blockly Games](https://github.com/marib
 |----------------|-------------------------------|---------------------------------|
 | **blocky_model** | EMF metamodel & generated code | Eclipse EMF, Ecore, XMI         |
 | **blocky_game**  | Main application (UI + engine) | Java 17, JavaFX 21, WebView     |
+| **blocky_momot** | Search-based program synthesis (optional) | Eclipse MOMoT, Henshin, EMF — see [blocky_momot/README.md](blocky_momot/README.md) |
 
 - **blocky_model**: Domain model (Level, GridMap, Cell, Block types, ExecutionTrace) defined in `blocky.ecore`; Java API generated in `src-gen/`.
 - **blocky_game**: Entry point `Main.java`; UI in `BlockyUI.java` (WebView + JSBridge); game/simulation logic in `GameEngine.java`. The WebView loads the Blockly Games Maze from `blocky_game/src/blocky_game/blockly-games-web/`.
+- **blocky_momot**: MOMoT + Henshin search over Blocky XMI; depends on Eclipse plug-ins (use the shared [target platform](releng/blocky-modeling-2026-06.target) — see [INSTALL.md](INSTALL.md)).
 
 See [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) for detailed architecture, JSBridge API, and data flow.
 
@@ -25,13 +27,13 @@ Debug controls highlights:
 - Cumulative debug-path overlay during stepping (previous segments are preserved).
 - Terminal-state handling: `Step`/`Skip End` auto-disable at `GOAL`/`CRASH`/`INFINITE_LOOP`.
 
-**Installation:** For step-by-step setup in **Eclipse (with EMF)** or **IntelliJ / any Maven-based IDE**, see **[INSTALL.md](INSTALL.md)**.
+**Installation:** For step-by-step setup in **Eclipse (with EMF, optional Henshin / Papyrus / MOMoT)** or **IntelliJ / any Maven-based IDE**, see **[INSTALL.md](INSTALL.md)** (including §1.2–1.3 for the modeling stack and [`releng/blocky-modeling-2026-06.target`](releng/blocky-modeling-2026-06.target)).
 
 ## Prerequisites
 
 - **Java SE 17**
 - **JavaFX**: either the trimmed SDK in the repo (`blocky_game/javafx-sdk-21.0.10/`) when using Eclipse, or **Maven** (see below) which pulls JavaFX from Maven Central.
-- **Eclipse IDE** with EMF and PDE is only required if you want to edit the metamodel (`blocky.ecore`) or regenerate the EMF Java code (`blocky_model/src-gen/`). For building and running, Maven is enough.
+- **Eclipse IDE** with EMF and PDE is required to edit the metamodel (`blocky.ecore`) or regenerate the EMF Java code (`blocky_model/src-gen/`). **blocky_momot** additionally needs Henshin, Papyrus, and MOMoT — easiest via the [target platform](releng/blocky-modeling-2026-06.target) documented in [INSTALL.md](INSTALL.md). For building and running **only** `blocky_game` + `blocky_model`, Maven is enough.
 
 ## How to run
 

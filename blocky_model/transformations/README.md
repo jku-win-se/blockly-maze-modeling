@@ -10,6 +10,16 @@ This folder follows the **Henshin bank example** layout: the **metamodel** (`mod
 | **add_block_to_empty_slot_henshin_text.henshin** | Compiled XMI module; MoMoT and the Henshin interpreter use this. Generate from the .henshin_text (Transform to Henshin), then fix Ecore refs (see below). |
 | **generate_add_block_rules.py** | Script that generates **add_block_to_empty_slot.henshin_text** and can fix the compiled .henshin so types resolve at runtime. |
 
+## Eclipse: “Convert project to Xtext?” when opening `.henshin_text`
+
+The **Henshin Text** editor is implemented with **Xtext**. When you first open a `.henshin_text` file in **`blocky_model`**, Eclipse may ask whether to **convert the project to Xtext**.
+
+- Choose **No** (or **Cancel**). **`blocky_model` is an EMF plug-in project**, not a project that defines an Xtext grammar. Converting it adds the **Xtext nature and builder**, which is unnecessary for Henshin files and has caused build problems (e.g. **Xtext Project Builder** / `javax.inject.Provider`).
+- You can still use **Right-click → Transform to Henshin** and editing in the Henshin text editor **without** converting the project.
+- If you already chose **Yes**, remove the Xtext entries again from **`blocky_model/.project`** (`org.eclipse.xtext.ui.shared.xtextBuilder` / `xtextNature`), then **Project → Clean**.
+
+If the wrong editor opens, use **Open With → Henshin Text Editor**.
+
 ## Generate and use the add-block rules
 
 1. **Regenerate .henshin_text**  

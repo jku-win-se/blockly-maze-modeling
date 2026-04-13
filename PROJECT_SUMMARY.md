@@ -4,6 +4,8 @@ A **Java/JavaFX desktop application** that recreates the [Blockly Games Maze](ht
 
 **Where to start:** For the main app and EMF model, see the workspace table below. For **search-based solution synthesis** (Henshin + MOMoT), start with [blocky_momot/README.md](blocky_momot/README.md). The **docs/henshin/** and **docs/momot/** folders contain agent-oriented reference docs used by the `blocky_momot` project. For **WebView↔Java sync** and extending the game (e.g. map editing via UI), see [docs/webview-sync/README.md](docs/webview-sync/README.md).
 
+**Eclipse tooling for `blocky_momot`:** Use [INSTALL.md](INSTALL.md) §1.2–1.3 (target platform or manual update sites). The shared target definition is [`releng/blocky-modeling-2026-06.target`](releng/blocky-modeling-2026-06.target) (Eclipse **2026-06** + Papyrus + Henshin SDK + [MoMoT 2.0 develop](https://github.com/hadiDHD/momot-2.0/tree/gh-pages/eclipse/updates/latest/develop)).
+
 ---
 
 ## Workspace Structure
@@ -13,6 +15,7 @@ A **Java/JavaFX desktop application** that recreates the [Blockly Games Maze](ht
 | `blocky_model` | EMF metamodel & generated code | Eclipse EMF, Ecore, XMI |
 | `blocky_game` | Main application (UI + engine) | Java 17, JavaFX 21, WebView |
 | `blocky_momot` | Search-based solution synthesis (Henshin + MOMoT) | Eclipse MOMoT, Henshin, EMF |
+| `releng/` | Shared Eclipse **target platform** (optional) | PDE target definition `.target` |
 | `docs/henshin/` | Agent docs for Henshin textual rules (`.henshin_text`) | — |
 | `docs/momot/` | Agent docs for MOMoT config (`.momot`) | — |
 
@@ -23,11 +26,12 @@ A **Java/JavaFX desktop application** that recreates the [Blockly Games Maze](ht
 For **generating or editing `.momot` configuration files** (MOMoT = Marrying Search-based Optimization and Model Transformation Technology), use the reference docs in this repo:
 
 - **Start here**: [docs/momot/README.md](docs/momot/README.md) — overview, file format, and which doc to read for each task.
-- **Syntax and structure**: [docs/momot/grammar-and-structure.md](docs/momot/grammar-and-structure.md) — full grammar-derived reference (sections, keywords, enums).
-- **Examples and templates**: [docs/momot/examples-and-templates.md](docs/momot/examples-and-templates.md) — minimal/full templates and case study snippets (Stack, Class Modularization, CRA).
-- **Links**: [docs/momot/references.md](docs/momot/references.md) — official MOMoT site, grammar, repo, case studies.
+- **Syntax and structure**: [docs/momot/02-syntax-and-structure.md](docs/momot/02-syntax-and-structure.md) — grammar, sections, keywords.
+- **Examples**: [docs/momot/examples/README.md](docs/momot/examples/README.md) — minimal snippets and examples.
+- **Compact reference**: [docs/momot/08-reference.md](docs/momot/08-reference.md) — BNF-style summary and tables.
+- **Eclipse / MoMoT install**: [INSTALL.md](INSTALL.md) §1.2–1.3 and [blocky_momot/README.md](blocky_momot/README.md).
 
-When asked to create or modify MOMoT config, read **README.md** first, then **grammar-and-structure.md** and **examples-and-templates.md** as needed.
+When asked to create or modify MOMoT config, read **docs/momot/README.md** first, then **02-syntax-and-structure.md**, **05-ecore-henshin-integration.md**, and **07-generation-guide.md** as needed.
 
 ---
 
@@ -35,14 +39,18 @@ When asked to create or modify MOMoT config, read **README.md** first, then **gr
 
 For **writing or editing Henshin transformation rules and units** (`.henshin` / `.henshin_text`), use the reference docs in this repo:
 
-- **Start here**: [docs/henshin/README.md](docs/henshin/README.md) — overview, file formats (textual vs graphical), and which doc to read for each task.
-- **Concepts**: [docs/henshin/meta-model-and-concepts.md](docs/henshin/meta-model-and-concepts.md) — transformation meta-model: rules (LHS/RHS), application conditions (PAC/NAC), rule-nesting (multi-rules), units (loop, sequential, conditional, priority, independent), parameters, annotations. Based on [Eclipse Henshin wiki](https://wiki.eclipse.org/Henshin/Transformation_Meta-Model).
-- **Textual syntax**: [docs/henshin/grammar-and-syntax.md](docs/henshin/grammar-and-syntax.md) — grammar for `.henshin_text`: `ePackageImport`, `rule`, `graph`, nodes (preserve/create/delete/forbid/require), edges, `multiRule`, `matchingFormula`, units (`while`, `for`, `if-then-else`, `priority`, `independent`).
-- **Grammar reference (Xtext)**: [docs/henshin/grammar-guide.md](docs/henshin/grammar-guide.md) — authoritative grammar derived from [Henshin_text.xtext](https://github.com/eclipse-henshin/henshin/blob/0105af629a80c225466687d8412cfa9f1672cbb9/plugins/org.eclipse.emf.henshin.text/src/org/eclipse/emf/henshin/text/Henshin_text.xtext): rules, RuleElement, GraphElements, Expression precedence, ParameterKind, Type enum, keyword list.
-- **Examples and Interpreter API**: [docs/henshin/examples-and-templates.md](docs/henshin/examples-and-templates.md) — official Bank example (NAC, VAR parameters, attribute conditions, multi-rule with checkDangling=false), Interpreter API usage. In-repo: `Henshin-bank-example/org.henshin.bank/`.
-- **Links**: [docs/henshin/references.md](docs/henshin/references.md) — official Eclipse Henshin site, wiki (Transformation Meta-Model, Textual Editor, Units, Parameters), examples, repository.
+- **Start here**: [docs/henshin/README.md](docs/henshin/README.md) — overview, file formats, and document index.
+- **Rules and graphs**: [docs/henshin/02-rules-and-graphs.md](docs/henshin/02-rules-and-graphs.md) — LHS/RHS, nodes, edges, attributes.
+- **Units and control flow**: [docs/henshin/03-units-and-control-flow.md](docs/henshin/03-units-and-control-flow.md) — sequential, conditional, loop, priority, independent units.
+- **Formulas and multi-rules**: [docs/henshin/04-formulas-and-multirules.md](docs/henshin/04-formulas-and-multirules.md) — `matchingFormula`, multi-rules.
+- **Expressions and parameters**: [docs/henshin/05-expressions-and-types.md](docs/henshin/05-expressions-and-types.md) — parameter kinds (IN/OUT/VAR), types.
+- **Validation**: [docs/henshin/06-validation-rules.md](docs/henshin/06-validation-rules.md) — common mistakes and constraints.
+- **Examples**: [docs/henshin/07-examples-and-patterns.md](docs/henshin/07-examples-and-patterns.md) — minimal patterns.
+- **Quick reference**: [docs/henshin/08-quick-reference.md](docs/henshin/08-quick-reference.md) — one-page syntax summary.
+- **Codegen / MoMoT pitfalls**: [docs/henshin/09-generating-henshin-text.md](docs/henshin/09-generating-henshin-text.md).
+- **Official wiki**: [Henshin Transformation Meta-Model](https://wiki.eclipse.org/Henshin/Transformation_Meta-Model) and [installation](https://wiki.eclipse.org/Henshin/Installation_instructions).
 
-When asked to create or modify Henshin rules or units, read **README.md** first, then **meta-model-and-concepts.md**, **grammar-and-syntax.md**, **grammar-guide.md** (for exact grammar), and **examples-and-templates.md** as needed. Project transformations: `blocky_model/transformations/add_block_to_empty_slot.henshin_text`. Official Bank example: `Henshin-bank-example/org.henshin.bank/`.
+When asked to create or modify Henshin rules or units, read **docs/henshin/README.md** first, then **02**–**06** as needed, **09** when generating for MoMoT. Project transformations: `blocky_model/transformations/add_block_to_empty_slot.henshin_text`.
 
 ---
 
