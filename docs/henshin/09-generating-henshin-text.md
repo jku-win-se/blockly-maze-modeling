@@ -27,20 +27,20 @@ The package is resolved by the tooling from the project (e.g. Ecore in the same 
 
 ## 2. EEnum (Ecore enum) attribute values
 
-When a node attribute has an **EEnum** type (e.g. `direction` of type `TurnDirection`, `condition` of type `SensorDirection`), use one of these:
+When a node attribute has an **EEnum** type (e.g. `AtomicStatement.kind:AtomicStatementKind`, `IfStmt.condition:ConditionKind`, `Level.startOrientation:Direction`), use one of these:
 
 ### Option A: Integer literal (recommended for generated files)
 
 Use the **numeric value** of the EEnum literal as defined in the Ecore model. The Henshin/EMF runtime accepts integer for EEnum attributes.
 
 - In Ecore, the first literal usually has value 0, the next 1, etc. (see the `.ecore` file).
-- Example: `direction = 0` (LEFT), `direction = 1` (RIGHT); `condition = 0` (AHEAD), `condition = 1` (LEFT), `condition = 2` (RIGHT).
+- Example: `kind = 0` (TURN_LEFT), `kind = 1` (TURN_RIGHT), `kind = 2` (MOVE_FORWARD); `condition = 0` (CHECK_FORWARD), `condition = 1` (CHECK_LEFT), `condition = 2` (CHECK_RIGHT).
 
 **Pros:** No `javaImport` needed; no "X doesn't exist" from the Java scope. **Cons:** You must know the literal order/value from the metamodel.
 
 ### Option B: JavaAttributeValue (EnumType.Literal)
 
-Use the form `EnumType.Literal` (e.g. `TurnDirection.LEFT`, `SensorDirection.AHEAD`). The grammar parses this as **JavaAttributeValue** (ID '.' ID).
+Use the form `EnumType.Literal` (e.g. `AtomicStatementKind.TURN_LEFT`, `ConditionKind.CHECK_FORWARD`). The grammar parses this as **JavaAttributeValue** (ID '.' ID).
 
 - You **must** add `javaImport <package>` to the rule, where `<package>` is the Java package that contains the generated enum class (e.g. `blocky`).
 - The validator resolves the class and field in that package. If the package is not on the editor’s classpath, you get "X doesn't exist."
@@ -95,12 +95,12 @@ Avoid multiple separate `edges [ ... ]` (and `create edges [ ... ]`) blocks in t
 
 ## 5. Compiled .henshin: use package nsURI at runtime
 
-The Henshin **compiler** (Transform to Henshin) writes type references in the generated `.henshin` XML using the Ecore file path (e.g. `../model/blocky.ecore#//MoveForward`). At **runtime**, the MoMoT/Henshin interpreter often cannot resolve that path, so types become `null` and you get **"Missing factory for 'Node newBlock:null'"**.
+The Henshin **compiler** (Transform to Henshin) writes type references in the generated `.henshin` XML using the Ecore file path (e.g. `../model/blocky.ecore#//AtomicStatement`). At **runtime**, the MoMoT/Henshin interpreter often cannot resolve that path, so types become `null` and you get **"Missing factory for 'Node ...:null'"**.
 
 **Fix:** Replace Ecore path hrefs in the compiled `.henshin` with the **package nsURI** so the interpreter resolves types from the registered EPackage:
 
 - In the `.henshin` file, replace every `../model/blocky.ecore#` (or similar path) with `http://www.example.org/blocky#` (use the **nsURI** from your `.ecore` package).
-- Do this after each "Transform to Henshin", or use a script: e.g. `python generate_add_block_rules.py <henshin_text_path> <henshin_path>` to regenerate text and then rewrite the compiled `.henshin` (see blocky_model transformations README).
+- Do this after each "Transform to Henshin". In this repo you can also run the Java utility `blocky.util.HenshinNsUriRewriter` on the compiled `.henshin` file (default target: `blocky_model/transformations/statement_insertions_henshin_text.henshin`).
 
 ---
 
@@ -126,28 +126,29 @@ If the rules will be used by **MoMoT** (search-based transformation), generate r
 
 ---
 
-## 8. Blocky statement lists: insert / delete / replace patterns (containment linked list)
+## 8. Blocky program lists: insert / delete / replace patterns (container linked list)
 
-In `blocky.ecore`, program bodies are **containment linked lists**:
+In the current `blocky.ecore`, program bodies are container-based **containment linked lists**:
 
-- `Body.firstStatement` is **containment** (head)
-- `Statement.next` is **containment** (rest of list)
+- `Body.firstContainer` is **containment** (head of the list)
+- `Container.next` is **containment** (rest of the list)
+- `Container.statement` is **containment** (payload)
 
 This has two practical consequences for correct transformations:
 
-- **Insert** splits into location families (empty / before head / between / after last).
-- **Delete/Replace** must be **containment-safe**: if you delete a statement that has a contained `next`, you must **re-home** that `next` first, otherwise EMF will delete the whole tail as part of containment cleanup.
+- **Insert** splits into location families (empty body / before head / between / after last).
+- **Delete/Replace** must be **containment-safe** for containers: if you delete a `Container` that has a contained `next`, you must **re-home** that `next` first (rewire the list) or EMF will delete the tail as part of containment cleanup.
 
-### 8.1 Minimal safe delete rule set (4 rules)
+### 8.1 Minimal safe container delete rule set (4 rules)
 
-To delete **exactly one** statement (and keep the remainder intact), you need these four cases:
+To delete **exactly one** container (and keep the remainder intact), you need these four cases:
 
-- **only element in a body**: delete `body->curr:firstStatement`, and require `curr` has **no** `next`
-- **head with successor**: re-home successor to `body.firstStatement`, then delete head
+- **only element in a body**: delete `body->curr:firstContainer`, and require `curr` has **no** `next`
+- **head with successor**: re-home successor to `body.firstContainer`, then delete head
 - **middle with successor**: re-link `prev.next` to `next`, then delete `curr`
 - **last element**: delete `prev->curr:next`, and require `curr` has **no** `next`
 
-These 4 rules are the analogue of “insert position” rules, but for containment-safe deletes.
+These 4 rules are the analogue of “insert position” rules, but for containment-safe deletes on `Container` chains. (If you also want to delete the payload statement, include `(delete curr->stmt:statement)` in the same rule.)
 
 ### 8.2 “Replace at same position” requires anchoring (don’t rely on sequencing)
 
@@ -168,10 +169,12 @@ Typical anchors by case:
 
 Then define anchored insert rules such as:
 
-- `InsertIntoEmptyBodyAt(IN body:Body, INOUT stmt:Statement)`
-- `InsertBeforeSpecificHead(IN body:Body, IN head:Statement, INOUT stmt:Statement)`
-- `InsertBetweenSpecificNext(IN prev:Statement, IN next:Statement, INOUT stmt:Statement)`
-- `InsertAfterSpecificLast(IN prev:Statement, INOUT stmt:Statement)`
+- `InsertContainerIntoEmptyBodyAt(IN body:Body, OUT c:Container)`
+- `InsertContainerBeforeSpecificHead(IN body:Body, IN head:Container, OUT c:Container)`
+- `InsertContainerBetweenSpecificNext(IN prev:Container, IN next:Container, OUT c:Container)`
+- `InsertContainerAfterSpecificLast(IN prev:Container, OUT c:Container)`
+
+and then a second step that populates `c` via `(create c->stmt:statement)` with an `AtomicStatement` / `Loop` / `IfStmt`.
 
 and replacement units that follow the pattern:
 
@@ -199,4 +202,5 @@ To keep compiled `.henshin` concise:
 - [02-rules-and-graphs](02-rules-and-graphs.md) — Nodes, edges, action types.
 - [05-expressions-and-types](05-expressions-and-types.md) — Expressions, atomic values, parameters.
 - [06-validation-rules](06-validation-rules.md) — All validator constraints.
-- blocky_model **transformations/README.md** — Python generator usage and two-arg .henshin fix.
+- `blocky_model/transformations/statement_insertions.henshin_text` — reference edit operators for the current container-based metamodel.
+- `blocky_model/src/blocky/util/HenshinNsUriRewriter.java` — rewrites compiled `.henshin` type hrefs to nsURI-based hrefs for runtime (MoMoT/Henshin).

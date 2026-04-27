@@ -31,10 +31,10 @@ Expressions are used in: **conditions**, attribute **value** and **set** values,
 
 ## EEnum (Ecore enum) attribute values
 
-When an attribute's type is an **EEnum** (e.g. `TurnDirection`, `SensorDirection`), two forms are possible:
+When an attribute's type is an **EEnum** (e.g. `AtomicStatementKind`, `ConditionKind`, `Direction`), two forms are possible:
 
-1. **Integer literal (recommended for code generation):** Use the enum literal's numeric value from the Ecore model (first literal often 0, next 1, etc.). Example: `direction = 0`, `condition = 2`. No `javaImport` required; avoids "X doesn't exist" when the Java package is not on the classpath. See [09-generating-henshin-text](09-generating-henshin-text.md).
-2. **JavaAttributeValue (EnumType.Literal):** Use `EnumType.Literal` (e.g. `TurnDirection.LEFT`). Parsed as Java attribute; requires **javaImport** for the package that contains the generated enum class. The validator resolves the class/field there; if the package is not visible, validation fails with "X doesn't exist."
+1. **Integer literal (recommended for code generation):** Use the enum literal's numeric value from the Ecore model (first literal often 0, next 1, etc.). Example: `kind = 2` (MOVE_FORWARD), `condition = 0` (CHECK_FORWARD), `startOrientation = 1` (EAST). No `javaImport` required; avoids "X doesn't exist" when the Java package is not on the classpath. See [09-generating-henshin-text](09-generating-henshin-text.md).
+2. **JavaAttributeValue (EnumType.Literal):** Use `EnumType.Literal` (e.g. `AtomicStatementKind.MOVE_FORWARD`). Parsed as Java attribute; requires **javaImport** for the package that contains the generated enum class. The validator resolves the class/field there; if the package is not visible, validation fails with "X doesn't exist."
 
 ## Parameter
 

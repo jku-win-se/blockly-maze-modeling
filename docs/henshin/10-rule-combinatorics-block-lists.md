@@ -1,34 +1,47 @@
-# Why block-list edits need many Henshin rules (and what we do about it)
+# Why list edits need many Henshin rules (and what we do about it)
 
-This note explains why covering **all** insertions, deletions, and substitutions over our **linked lists of `Block`** instances tends to produce a **large number** of Henshin rules, even when the *idea* of each edit is simple (Levenshtein-style distance on a sequence).
+This note explains why covering **all** insertions, deletions, and substitutions over our **container-linked lists** tends to produce a **large number** of Henshin rules, even when the *idea* of each edit is simple (Levenshtein-style distance on a sequence).
 
-## How blocks are structured in the metamodel
+## How programs are structured in the current metamodel
 
-In `blocky`, programs are not a single flat `EList` of blocks. They are several **separate containment-linked lists**, all using the same `Block.next` chain inside each list:
+In `blocky`, programs are not a single flat `EList`. They are represented as **containment-linked lists of containers**:
 
-- **`Level.solution`** — head of the main program list.
-- **`RepeatUntilGoal.body`** — head of the loop body list.
-- **`IfStatement.thenBranch`** — head of the “then” list (shared by simple `If` and `IfElse`).
-- **`IfElse.elseBranch`** — head of the “else” list (only on `IfElse`).
+- **`Level.solution : Body`** — owns the top-level program body.
+- **`Loop.body : Body`** — owns a loop body.
+- **`IfStmt.thenBody : Body`** and optional **`IfStmt.elseBody : Body`** — own conditional bodies.
 
-`Block.next` is **containment**. That matters for deletes and substitutes: you cannot simply “remove a node” without **rewiring** the predecessor (or head reference) so the successor is not deleted with the subtree by accident.
+Each `Body` owns a chain:
 
-So one conceptual operation — “insert one statement” — has **different graph patterns** depending on *where* the list lives in the model.
+- **`Body.firstContainer : Container`** (containment) — head
+- **`Container.next : Container`** (containment) — rest of the chain
+- **`Container.statement : Statement`** (containment) — payload (`AtomicStatement`, `Loop`, `IfStmt`, ...)
+
+`Container.next` is **containment**. That matters for deletes and substitutes: you cannot simply “remove a container” without **rewiring** the predecessor (or head reference) so the successor container is not deleted with the subtree by accident.
+
+So one conceptual operation — “insert one statement” — often becomes two conceptual operations at the model level:
+
+- **Insert a container** at some list position (empty/head/middle/tail)
+- **Populate the container** with a concrete statement kind
 
 ## Why Henshin multiplies rules
 
 ### 1. Reference names are fixed in the rule graph
 
-Henshin matches and rewrites **concrete graph patterns**. The **EReference** used in an edge (`solution`, `body`, `thenBranch`, `elseBranch`, `next`) is part of that pattern. There is no built-in way to say “insert at **any** list head reference” in a single rule; each distinct head needs its own pattern (or a separate sub-rule / variant).
+Henshin matches and rewrites **concrete graph patterns**. The **EReference** used in an edge (`firstContainer`, `next`, `statement`, and nested body references like `Loop.body`, `IfStmt.thenBody`, `IfStmt.elseBody`) is part of that pattern. There is no built-in way to say “insert at **any** list head reference” in a single rule; each distinct head/edge shape needs its own pattern (or a separate sub-rule / variant).
+
+In the current model, the list-head/reference set is smaller and more uniform (`Body.firstContainer` / `Container.next`), but you still have distinct patterns for:
+
+- `Body.firstContainer` head insert/delete
+- `Container.next` middle/tail insert/delete
 
 ### 2. Concrete types are fixed on create nodes
 
-A `create` node must have a **concrete** `EClass`. You cannot write “create one of {MoveForward, Turn, If, …}” as a type variable. To offer several insertable block kinds, you typically need **one rule per concrete type** (or one rule per type after refactoring), then compose alternatives in a **unit** (`independent`, `priority`, etc.).
+A `create` node must have a **concrete** `EClass`. You cannot write “create one of {AtomicStatement(kind=...), IfStmt, Loop, …}” as a type variable. To offer several insertable statement kinds, you typically need **one rule per concrete type** (or per family), then compose alternatives in a **unit** (`independent`, `priority`, etc.).
 
 ### 3. Head insert vs middle insert are different patterns
 
-- **Before an existing head**: delete/create edges on the **owner → head** containment reference, plus `newBlock.next → oldHead`.
-- **Between two blocks**: match `parent → curr : next`, then delete that edge and create `parent → newBlock` and `newBlock → curr`.
+- **Before an existing head**: delete/create edges on `Body.firstContainer`, plus `newContainer.next → oldHead`.
+- **Between two containers**: match `prev → curr : next`, then delete that edge and create `prev → newContainer` and `newContainer → curr`.
 
 So “insert” splits into **at least** these families per location family.
 
@@ -37,26 +50,26 @@ So “insert” splits into **at least** these families per location family.
 For containment chains, delete/substitute rules usually come in **pairs** (or equivalent branching):
 
 - **Last in chain** (no `next`): drop the containment link from owner/parent.
-- **Has successor**: **create** the reparent edge first, **delete** old containment edges touching the removed node, following the validator rules (no illegal preserve-edges between preserve- and delete-nodes).
+- **Has successor**: **create** the reparent edge first, **delete** old containment edges touching the removed container, following the validator rules (no illegal preserve-edges between preserve- and delete-nodes).
 
 That doubles patterns again for many locations.
 
-### 5. Metamodel constraints add more variants
+### 5. Domain constraints add more variants
 
-Examples from our domain:
+Examples from our domain (depending on how we encode them in rule LHS/conditions):
 
-- **`If` vs `IfElse`**: only `IfElse` has `elseBranch`. Rules that touch the else list must match an `IfElse` owner, not a plain `If`.
-- **`Level.allowLoops` / `Level.allowConditionals`**: if we encode them as match constraints on `Level`, rules that create loops or conditionals need a **`Game → levels → Level`** path for nested edits, or we accept that some guards only apply where `Level` is in the LHS.
+- **`IfStmt.elseBody` optional**: if we want operators that distinguish “if-only” vs “if-else”, we need variants that require/forbid the else body.
+- **`Level.allowLoops` / `Level.allowConditionals`**: if we encode them as match constraints on `Level`, rules that create loops or conditionals may need `Game → levels → Level` context for nested edits, or we accept that some guards only apply where `Level` is in the LHS.
 
 Each such constraint tends to add **another rule shape** or duplicate context, not “one extra line” in the same rule.
 
 ## Rough combinatorics (order of magnitude)
 
-If we enumerate naively:
+If we enumerate naively (for the container + payload split):
 
-- **Locations** (main head, body head, then head, else head, between `next`) ≈ **5** location families for inserts (and similar for deletes at heads / delete after parent).
-- **Operations** insert / delete / substitute ≈ **3** (if we model substitute explicitly).
-- **Concrete block kinds** to insert or substitute to (MoveForward, Turn×2, If×3 conditions, RepeatUntilGoal, …) ≈ **O(10)** and grows with the language.
+- **Container locations** (empty body, head, between `next`, after last) ≈ **4** insert families (and similar for deletes).
+- **Payload kinds** (AtomicStatement, IfStmt, Loop, …) ≈ **O(3+)** (and grows with the language).
+- **Enum variants** (AtomicStatementKind, ConditionKind) add multiplicative factors if encoded as separate rules instead of parameters.
 
 Even before pairing “last vs hasNext”, we are already in the hundreds of distinct **rule shapes**. Pairing and guards pushes toward **thousands of lines** if written out longhand in `.henshin_text`.
 
@@ -64,14 +77,14 @@ That is not because Henshin is “wrong”; it is because we are asking for a **
 
 ## What we do in this project
 
-1. **Treat the large rule set as generated data**  
-   We keep a **small Python program** (e.g. `blocky_model/transformations/generate_levenshtein_neighbors.py`) that iterates over *where* and *what* and emits `.henshin_text`. The **source of truth** is the generator + metamodel, not a hand-maintained thousand-line file.
+1. **Treat the large rule set as generated data (when needed)**  
+   Even with the container-based metamodel, scaling to “all edits anywhere” still produces a lot of rules. When we need exhaustive operator sets, we generate them from the metamodel rather than maintaining them by hand.
 
 2. **Narrow the operator set when possible**  
    For example, if “substitute” can be modeled as **delete + insert** (two steps), we can omit explicit substitute rules and shrink the generated module.
 
 3. **Use units for “where” at the call site**  
-   Units such as “insert MoveForward anywhere” wrap `independent` calls over a **small** set of location-specific rules, so callers (and MOMoT) see one operator, even though the engine still has multiple underlying rules.
+   Units such as “insert a container anywhere” wrap `independent` calls over a **small** set of location-specific rules, so callers (and MOMoT) see one operator, even though the engine still has multiple underlying rules.
 
 4. **Accept that some duplication is fundamental**  
    Until the metamodel exposes a **single** uniform list abstraction (or we introduce a **placeholder** concrete block type and a second phase to specialize it), Henshin will keep needing **distinct patterns** per reference and per concrete create type.
@@ -86,9 +99,9 @@ That is not because Henshin is “wrong”; it is because we are asking for a **
 
 The “huge number of rules” problem is the product of:
 
-1. **Several list heads** + **`next` chains** + **containment**,  
+1. **Several bodies** + **container `next` chains** + **containment**,  
 2. **Fixed EReferences and EClasses** in Henshin rules,  
 3. **Delete/substitute** safety splitting **last vs has successor**,  
-4. **Language features** (`If` / `IfElse`, flags on `Level`).
+4. **Language features** (`IfStmt` else-body optionality, flags on `Level`).
 
 We manage it by **generating** rules from a compact description and by **composing** location alternatives in units—not by pretending one or two hand-written rules can cover all edits.

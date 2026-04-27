@@ -27,9 +27,9 @@ Henshin_text is a textual DSL for graph transformation rules. Files are transfor
 | [07-examples-and-patterns](07-examples-and-patterns.md) | Minimal valid examples and pointers to repo examples |
 | [08-quick-reference](08-quick-reference.md) | One-page syntax cheat sheet |
 | [09-generating-henshin-text](09-generating-henshin-text.md) | **Agent/codegen guide:** ePackageImport, EEnum attributes, delete rules, edges — avoid common errors when generating files |
-| [10-rule-combinatorics-block-lists](10-rule-combinatorics-block-lists.md) | Why many rules are needed for block-list insert/delete/substitute; combinatorics and codegen approach |
+| [10-rule-combinatorics-block-lists](10-rule-combinatorics-block-lists.md) | Why many rules are needed for list insert/delete/substitute; combinatorics and codegen approach |
 
-**If you work on Blocky statement lists (`Body.firstStatement` / `Statement.next`)**: see the new section “**Blocky statement lists: insert / delete / replace patterns**” in [09-generating-henshin-text](09-generating-henshin-text.md).
+**If you work on Blocky program lists (new metamodel: `Body.firstContainer` / `Container.next`)**: see “**Blocky program lists: insert / delete / replace patterns**” in [09-generating-henshin-text](09-generating-henshin-text.md) and the reference transformation module in `blocky_model/transformations/statement_insertions.henshin_text`.
 
 ## High-level structure
 

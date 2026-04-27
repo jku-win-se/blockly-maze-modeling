@@ -9,10 +9,10 @@ Use this document as the **full briefing** for an investigation agent. The goal 
 ### 1.1 Current situation
 
 - Programs are **EMF models** conforming to `blocky` (`blocky_model/model/blocky.ecore`).
-- Control flow is a **graph of blocks**: mainly `Block.next` (containment chain), with **multiple entry points**:
-  - `Level.solution`
-  - `RepeatUntilGoal.body`
-  - `If.thenBranch` / `IfElse.elseBranch`
+- **Current (as of Apr 2026)**: programs are represented as **container-linked lists**:
+  - `Level.solution : Body` owns the top-level body
+  - `Body.firstContainer` / `Container.next` form the containment list
+  - `Container.statement : Statement` holds the payload (`AtomicStatement`, `Loop`, `IfStmt`)
 - **Henshin** rules must spell out **concrete** `EClass` on `create` nodes and **concrete** `EReference` names on edges. There is no “insert at any list head” abstraction in the rule language itself.
 - Result: to cover “every change” naively requires **many** rules (locations × operations × concrete types × last/has-next variants). See [10-rule-combinatorics-block-lists.md](10-rule-combinatorics-block-lists.md).
 
@@ -29,9 +29,9 @@ The **surface language** the player sees must remain conceptually:
    - **FORWARD**
    - **LEFT**
    - **RIGHT**  
-   (Aligned with current `SensorDirection`: AHEAD, LEFT, RIGHT in the metamodel.)
+   (Aligned with current `ConditionKind`: CHECK_FORWARD, CHECK_LEFT, CHECK_RIGHT in the metamodel.)
 
-3. **Higher-level constructs** (e.g. `RepeatUntilGoal`, `If` / `IfElse`) may exist in the metamodel **only if** they are still expressible in terms of the above semantics and remain valid for the game engine / UI.
+3. **Higher-level constructs** (e.g. loops and conditionals like `Loop` / `IfStmt`) may exist in the metamodel **only if** they are still expressible in terms of the above semantics and remain valid for the game engine / UI.
 
 The investigation may propose **internal** representations that differ from the current tree-of-blocks, as long as **mapping to/from** the player-visible program (or to the current model for migration) is defined.
 
@@ -47,7 +47,7 @@ The investigation may propose **internal** representations that differ from the 
 
 - What is the **minimal** set of **structural** node/edge kinds if leaves are only the three actions?
 - How do we represent **`if`** and **`if_else`** (and loops, if kept) without multiplying rule patterns?
-- How do we avoid **per-reference** rules (`solution` vs `body` vs `thenBranch` vs `elseBranch` vs `next`)?
+- How do we avoid **per-reference** rules (e.g. `Body.firstContainer` vs `Container.next`, and nested `Body` references like `Loop.body`, `IfStmt.thenBody`, `IfStmt.elseBody`)?
 - Can **substitute** be unified with **typed slot + value** so one rule family covers “change what’s there”?
 
 ---
@@ -60,12 +60,13 @@ Consider replacing multiple containment heads with:
 
 - A single **`Program`** or **`Script`** owning **one** ordered list (`EList` or one head + `next` only), and represent nesting via **explicit markers** (see below), **or**
 - A **flat sequence of instructions** with **stack/PC semantics** (bytecode-like), **or**
-- A **single** `Block.next` chain from `Level.solution` only, with **no** nested heads—nesting expressed only through marker nodes.
+- A **single** `Container.next` chain under `Level.solution` only, with **no** nested bodies—nesting expressed only through marker nodes.
 
 For each option, analyze:
 
 - **Henshin rule count** for: insert at index, delete at index, replace at index (or equivalent).
-- **Mapping** to current `If` / `IfElse` / `RepeatUntilGoal` / nested branches.
+- **Mapping** to current `IfStmt` / `Loop` / nested bodies.
+- (If you refer to current metamodel elements: use `IfStmt` / `Loop` / `Body` / `Container` naming.)
 - **Validity constraints** (e.g. balanced markers, well-formed if/loop).
 
 ### 3.2 Marker / opcode representation
@@ -101,9 +102,9 @@ Consider **basic blocks** or **CFG** (control-flow graph) instead of a tree:
 - Fewer patterns for “insert edge” vs “insert in nested containment”?
 - Cost: harder serialization to “blocks UI”, need a canonical serialization for the game.
 
-### 3.6 Loops (`RepeatUntilGoal`)
+### 3.6 Loops (`Loop`)
 
-Decide whether loops stay, become **sugar** for a bounded unroll (probably bad), or map to **one** loop node with **single** body reference that could be merged into a uniform list representation.
+Decide whether loops stay, become **sugar** for a bounded unroll (probably bad), or map to **one** loop node with **single** body reference that could be merged into a uniform list representation. (In the current metamodel, the loop node is `Loop` with `Loop.body : Body`.)
 
 ---
 

@@ -35,7 +35,7 @@ There is also `saveModelNow()` (calls `engine.saveModel()`) but the normal flow 
 ### syncModel — xml
 
 - **Shape**: Blockly workspace XML string (e.g. `<xml><block type="maze_moveForward">...</block></xml>`).
-- **Java**: `BlockyUI.parseBlocklyXml` → `parseBlockElement` produces `List<Map<String, Object>>`; `GameEngine.rebuildProgram(data)` builds the EMF `Block` tree (MoveForward, Turn, RepeatUntilGoal, IfStatement) and sets `Level.solution`. Direction and condition parsing are case-insensitive.
+- **Java**: `BlockyUI.parseBlocklyXml` → `parseBlockElement` produces `List<Map<String, Object>>`; `GameEngine.rebuildProgram(data)` builds the EMF program model as a `Body` containing a linked list of `Container` nodes (`Body.firstContainer` / `Container.next`), each holding a `Statement` (`Container.statement`), and sets `Level.solution`. Concrete statements are `AtomicStatement` (MOVE_FORWARD / TURN_LEFT / TURN_RIGHT via `AtomicStatementKind`), `Loop` (for `maze_forever` / `repeat_until_goal`), and `IfStmt` (via `ConditionKind`).
 
 ## Java → WebView (apply level)
 
