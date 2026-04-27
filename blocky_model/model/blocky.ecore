@@ -1,32 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="blocky" nsURI="http://www.example.org/blocky" nsPrefix="blocky">
-  <eClassifiers xsi:type="ecore:EEnum" name="Direction">
-    <eLiterals name="NORTH"/>
-    <eLiterals name="EAST" value="1"/>
-    <eLiterals name="SOUTH" value="2"/>
-    <eLiterals name="WEST" value="3"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EEnum" name="TurnDirection">
-    <eLiterals name="LEFT"/>
-    <eLiterals name="RIGHT" value="1"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EEnum" name="CellType">
-    <eLiterals name="EMPTY"/>
-    <eLiterals name="WALL" value="1"/>
-    <eLiterals name="START" value="2"/>
-    <eLiterals name="GOAL" value="3"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EEnum" name="SensorDirection">
-    <eLiterals name="AHEAD"/>
-    <eLiterals name="LEFT" value="1"/>
-    <eLiterals name="RIGHT" value="2"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EEnum" name="GameStatus">
-    <eLiterals name="RUNNING"/>
-    <eLiterals name="WON" value="1"/>
-    <eLiterals name="CRASHED" value="2"/>
-  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Game">
     <eStructuralFeatures xsi:type="ecore:EReference" name="levels" upperBound="-1"
         eType="#//Level" containment="true"/>
@@ -41,7 +15,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="maxBlocks" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="allowLoops" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="allowConditionals" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="solution" eType="#//Block"
+    <eStructuralFeatures xsi:type="ecore:EReference" name="solution" eType="#//Body"
         containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="traces" upperBound="-1"
         eType="#//ExecutionTrace" containment="true"/>
@@ -72,39 +46,70 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="position" eType="#//Cell"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="orientation" eType="#//Direction"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="status" eType="#//GameStatus"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="executingBlock" eType="#//Block"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="executingStatement" eType="#//Statement"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="next" eType="#//GameState"
         eOpposite="#//GameState/previous"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="previous" eType="#//GameState"
         eOpposite="#//GameState/next"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Block" abstract="true">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="next" eType="#//Block"
+  <eClassifiers xsi:type="ecore:EClass" name="Body">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="firstContainer" eType="#//Container"
         containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="MoveForward" eSuperTypes="#//Block"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Turn" eSuperTypes="#//Block">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="direction" eType="#//TurnDirection"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Container">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="statement" eType="#//Statement"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="next" eType="#//Container"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="generated" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="RepeatUntilGoal" eSuperTypes="#//Block">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="body" eType="#//Block"
+  <eClassifiers xsi:type="ecore:EClass" name="Statement" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="generated" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AtomicStatement" eSuperTypes="#//Statement">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//AtomicStatementKind"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Loop" eSuperTypes="#//Statement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="body" eType="#//Body" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="IfStmt" eSuperTypes="#//Statement">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="condition" lowerBound="1"
+        eType="#//ConditionKind"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="thenBody" lowerBound="1"
+        eType="#//Body" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="elseBody" eType="#//Body"
         containment="true"/>
   </eClassifiers>
-  <!--
-    Conditionals are split into two concrete types:
-    - If: simple conditional with only thenBranch
-    - IfElse: conditional with thenBranch and elseBranch
-
-    Both share condition + thenBranch via an abstract supertype IfStatement.
-  -->
-  <eClassifiers xsi:type="ecore:EClass" name="IfStatement" abstract="true" eSuperTypes="#//Block">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="condition" eType="#//SensorDirection"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="thenBranch" eType="#//Block"
-        containment="true"/>
+  <eClassifiers xsi:type="ecore:EEnum" name="Direction">
+    <eLiterals name="NORTH"/>
+    <eLiterals name="EAST" value="1"/>
+    <eLiterals name="SOUTH" value="2"/>
+    <eLiterals name="WEST" value="3"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="If" eSuperTypes="#//IfStatement"/>
-  <eClassifiers xsi:type="ecore:EClass" name="IfElse" eSuperTypes="#//IfStatement">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="elseBranch" eType="#//Block"
-        containment="true"/>
+  <eClassifiers xsi:type="ecore:EEnum" name="CellType">
+    <eLiterals name="EMPTY"/>
+    <eLiterals name="WALL" value="1"/>
+    <eLiterals name="START" value="2"/>
+    <eLiterals name="GOAL" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="SensorDirection">
+    <eLiterals name="AHEAD"/>
+    <eLiterals name="LEFT" value="1"/>
+    <eLiterals name="RIGHT" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="GameStatus">
+    <eLiterals name="RUNNING"/>
+    <eLiterals name="WON" value="1"/>
+    <eLiterals name="CRASHED" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ConditionKind">
+    <eLiterals name="CHECK_FORWARD"/>
+    <eLiterals name="CHECK_LEFT" value="1"/>
+    <eLiterals name="CHECK_RIGHT" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="AtomicStatementKind">
+    <eLiterals name="TURN_LEFT"/>
+    <eLiterals name="TURN_RIGHT" value="1"/>
+    <eLiterals name="MOVE_FORWARD" value="2"/>
   </eClassifiers>
 </ecore:EPackage>

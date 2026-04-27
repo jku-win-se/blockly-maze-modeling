@@ -2,12 +2,12 @@
  */
 package blocky.impl;
 
-import blocky.Block;
 import blocky.BlockyPackage;
 import blocky.Cell;
 import blocky.Direction;
 import blocky.GameState;
 import blocky.GameStatus;
+import blocky.Statement;
 
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
@@ -30,7 +30,7 @@ import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
  *   <li>{@link blocky.impl.GameStateImpl#getPosition <em>Position</em>}</li>
  *   <li>{@link blocky.impl.GameStateImpl#getOrientation <em>Orientation</em>}</li>
  *   <li>{@link blocky.impl.GameStateImpl#getStatus <em>Status</em>}</li>
- *   <li>{@link blocky.impl.GameStateImpl#getExecutingBlock <em>Executing Block</em>}</li>
+ *   <li>{@link blocky.impl.GameStateImpl#getExecutingStatement <em>Executing Statement</em>}</li>
  *   <li>{@link blocky.impl.GameStateImpl#getNext <em>Next</em>}</li>
  *   <li>{@link blocky.impl.GameStateImpl#getPrevious <em>Previous</em>}</li>
  * </ul>
@@ -109,14 +109,14 @@ public class GameStateImpl extends MinimalEObjectImpl.Container implements GameS
 	protected GameStatus status = STATUS_EDEFAULT;
 
 	/**
-	 * The cached value of the '{@link #getExecutingBlock() <em>Executing Block</em>}' reference.
+	 * The cached value of the '{@link #getExecutingStatement() <em>Executing Statement</em>}' reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #getExecutingBlock()
+	 * @see #getExecutingStatement()
 	 * @generated
 	 * @ordered
 	 */
-	protected Block executingBlock;
+	protected Statement executingStatement;
 
 	/**
 	 * The cached value of the '{@link #getNext() <em>Next</em>}' reference.
@@ -275,17 +275,17 @@ public class GameStateImpl extends MinimalEObjectImpl.Container implements GameS
 	 * @generated
 	 */
 	@Override
-	public Block getExecutingBlock() {
-		if (executingBlock != null && executingBlock.eIsProxy()) {
-			InternalEObject oldExecutingBlock = (InternalEObject) executingBlock;
-			executingBlock = (Block) eResolveProxy(oldExecutingBlock);
-			if (executingBlock != oldExecutingBlock) {
+	public Statement getExecutingStatement() {
+		if (executingStatement != null && executingStatement.eIsProxy()) {
+			InternalEObject oldExecutingStatement = (InternalEObject) executingStatement;
+			executingStatement = (Statement) eResolveProxy(oldExecutingStatement);
+			if (executingStatement != oldExecutingStatement) {
 				if (eNotificationRequired())
-					eNotify(new ENotificationImpl(this, Notification.RESOLVE, BlockyPackage.GAME_STATE__EXECUTING_BLOCK,
-							oldExecutingBlock, executingBlock));
+					eNotify(new ENotificationImpl(this, Notification.RESOLVE,
+							BlockyPackage.GAME_STATE__EXECUTING_STATEMENT, oldExecutingStatement, executingStatement));
 			}
 		}
-		return executingBlock;
+		return executingStatement;
 	}
 
 	/**
@@ -293,8 +293,8 @@ public class GameStateImpl extends MinimalEObjectImpl.Container implements GameS
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public Block basicGetExecutingBlock() {
-		return executingBlock;
+	public Statement basicGetExecutingStatement() {
+		return executingStatement;
 	}
 
 	/**
@@ -303,12 +303,12 @@ public class GameStateImpl extends MinimalEObjectImpl.Container implements GameS
 	 * @generated
 	 */
 	@Override
-	public void setExecutingBlock(Block newExecutingBlock) {
-		Block oldExecutingBlock = executingBlock;
-		executingBlock = newExecutingBlock;
+	public void setExecutingStatement(Statement newExecutingStatement) {
+		Statement oldExecutingStatement = executingStatement;
+		executingStatement = newExecutingStatement;
 		if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.GAME_STATE__EXECUTING_BLOCK,
-					oldExecutingBlock, executingBlock));
+			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.GAME_STATE__EXECUTING_STATEMENT,
+					oldExecutingStatement, executingStatement));
 	}
 
 	/**
@@ -506,10 +506,10 @@ public class GameStateImpl extends MinimalEObjectImpl.Container implements GameS
 			return getOrientation();
 		case BlockyPackage.GAME_STATE__STATUS:
 			return getStatus();
-		case BlockyPackage.GAME_STATE__EXECUTING_BLOCK:
+		case BlockyPackage.GAME_STATE__EXECUTING_STATEMENT:
 			if (resolve)
-				return getExecutingBlock();
-			return basicGetExecutingBlock();
+				return getExecutingStatement();
+			return basicGetExecutingStatement();
 		case BlockyPackage.GAME_STATE__NEXT:
 			if (resolve)
 				return getNext();
@@ -542,8 +542,8 @@ public class GameStateImpl extends MinimalEObjectImpl.Container implements GameS
 		case BlockyPackage.GAME_STATE__STATUS:
 			setStatus((GameStatus) newValue);
 			return;
-		case BlockyPackage.GAME_STATE__EXECUTING_BLOCK:
-			setExecutingBlock((Block) newValue);
+		case BlockyPackage.GAME_STATE__EXECUTING_STATEMENT:
+			setExecutingStatement((Statement) newValue);
 			return;
 		case BlockyPackage.GAME_STATE__NEXT:
 			setNext((GameState) newValue);
@@ -575,8 +575,8 @@ public class GameStateImpl extends MinimalEObjectImpl.Container implements GameS
 		case BlockyPackage.GAME_STATE__STATUS:
 			setStatus(STATUS_EDEFAULT);
 			return;
-		case BlockyPackage.GAME_STATE__EXECUTING_BLOCK:
-			setExecutingBlock((Block) null);
+		case BlockyPackage.GAME_STATE__EXECUTING_STATEMENT:
+			setExecutingStatement((Statement) null);
 			return;
 		case BlockyPackage.GAME_STATE__NEXT:
 			setNext((GameState) null);
@@ -604,8 +604,8 @@ public class GameStateImpl extends MinimalEObjectImpl.Container implements GameS
 			return orientation != ORIENTATION_EDEFAULT;
 		case BlockyPackage.GAME_STATE__STATUS:
 			return status != STATUS_EDEFAULT;
-		case BlockyPackage.GAME_STATE__EXECUTING_BLOCK:
-			return executingBlock != null;
+		case BlockyPackage.GAME_STATE__EXECUTING_STATEMENT:
+			return executingStatement != null;
 		case BlockyPackage.GAME_STATE__NEXT:
 			return next != null;
 		case BlockyPackage.GAME_STATE__PREVIOUS:

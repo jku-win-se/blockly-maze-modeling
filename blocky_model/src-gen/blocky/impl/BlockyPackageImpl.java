@@ -2,24 +2,25 @@
  */
 package blocky.impl;
 
-import blocky.Block;
+import blocky.AtomicStatement;
+import blocky.AtomicStatementKind;
 import blocky.BlockyFactory;
 import blocky.BlockyPackage;
+import blocky.Body;
 import blocky.Cell;
 import blocky.CellType;
+import blocky.ConditionKind;
 import blocky.Direction;
 import blocky.ExecutionTrace;
 import blocky.Game;
 import blocky.GameState;
 import blocky.GameStatus;
 import blocky.GridMap;
-import blocky.IfStatement;
+import blocky.IfStmt;
 import blocky.Level;
-import blocky.MoveForward;
-import blocky.RepeatUntilGoal;
+import blocky.Loop;
 import blocky.SensorDirection;
-import blocky.Turn;
-import blocky.TurnDirection;
+import blocky.Statement;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -83,35 +84,42 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass blockEClass = null;
+	private EClass bodyEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass moveForwardEClass = null;
+	private EClass containerEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass turnEClass = null;
+	private EClass statementEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass repeatUntilGoalEClass = null;
+	private EClass atomicStatementEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass ifStatementEClass = null;
+	private EClass loopEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass ifStmtEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -119,13 +127,6 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	private EEnum directionEEnum = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EEnum turnDirectionEEnum = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -147,6 +148,20 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	private EEnum gameStatusEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum conditionKindEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum atomicStatementKindEEnum = null;
 
 	/**
 	 * Creates an instance of the model <b>Package</b>, registered with
@@ -538,7 +553,7 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getGameState_ExecutingBlock() {
+	public EReference getGameState_ExecutingStatement() {
 		return (EReference) gameStateEClass.getEStructuralFeatures().get(4);
 	}
 
@@ -568,8 +583,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getBlock() {
-		return blockEClass;
+	public EClass getBody() {
+		return bodyEClass;
 	}
 
 	/**
@@ -578,8 +593,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getBlock_Next() {
-		return (EReference) blockEClass.getEStructuralFeatures().get(0);
+	public EReference getBody_FirstContainer() {
+		return (EReference) bodyEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -588,8 +603,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getMoveForward() {
-		return moveForwardEClass;
+	public EClass getContainer() {
+		return containerEClass;
 	}
 
 	/**
@@ -598,8 +613,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getTurn() {
-		return turnEClass;
+	public EReference getContainer_Statement() {
+		return (EReference) containerEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -608,8 +623,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EAttribute getTurn_Direction() {
-		return (EAttribute) turnEClass.getEStructuralFeatures().get(0);
+	public EReference getContainer_Next() {
+		return (EReference) containerEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -618,8 +633,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getRepeatUntilGoal() {
-		return repeatUntilGoalEClass;
+	public EAttribute getContainer_Generated() {
+		return (EAttribute) containerEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -628,8 +643,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getRepeatUntilGoal_Body() {
-		return (EReference) repeatUntilGoalEClass.getEStructuralFeatures().get(0);
+	public EClass getStatement() {
+		return statementEClass;
 	}
 
 	/**
@@ -638,8 +653,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getIfStatement() {
-		return ifStatementEClass;
+	public EAttribute getStatement_Generated() {
+		return (EAttribute) statementEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -648,8 +663,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EAttribute getIfStatement_Condition() {
-		return (EAttribute) ifStatementEClass.getEStructuralFeatures().get(0);
+	public EClass getAtomicStatement() {
+		return atomicStatementEClass;
 	}
 
 	/**
@@ -658,8 +673,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getIfStatement_ThenBranch() {
-		return (EReference) ifStatementEClass.getEStructuralFeatures().get(1);
+	public EAttribute getAtomicStatement_Kind() {
+		return (EAttribute) atomicStatementEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -668,8 +683,58 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getIfStatement_ElseBranch() {
-		return (EReference) ifStatementEClass.getEStructuralFeatures().get(2);
+	public EClass getLoop() {
+		return loopEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getLoop_Body() {
+		return (EReference) loopEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getIfStmt() {
+		return ifStmtEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getIfStmt_Condition() {
+		return (EAttribute) ifStmtEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getIfStmt_ThenBody() {
+		return (EReference) ifStmtEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getIfStmt_ElseBody() {
+		return (EReference) ifStmtEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -680,16 +745,6 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	@Override
 	public EEnum getDirection() {
 		return directionEEnum;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EEnum getTurnDirection() {
-		return turnDirectionEEnum;
 	}
 
 	/**
@@ -720,6 +775,26 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	@Override
 	public EEnum getGameStatus() {
 		return gameStatusEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EEnum getConditionKind() {
+		return conditionKindEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EEnum getAtomicStatementKind() {
+		return atomicStatementKindEEnum;
 	}
 
 	/**
@@ -789,32 +864,39 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		createEReference(gameStateEClass, GAME_STATE__POSITION);
 		createEAttribute(gameStateEClass, GAME_STATE__ORIENTATION);
 		createEAttribute(gameStateEClass, GAME_STATE__STATUS);
-		createEReference(gameStateEClass, GAME_STATE__EXECUTING_BLOCK);
+		createEReference(gameStateEClass, GAME_STATE__EXECUTING_STATEMENT);
 		createEReference(gameStateEClass, GAME_STATE__NEXT);
 		createEReference(gameStateEClass, GAME_STATE__PREVIOUS);
 
-		blockEClass = createEClass(BLOCK);
-		createEReference(blockEClass, BLOCK__NEXT);
+		bodyEClass = createEClass(BODY);
+		createEReference(bodyEClass, BODY__FIRST_CONTAINER);
 
-		moveForwardEClass = createEClass(MOVE_FORWARD);
+		containerEClass = createEClass(CONTAINER);
+		createEReference(containerEClass, CONTAINER__STATEMENT);
+		createEReference(containerEClass, CONTAINER__NEXT);
+		createEAttribute(containerEClass, CONTAINER__GENERATED);
 
-		turnEClass = createEClass(TURN);
-		createEAttribute(turnEClass, TURN__DIRECTION);
+		statementEClass = createEClass(STATEMENT);
+		createEAttribute(statementEClass, STATEMENT__GENERATED);
 
-		repeatUntilGoalEClass = createEClass(REPEAT_UNTIL_GOAL);
-		createEReference(repeatUntilGoalEClass, REPEAT_UNTIL_GOAL__BODY);
+		atomicStatementEClass = createEClass(ATOMIC_STATEMENT);
+		createEAttribute(atomicStatementEClass, ATOMIC_STATEMENT__KIND);
 
-		ifStatementEClass = createEClass(IF_STATEMENT);
-		createEAttribute(ifStatementEClass, IF_STATEMENT__CONDITION);
-		createEReference(ifStatementEClass, IF_STATEMENT__THEN_BRANCH);
-		createEReference(ifStatementEClass, IF_STATEMENT__ELSE_BRANCH);
+		loopEClass = createEClass(LOOP);
+		createEReference(loopEClass, LOOP__BODY);
+
+		ifStmtEClass = createEClass(IF_STMT);
+		createEAttribute(ifStmtEClass, IF_STMT__CONDITION);
+		createEReference(ifStmtEClass, IF_STMT__THEN_BODY);
+		createEReference(ifStmtEClass, IF_STMT__ELSE_BODY);
 
 		// Create enums
 		directionEEnum = createEEnum(DIRECTION);
-		turnDirectionEEnum = createEEnum(TURN_DIRECTION);
 		cellTypeEEnum = createEEnum(CELL_TYPE);
 		sensorDirectionEEnum = createEEnum(SENSOR_DIRECTION);
 		gameStatusEEnum = createEEnum(GAME_STATUS);
+		conditionKindEEnum = createEEnum(CONDITION_KIND);
+		atomicStatementKindEEnum = createEEnum(ATOMIC_STATEMENT_KIND);
 	}
 
 	/**
@@ -846,10 +928,9 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		// Set bounds for type parameters
 
 		// Add supertypes to classes
-		moveForwardEClass.getESuperTypes().add(this.getBlock());
-		turnEClass.getESuperTypes().add(this.getBlock());
-		repeatUntilGoalEClass.getESuperTypes().add(this.getBlock());
-		ifStatementEClass.getESuperTypes().add(this.getBlock());
+		atomicStatementEClass.getESuperTypes().add(this.getStatement());
+		loopEClass.getESuperTypes().add(this.getStatement());
+		ifStmtEClass.getESuperTypes().add(this.getStatement());
 
 		// Initialize classes, features, and operations; add parameters
 		initEClass(gameEClass, Game.class, "Game", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
@@ -876,7 +957,7 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		initEAttribute(getLevel_AllowConditionals(), ecorePackage.getEBoolean(), "allowConditionals", null, 0, 1,
 				Level.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED,
 				IS_ORDERED);
-		initEReference(getLevel_Solution(), this.getBlock(), null, "solution", null, 0, 1, Level.class, !IS_TRANSIENT,
+		initEReference(getLevel_Solution(), this.getBody(), null, "solution", null, 0, 1, Level.class, !IS_TRANSIENT,
 				!IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED,
 				IS_ORDERED);
 		initEReference(getLevel_Traces(), this.getExecutionTrace(), null, "traces", null, 0, -1, Level.class,
@@ -929,7 +1010,7 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getGameState_Status(), this.getGameStatus(), "status", null, 0, 1, GameState.class,
 				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getGameState_ExecutingBlock(), this.getBlock(), null, "executingBlock", null, 0, 1,
+		initEReference(getGameState_ExecutingStatement(), this.getStatement(), null, "executingStatement", null, 0, 1,
 				GameState.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES,
 				!IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getGameState_Next(), this.getGameState(), this.getGameState_Previous(), "next", null, 0, 1,
@@ -939,35 +1020,48 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 				GameState.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES,
 				!IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(blockEClass, Block.class, "Block", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEReference(getBlock_Next(), this.getBlock(), null, "next", null, 0, 1, Block.class, !IS_TRANSIENT,
+		initEClass(bodyEClass, Body.class, "Body", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getBody_FirstContainer(), this.getContainer(), null, "firstContainer", null, 0, 1, Body.class,
+				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE,
+				IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(containerEClass, blocky.Container.class, "Container", !IS_ABSTRACT, !IS_INTERFACE,
+				IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getContainer_Statement(), this.getStatement(), null, "statement", null, 0, 1,
+				blocky.Container.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES,
+				!IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getContainer_Next(), this.getContainer(), null, "next", null, 0, 1, blocky.Container.class,
+				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE,
+				IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getContainer_Generated(), ecorePackage.getEBoolean(), "generated", null, 0, 1,
+				blocky.Container.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE,
+				!IS_DERIVED, IS_ORDERED);
+
+		initEClass(statementEClass, Statement.class, "Statement", IS_ABSTRACT, !IS_INTERFACE,
+				IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getStatement_Generated(), ecorePackage.getEBoolean(), "generated", null, 0, 1, Statement.class,
+				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(atomicStatementEClass, AtomicStatement.class, "AtomicStatement", !IS_ABSTRACT, !IS_INTERFACE,
+				IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getAtomicStatement_Kind(), this.getAtomicStatementKind(), "kind", null, 1, 1,
+				AtomicStatement.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE,
+				!IS_DERIVED, IS_ORDERED);
+
+		initEClass(loopEClass, Loop.class, "Loop", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getLoop_Body(), this.getBody(), null, "body", null, 0, 1, Loop.class, !IS_TRANSIENT,
 				!IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED,
 				IS_ORDERED);
 
-		initEClass(moveForwardEClass, MoveForward.class, "MoveForward", !IS_ABSTRACT, !IS_INTERFACE,
-				IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(turnEClass, Turn.class, "Turn", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getTurn_Direction(), this.getTurnDirection(), "direction", null, 0, 1, Turn.class, !IS_TRANSIENT,
-				!IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-		initEClass(repeatUntilGoalEClass, RepeatUntilGoal.class, "RepeatUntilGoal", !IS_ABSTRACT, !IS_INTERFACE,
-				IS_GENERATED_INSTANCE_CLASS);
-		initEReference(getRepeatUntilGoal_Body(), this.getBlock(), null, "body", null, 0, 1, RepeatUntilGoal.class,
-				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE,
-				IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-		initEClass(ifStatementEClass, IfStatement.class, "IfStatement", !IS_ABSTRACT, !IS_INTERFACE,
-				IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getIfStatement_Condition(), this.getSensorDirection(), "condition", null, 0, 1,
-				IfStatement.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE,
-				!IS_DERIVED, IS_ORDERED);
-		initEReference(getIfStatement_ThenBranch(), this.getBlock(), null, "thenBranch", null, 0, 1, IfStatement.class,
-				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE,
-				IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getIfStatement_ElseBranch(), this.getBlock(), null, "elseBranch", null, 0, 1, IfStatement.class,
-				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE,
-				IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEClass(ifStmtEClass, IfStmt.class, "IfStmt", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getIfStmt_Condition(), this.getConditionKind(), "condition", null, 1, 1, IfStmt.class,
+				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getIfStmt_ThenBody(), this.getBody(), null, "thenBody", null, 1, 1, IfStmt.class, !IS_TRANSIENT,
+				!IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED,
+				IS_ORDERED);
+		initEReference(getIfStmt_ElseBody(), this.getBody(), null, "elseBody", null, 0, 1, IfStmt.class, !IS_TRANSIENT,
+				!IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED,
+				IS_ORDERED);
 
 		// Initialize enums and add enum literals
 		initEEnum(directionEEnum, Direction.class, "Direction");
@@ -975,10 +1069,6 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		addEEnumLiteral(directionEEnum, Direction.EAST);
 		addEEnumLiteral(directionEEnum, Direction.SOUTH);
 		addEEnumLiteral(directionEEnum, Direction.WEST);
-
-		initEEnum(turnDirectionEEnum, TurnDirection.class, "TurnDirection");
-		addEEnumLiteral(turnDirectionEEnum, TurnDirection.LEFT);
-		addEEnumLiteral(turnDirectionEEnum, TurnDirection.RIGHT);
 
 		initEEnum(cellTypeEEnum, CellType.class, "CellType");
 		addEEnumLiteral(cellTypeEEnum, CellType.EMPTY);
@@ -995,6 +1085,16 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		addEEnumLiteral(gameStatusEEnum, GameStatus.RUNNING);
 		addEEnumLiteral(gameStatusEEnum, GameStatus.WON);
 		addEEnumLiteral(gameStatusEEnum, GameStatus.CRASHED);
+
+		initEEnum(conditionKindEEnum, ConditionKind.class, "ConditionKind");
+		addEEnumLiteral(conditionKindEEnum, ConditionKind.CHECK_FORWARD);
+		addEEnumLiteral(conditionKindEEnum, ConditionKind.CHECK_LEFT);
+		addEEnumLiteral(conditionKindEEnum, ConditionKind.CHECK_RIGHT);
+
+		initEEnum(atomicStatementKindEEnum, AtomicStatementKind.class, "AtomicStatementKind");
+		addEEnumLiteral(atomicStatementKindEEnum, AtomicStatementKind.TURN_LEFT);
+		addEEnumLiteral(atomicStatementKindEEnum, AtomicStatementKind.TURN_RIGHT);
+		addEEnumLiteral(atomicStatementKindEEnum, AtomicStatementKind.MOVE_FORWARD);
 
 		// Create resource
 		createResource(eNS_URI);

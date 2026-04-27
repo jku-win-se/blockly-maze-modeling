@@ -76,40 +76,49 @@ public interface BlockyFactory extends EFactory {
 	GameState createGameState();
 
 	/**
-	 * Returns a new object of class '<em>Move Forward</em>'.
+	 * Returns a new object of class '<em>Body</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return a new object of class '<em>Move Forward</em>'.
+	 * @return a new object of class '<em>Body</em>'.
 	 * @generated
 	 */
-	MoveForward createMoveForward();
+	Body createBody();
 
 	/**
-	 * Returns a new object of class '<em>Turn</em>'.
+	 * Returns a new object of class '<em>Container</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return a new object of class '<em>Turn</em>'.
+	 * @return a new object of class '<em>Container</em>'.
 	 * @generated
 	 */
-	Turn createTurn();
+	Container createContainer();
 
 	/**
-	 * Returns a new object of class '<em>Repeat Until Goal</em>'.
+	 * Returns a new object of class '<em>Atomic Statement</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return a new object of class '<em>Repeat Until Goal</em>'.
+	 * @return a new object of class '<em>Atomic Statement</em>'.
 	 * @generated
 	 */
-	RepeatUntilGoal createRepeatUntilGoal();
+	AtomicStatement createAtomicStatement();
 
 	/**
-	 * Returns a new object of class '<em>If Statement</em>'.
+	 * Returns a new object of class '<em>Loop</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return a new object of class '<em>If Statement</em>'.
+	 * @return a new object of class '<em>Loop</em>'.
 	 * @generated
 	 */
-	IfStatement createIfStatement();
+	Loop createLoop();
+
+	/**
+	 * Returns a new object of class '<em>If Stmt</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>If Stmt</em>'.
+	 * @generated
+	 */
+	IfStmt createIfStmt();
 
 	/**
 	 * Returns the package supported by this factory.

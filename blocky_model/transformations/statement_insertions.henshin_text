@@ -1,0 +1,238 @@
+ePackageImport blocky
+
+// =============================================================================
+// Container-based edit operators (new metamodel)
+//
+// List structure:
+// - Body.firstContainer : Container (containment)
+// - Container.next      : Container (containment)
+//
+// Payload:
+// - Container.statement : Statement (containment)
+//
+// Operators:
+// - 4 rules to insert a NEW, EMPTY container (no statement edge) at:
+//   empty body, head, between, tail
+// - 3 rules to populate any EMPTY container with Atomic / If / Loop statement
+// - delete rules: remove exactly one container, keeping container list intact
+//
+// IMPORTANT:
+// - We intentionally do NOT set enum attributes in Henshin (`AtomicStatement.kind`,
+//   `IfStmt.condition`) to avoid enum literal casting issues.
+// =============================================================================
+
+// =============================================================================
+// 4x INSERT EMPTY CONTAINER rules
+// =============================================================================
+
+rule InsertContainerIntoEmptyBody() {
+  graph {
+    node body : blocky.Body
+
+    // body must currently be empty
+    forbid node head : blocky.Container
+    edges [(forbid body->head:firstContainer)]
+
+    create node c : blocky.Container { generated=true }
+    edges [(create body->c:firstContainer)]
+  }
+}
+
+rule InsertContainerBeforeBodyHead() {
+  graph {
+    node body : blocky.Body
+    node head : blocky.Container
+    edges [(delete body->head:firstContainer)]
+
+    create node c : blocky.Container { generated=true }
+    edges [
+      (create body->c:firstContainer),
+      (create c->head:next)
+    ]
+  }
+}
+
+rule InsertContainerBetweenNext() {
+  graph {
+    node prev : blocky.Container
+    node curr : blocky.Container
+    edges [(delete prev->curr:next)]
+
+    create node c : blocky.Container { generated=true }
+    edges [
+      (create prev->c:next),
+      (create c->curr:next)
+    ]
+  }
+}
+
+rule InsertContainerAfterLast() {
+  graph {
+    node last : blocky.Container
+
+    // ensure `last` is currently the tail
+    forbid node after : blocky.Container
+    edges [(forbid last->after:next)]
+
+    create node c : blocky.Container { generated=true }
+    edges [(create last->c:next)]
+  }
+}
+
+unit InsertContainerAnywhere() {
+  independent [
+    InsertContainerIntoEmptyBody(),
+    InsertContainerBeforeBodyHead(),
+    InsertContainerBetweenNext(),
+    InsertContainerAfterLast()
+  ]
+}
+
+// =============================================================================
+// 3x POPULATE EMPTY CONTAINER rules
+//
+// "Empty container" means: there is NO `container->statement` edge.
+// =============================================================================
+
+rule PopulateEmptyContainerWithAtomic(IN k:EEnumerator) {
+  graph {
+    node c : blocky.Container
+
+    // container must be empty
+    forbid node s0 : blocky.Statement
+    edges [(forbid c->s0:statement)]
+
+    create node s : blocky.AtomicStatement { generated=true kind=k }
+    edges [(create c->s:statement)]
+  }
+}
+
+
+rule PopulateEmptyContainerWithLoop() {
+  graph {
+    node c : blocky.Container
+
+    // container must be empty
+    forbid node s0 : blocky.Statement
+    edges [(forbid c->s0:statement)]
+
+    create node s : blocky.Loop { generated=true }
+    create node b : blocky.Body
+    edges [
+      (create c->s:statement),
+      (create s->b:body)
+    ]
+  }
+}
+
+rule PopulateEmptyContainerWithIf(IN cnd:EEnumerator) {
+  graph {
+    node c : blocky.Container
+
+    // container must be empty
+    forbid node s0 : blocky.Statement
+    edges [(forbid c->s0:statement)]
+
+    create node s : blocky.IfStmt { generated=true condition=cnd }
+    create node thenB : blocky.Body
+    create node elseB : blocky.Body
+    edges [
+      (create c->s:statement),
+      (create s->thenB:thenBody),
+      (create s->elseB:elseBody)
+    ]
+  }
+}
+
+unit PopulateAnyEmptyContainer(IN k:EEnumerator, IN cnd:EEnumerator) {
+  independent [
+    PopulateEmptyContainerWithAtomic(k),
+    PopulateEmptyContainerWithLoop(),
+    PopulateEmptyContainerWithIf(cnd)
+  ]
+}
+
+// High-level create+insert: add a new container, then populate it (or any empty one)
+unit CreateThenInsertContainerThenPopulate(IN k:EEnumerator, IN cnd:EEnumerator) {
+  InsertContainerAnywhere()
+  PopulateAnyEmptyContainer(k, cnd)
+}
+
+// =============================================================================
+// DELETE CONTAINER rules (remove exactly one container, keep list intact)
+//
+// Containment-aware deletion: re-home the contained `next` container before deleting.
+// =============================================================================
+
+rule DeleteOnlyContainerFromBody() {
+  graph {
+    node body : blocky.Body
+    delete node stmt : blocky.Statement { generated=false }
+    delete node curr : blocky.Container { generated=false }
+    edges [
+      (delete body->curr:firstContainer),
+      (delete curr->stmt:statement)
+    ]
+
+    // ensure curr is the only container in the body (no next)
+    forbid node after : blocky.Container
+    edges [(forbid curr->after:next)]
+  }
+}
+
+rule DeleteHeadContainerWithNext() {
+  graph {
+    node body : blocky.Body
+    delete node stmt : blocky.Statement { generated=false }
+    delete node curr : blocky.Container { generated=false }
+    node headNext : blocky.Container
+
+    edges [
+      (delete body->curr:firstContainer),
+      (delete curr->stmt:statement),
+      (delete curr->headNext:next),
+      (create body->headNext:firstContainer)
+    ]
+  }
+}
+
+rule DeleteBetweenContainerWithNext() {
+  graph {
+    node prev : blocky.Container
+    delete node stmt : blocky.Statement { generated=false }
+    delete node curr : blocky.Container { generated=false }
+    node next : blocky.Container
+
+    edges [
+      (delete prev->curr:next),
+      (delete curr->stmt:statement),
+      (delete curr->next:next),
+      (create prev->next:next)
+    ]
+  }
+}
+
+rule DeleteLastContainer() {
+  graph {
+    node prev : blocky.Container
+    delete node stmt : blocky.Statement { generated=false }
+    delete node curr : blocky.Container { generated=false }
+    edges [
+      (delete prev->curr:next),
+      (delete curr->stmt:statement)
+    ]
+
+    // ensure curr is the last container (no next)
+    forbid node after : blocky.Container
+    edges [(forbid curr->after:next)]
+  }
+}
+
+unit DeleteContainerAnywhere() {
+  independent [
+    DeleteOnlyContainerFromBody(),
+    DeleteHeadContainerWithNext(),
+    DeleteBetweenContainerWithNext(),
+    DeleteLastContainer()
+  ]
+}

@@ -6,6 +6,7 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,6 +42,99 @@ public class GameEngine {
     private int debugCurrentY;
     private Direction debugCurrentDir;
     private boolean debugSessionActive;
+
+    private Cell findCellByXY(int x, int y) {
+        if (currentLevel == null || currentLevel.getMap() == null || currentLevel.getMap().getCells() == null) return null;
+        for (Cell c : currentLevel.getMap().getCells()) {
+            if (c != null && c.getX() == x && c.getY() == y) return c;
+        }
+        return null;
+    }
+
+    /**
+     * Teleport pegman to a specific map cell for direct manipulation.
+     * This is allowed only onto EMPTY or GOAL cells.
+     *
+     * Also updates the engine's notion of the current situation by creating a single-state trace
+     * at the target position and direction.
+     *
+     * @param x cell x
+     * @param y cell y
+     * @param t direction code (0=N,1=E,2=S,3=W)
+     */
+    public void teleportPegman(int x, int y, int t) {
+        if (currentLevel == null || currentLevel.getMap() == null) return;
+
+        Cell target = findCellByXY(x, y);
+        if (target == null) {
+            System.err.println("[GameEngine] teleportPegman rejected: no cell at x=" + x + " y=" + y);
+            return;
+        }
+        if (!(target.getType() == CellType.EMPTY || target.getType() == CellType.GOAL)) {
+            System.err.println("[GameEngine] teleportPegman rejected: target type=" + target.getType() + " at x=" + x + " y=" + y);
+            return;
+        }
+
+        Direction dir = blocky_game.DebuggingService.tToDirection(t);
+
+        // Update debugger snapshot (so Resume/Step continues from here if paused).
+        debugCurrentX = x;
+        debugCurrentY = y;
+        debugCurrentDir = dir;
+
+        // If no debug session ever started, also treat this as the current start snapshot.
+        if (debugTrace == null) {
+            debugStartX = x;
+            debugStartY = y;
+            debugStartDir = dir;
+        }
+
+        // Replace traces with a minimal "current situation" trace at the teleported state.
+        currentLevel.getTraces().clear();
+        ExecutionTrace trace = BlockyFactory.eINSTANCE.createExecutionTrace();
+        currentLevel.getTraces().add(trace);
+        GameState initialState = BlockyFactory.eINSTANCE.createGameState();
+        initialState.setStep(0);
+        initialState.setPosition(target);
+        initialState.setOrientation(dir);
+        initialState.setStatus(GameStatus.RUNNING);
+        trace.getStates().add(initialState);
+
+        // If a debug session is active, recompute trace from the new snapshot when paused/next step.
+        if (debugSessionActive) {
+            debugDirtySolution = true;
+        }
+
+        // Persist a direct manipulation request model for downstream tools (MoMoT).
+        saveDirectManipulationRequestXmi();
+    }
+
+    /**
+     * Saves a deterministic XMI snapshot representing the current situation after direct manipulation.
+     * This does not change the engine's primary {@link #resource} URI.
+     */
+    public void saveDirectManipulationRequestXmi() {
+        try {
+            File out = new File("blocky_game/direct_manipulation_request.xmi");
+            if (!out.getParentFile().exists()) out = new File("direct_manipulation_request.xmi");
+
+            BlockyPackage.eINSTANCE.eClass();
+            Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl());
+
+            ResourceSet resSet = new ResourceSetImpl();
+            Resource outRes = resSet.createResource(URI.createFileURI(out.getAbsolutePath()));
+
+            Game snapshot = currentGame != null ? EcoreUtil.copy(currentGame) : null;
+            if (snapshot != null) {
+                outRes.getContents().add(snapshot);
+                outRes.save(null);
+                System.out.println("[GameEngine] Direct manipulation request saved to: " + outRes.getURI().toFileString());
+            }
+        } catch (Exception e) {
+            System.err.println("[GameEngine] Direct manipulation request save failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     public void initializeGame() {
         BlockyPackage.eINSTANCE.eClass();
@@ -160,7 +254,7 @@ public class GameEngine {
         targetCell.setType(type);
     }
 
-    // --- Block Management ---
+    // --- Program / statement management (Body + linked Statements) ---
 
     public void rebuildProgram(java.util.List<Map<String, Object>> blockData) {
         System.out.println("[GameEngine] Rebuilding model solution...");
@@ -177,92 +271,129 @@ public class GameEngine {
             return;
         }
 
-        currentLevel.setSolution(buildSequence(blockData));
+        currentLevel.setSolution(buildSolutionBody(blockData));
         System.out.println("[GameEngine] Solution rebuilt. Main sequence length: " + blockData.size());
     }
 
-    private Block createBlockFromData(Map<String, Object> data) {
+    private static Body emptyBody() {
+        return BlockyFactory.eINSTANCE.createBody();
+    }
+
+    private static Body wrapContainerChain(Container head) {
+        Body b = BlockyFactory.eINSTANCE.createBody();
+        b.setFirstContainer(head);
+        return b;
+    }
+
+    private Container createContainerChainFromData(Map<String, Object> data) {
+        if (data == null) return null;
+
+        Statement stmt = createStatementFromData(data);
+        if (stmt == null) return null;
+
+        Container c = BlockyFactory.eINSTANCE.createContainer();
+        c.setStatement(stmt);
+
+        Map<String, Object> nextData = (Map<String, Object>) data.get("next");
+        if (nextData != null) {
+            c.setNext(createContainerChainFromData(nextData));
+        }
+        return c;
+    }
+
+    private Statement createStatementFromData(Map<String, Object> data) {
         String type = (String) data.get("type");
-        Block block = null;
+        Statement stmt = null;
 
         if ("maze_moveForward".equals(type) || "move_forward".equals(type)) {
-            block = BlockyFactory.eINSTANCE.createMoveForward();
+            AtomicStatement a = BlockyFactory.eINSTANCE.createAtomicStatement();
+            a.setKind(AtomicStatementKind.MOVE_FORWARD);
+            stmt = a;
         } else if ("maze_turn".equals(type) || "turn_left".equals(type) || "turn_right".equals(type)) {
-            Turn t = BlockyFactory.eINSTANCE.createTurn();
             String dir = (String) data.get("DIR");
             System.out.println("[GameEngine]   Turn block: type=" + type + ", DIR field=" + dir + ", all keys=" + data.keySet());
-            if (dir == null)
+            if (dir == null) {
                 dir = type;
-            t.setDirection(dir.toLowerCase().contains("right") ? TurnDirection.RIGHT : TurnDirection.LEFT);
-            System.out.println("[GameEngine]   -> resolved dir=" + dir + " -> " + t.getDirection());
-            block = t;
+            }
+            boolean right = dir.toLowerCase().contains("right");
+            AtomicStatement a = BlockyFactory.eINSTANCE.createAtomicStatement();
+            a.setKind(right ? AtomicStatementKind.TURN_RIGHT : AtomicStatementKind.TURN_LEFT);
+            stmt = a;
+            System.out.println("[GameEngine]   -> resolved dir=" + dir + " -> " + a.getKind());
         } else if ("maze_forever".equals(type) || "repeat_until_goal".equals(type)) {
-            RepeatUntilGoal r = BlockyFactory.eINSTANCE.createRepeatUntilGoal();
+            Loop r = BlockyFactory.eINSTANCE.createLoop();
             Map<String, Object> bodyData = (Map<String, Object>) data.get("body");
-            if (bodyData != null) {
-                r.setBody(createBlockFromData(bodyData));
-            }
-            block = r;
+            r.setBody(bodyData != null ? wrapContainerChain(createContainerChainFromData(bodyData)) : emptyBody());
+            stmt = r;
         } else if (type != null && (type.startsWith("maze_if") || type.startsWith("if_path"))) {
-            IfStatement i = BlockyFactory.eINSTANCE.createIfStatement();
+            IfStmt i = BlockyFactory.eINSTANCE.createIfStmt();
             String dir = (String) data.get("DIR");
-            if (dir != null) {
-                i.setCondition(parseCondition(dir));
-            } else {
-                i.setCondition(parseCondition(type));
-            }
-            Map<String, Object> thenData = (Map<String, Object>) data.get("body"); // Blockly uses 'body' or 'then'
-            if (thenData == null)
+            ConditionKind ck = dir != null ? parseCondition(dir) : parseCondition(type);
+            i.setCondition(ck);
+            Map<String, Object> thenData = (Map<String, Object>) data.get("body");
+            if (thenData == null) {
                 thenData = (Map<String, Object>) data.get("then");
-            if (thenData != null) {
-                i.setThenBranch(createBlockFromData(thenData));
             }
-            // Handle else branch (Blockly maze_ifElse blocks)
+            i.setThenBody(wrapContainerChain(thenData != null ? createContainerChainFromData(thenData) : null));
             Map<String, Object> elseData = (Map<String, Object>) data.get("elseBranch");
-            if (elseData == null)
+            if (elseData == null) {
                 elseData = (Map<String, Object>) data.get("else");
+            }
             if (elseData != null) {
-                i.setElseBranch(createBlockFromData(elseData));
+                i.setElseBody(wrapContainerChain(createContainerChainFromData(elseData)));
             }
-            block = i;
+            stmt = i;
         }
 
-        // Recursively handle next block
-        if (block != null) {
-            Map<String, Object> nextData = (Map<String, Object>) data.get("next");
-            if (nextData != null) {
-                block.setNext(createBlockFromData(nextData));
-            }
-        }
-
-        return block;
+        return stmt;
     }
 
-    private Block buildSequence(java.util.List<Map<String, Object>> dataList) {
-        Block first = null;
-        Block last = null;
+    private Body buildSolutionBody(java.util.List<Map<String, Object>> dataList) {
+        // Blockly typically serializes the whole program as ONE top-level <block>
+        // with a linked <next> chain. Our XML parser preserves that as nested "next" maps,
+        // so we must convert the nested chain into linked Containers.
+        Body body = BlockyFactory.eINSTANCE.createBody();
+        if (dataList == null || dataList.isEmpty()) {
+            body.setFirstContainer(null);
+            return body;
+        }
+
+        Container first = null;
+        Container last = null;
+
+        // If multiple top-level blocks exist, we concatenate their chains in order.
         for (Map<String, Object> data : dataList) {
-            Block b = createBlockFromData(data);
-            if (b != null) {
-                if (first == null)
-                    first = b;
-                if (last != null)
-                    last.setNext(b);
-                last = b;
+            Container chainHead = createContainerChainFromData(data);
+            if (chainHead == null) continue;
+
+            if (first == null) {
+                first = chainHead;
+                last = chainHead;
+            } else {
+                last.setNext(chainHead);
             }
+
+            // Advance last to the end of the appended chain.
+            Container cur = chainHead;
+            while (cur.getNext() != null) {
+                cur = cur.getNext();
+            }
+            last = cur;
         }
-        return first;
+
+        body.setFirstContainer(first);
+        return body;
     }
 
-    private SensorDirection parseCondition(String type) {
+    private static ConditionKind parseCondition(String type) {
         String lower = type.toLowerCase();
         if (lower.contains("forward") || lower.contains("ahead"))
-            return SensorDirection.AHEAD;
+            return ConditionKind.CHECK_FORWARD;
         if (lower.contains("left"))
-            return SensorDirection.LEFT;
+            return ConditionKind.CHECK_LEFT;
         if (lower.contains("right"))
-            return SensorDirection.RIGHT;
-        return SensorDirection.AHEAD;
+            return ConditionKind.CHECK_RIGHT;
+        return ConditionKind.CHECK_FORWARD;
     }
 
     // --- Simulation ---
@@ -306,7 +437,7 @@ public class GameEngine {
                 "[GameEngine] Initial State: Pos=" + getPosStr(startNode) + ", Dir=" + initialState.getOrientation());
         logs.add("Start: " + getPosStr(startNode) + " dir=" + initialState.getOrientation());
 
-        executeSequenceWithLogs(currentLevel.getSolution(), initialState, trace, logs);
+        executeBodyWithLogs(currentLevel.getSolution(), initialState, trace, logs);
         saveModel();
         System.out.println("[GameEngine] Simulation finished. Model (with execution trace) saved.\n");
         GameState last = trace.getStates().isEmpty() ? null : trace.getStates().get(trace.getStates().size() - 1);
@@ -356,59 +487,99 @@ public class GameEngine {
         return Direction.NORTH;
     }
 
-    private GameState executeSequence(Block first, GameState state, ExecutionTrace trace) {
-        Block current = first;
+    private GameState executeBody(Body body, GameState state, ExecutionTrace trace) {
+        if (body == null) {
+            return state;
+        }
+        return executeContainerChain(body.getFirstContainer(), state, trace);
+    }
+
+    private GameState executeBodyWithLogs(Body body, GameState state, ExecutionTrace trace, List<String> logs) {
+        if (body == null) {
+            return state;
+        }
+        return executeContainerChainWithLogs(body.getFirstContainer(), state, trace, logs);
+    }
+
+    private GameState executeContainerChain(Container first, GameState state, ExecutionTrace trace) {
+        Container current = first;
         GameState last = state;
         while (current != null && last.getStatus() == GameStatus.RUNNING) {
-            last = executeSingle(current, last, trace);
+            last = executeSingle(current.getStatement(), last, trace);
             current = current.getNext();
         }
         return last;
     }
 
-    private GameState executeSequenceWithLogs(Block first, GameState state, ExecutionTrace trace, List<String> logs) {
-        Block current = first;
+    private GameState executeContainerChainWithLogs(Container first, GameState state, ExecutionTrace trace, List<String> logs) {
+        Container current = first;
         GameState last = state;
         while (current != null && last.getStatus() == GameStatus.RUNNING) {
-            last = executeSingleWithLogs(current, last, trace, logs);
+            last = executeSingleWithLogs(current.getStatement(), last, trace, logs);
             current = current.getNext();
         }
         return last;
     }
 
-    private GameState executeSingle(Block block, GameState prev, ExecutionTrace trace) {
+    private static SensorDirection conditionKindToSensor(ConditionKind ck) {
+        if (ck == ConditionKind.CHECK_LEFT) {
+            return SensorDirection.LEFT;
+        }
+        if (ck == ConditionKind.CHECK_RIGHT) {
+            return SensorDirection.RIGHT;
+        }
+        return SensorDirection.AHEAD;
+    }
+
+    private boolean checkCondition(GameState state, ConditionKind ck) {
+        return checkSensor(state, conditionKindToSensor(ck));
+    }
+
+    private GameState executeSingle(Statement stmt, GameState prev, ExecutionTrace trace) {
         GameState next = BlockyFactory.eINSTANCE.createGameState();
         next.setStep(prev.getStep() + 1);
         next.setOrientation(prev.getOrientation());
         next.setPosition(prev.getPosition());
         next.setStatus(GameStatus.RUNNING);
-        next.setExecutingBlock(block);
+        next.setExecutingStatement(stmt);
         next.setPrevious(prev);
         trace.getStates().add(next);
 
-        String typeName = block.getClass().getSimpleName().replace("Impl", "");
+        String typeName = stmt.getClass().getSimpleName().replace("Impl", "");
         System.out.print("[GameEngine] Step " + next.getStep() + ": " + typeName + " -> ");
 
-        if (block instanceof MoveForward) {
-            Cell target = getAdjacent(next.getPosition(), next.getOrientation());
-            if (target == null || target.getType() == CellType.WALL) {
-                next.setStatus(GameStatus.CRASHED);
-                System.out.println("CRASHED at " + getPosStr(next.getPosition()));
-            } else {
-                next.setPosition(target);
-                System.out.println("Moved to " + getPosStr(target));
-                if (target.getType() == CellType.GOAL) {
-                    next.setStatus(GameStatus.WON);
-                    System.out.println("[GameEngine] SUCCESS: Goal reached!");
+        if (stmt instanceof AtomicStatement) {
+            AtomicStatement a = (AtomicStatement) stmt;
+            switch (a.getKind()) {
+            case MOVE_FORWARD: {
+                Cell target = getAdjacent(next.getPosition(), next.getOrientation());
+                if (target == null || target.getType() == CellType.WALL) {
+                    next.setStatus(GameStatus.CRASHED);
+                    System.out.println("CRASHED at " + getPosStr(next.getPosition()));
+                } else {
+                    next.setPosition(target);
+                    System.out.println("Moved to " + getPosStr(target));
+                    if (target.getType() == CellType.GOAL) {
+                        next.setStatus(GameStatus.WON);
+                        System.out.println("[GameEngine] SUCCESS: Goal reached!");
+                    }
                 }
+                break;
             }
-        } else if (block instanceof Turn) {
-            Turn t = (Turn) block;
-            next.setOrientation(calculateTurn(next.getOrientation(), t.getDirection()));
-            System.out.println("Turned " + t.getDirection() + ". New Dir: " + next.getOrientation());
-        } else if (block instanceof RepeatUntilGoal) {
+            case TURN_LEFT:
+                next.setOrientation(getRelativeDir(next.getOrientation(), SensorDirection.LEFT));
+                System.out.println("TurnLeft. New Dir: " + next.getOrientation());
+                break;
+            case TURN_RIGHT:
+                next.setOrientation(getRelativeDir(next.getOrientation(), SensorDirection.RIGHT));
+                System.out.println("TurnRight. New Dir: " + next.getOrientation());
+                break;
+            default:
+                break;
+            }
+        } else if (stmt instanceof Loop) {
             System.out.println("Loop Start");
-            RepeatUntilGoal r = (RepeatUntilGoal) block;
+            Loop r = (Loop) stmt;
             GameState loop = next;
             GridMap map = currentLevel.getMap();
             int maxSteps = map.getWidth() * map.getHeight() * 2;
@@ -419,7 +590,7 @@ public class GameEngine {
                     break;
                 }
                 int previousStep = loop.getStep();
-                loop = executeSequence(r.getBody(), loop, trace);
+                loop = executeBody(r.getBody(), loop, trace);
                 if (loop.getStep() == previousStep) {
                     loop.setStatus(GameStatus.CRASHED);
                     System.out.println("[GameEngine] Empty loop body or zero progress in loop! Crashing.");
@@ -427,53 +598,70 @@ public class GameEngine {
                 }
             }
             return loop;
-        } else if (block instanceof IfStatement) {
-            IfStatement i = (IfStatement) block;
-            boolean cond = checkSensor(next, i.getCondition());
-            System.out.println("If (" + i.getCondition() + ") is " + cond);
+        } else if (stmt instanceof IfStmt) {
+            IfStmt i = (IfStmt) stmt;
+            boolean cond = checkCondition(next, i.getCondition());
+            System.out.println("If (" + conditionKindToSensor(i.getCondition()) + ") is " + cond);
             if (cond) {
-                return executeSequence(i.getThenBranch(), next, trace);
-            } else if (i.getElseBranch() != null) {
-                return executeSequence(i.getElseBranch(), next, trace);
+                return executeBody(i.getThenBody(), next, trace);
+            }
+            if (i.getElseBody() != null) {
+                return executeBody(i.getElseBody(), next, trace);
             }
         }
         return next;
     }
 
-    private GameState executeSingleWithLogs(Block block, GameState prev, ExecutionTrace trace, List<String> logs) {
+    private GameState executeSingleWithLogs(Statement stmt, GameState prev, ExecutionTrace trace, List<String> logs) {
         GameState next = BlockyFactory.eINSTANCE.createGameState();
         next.setStep(prev.getStep() + 1);
         next.setOrientation(prev.getOrientation());
         next.setPosition(prev.getPosition());
         next.setStatus(GameStatus.RUNNING);
-        next.setExecutingBlock(block);
+        next.setExecutingStatement(stmt);
         next.setPrevious(prev);
         trace.getStates().add(next);
 
-        String typeName = block != null ? block.getClass().getSimpleName().replace("Impl", "") : "null";
+        String typeName = stmt != null ? stmt.getClass().getSimpleName().replace("Impl", "") : "null";
 
-        if (block instanceof MoveForward) {
-            Cell target = getAdjacent(next.getPosition(), next.getOrientation());
-            if (target == null || target.getType() == CellType.WALL) {
-                next.setStatus(GameStatus.CRASHED);
-                if (logs != null) logs.add("Step " + next.getStep() + ": " + typeName + " -> CRASH at " + getPosStr(next.getPosition()));
-            } else {
-                next.setPosition(target);
-                if (target.getType() == CellType.GOAL) {
-                    next.setStatus(GameStatus.WON);
-                    if (logs != null) logs.add("Step " + next.getStep() + ": " + typeName + " -> " + getPosStr(target) + " GOAL");
+        if (stmt instanceof AtomicStatement) {
+            AtomicStatement a = (AtomicStatement) stmt;
+            switch (a.getKind()) {
+            case MOVE_FORWARD: {
+                Cell target = getAdjacent(next.getPosition(), next.getOrientation());
+                if (target == null || target.getType() == CellType.WALL) {
+                    next.setStatus(GameStatus.CRASHED);
+                    if (logs != null) logs.add("Step " + next.getStep() + ": MoveForward -> CRASH at " + getPosStr(next.getPosition()));
                 } else {
-                    if (logs != null) logs.add("Step " + next.getStep() + ": " + typeName + " -> " + getPosStr(target));
+                    next.setPosition(target);
+                    if (target.getType() == CellType.GOAL) {
+                        next.setStatus(GameStatus.WON);
+                        if (logs != null) logs.add("Step " + next.getStep() + ": MoveForward -> " + getPosStr(target) + " GOAL");
+                    } else {
+                        if (logs != null) logs.add("Step " + next.getStep() + ": MoveForward -> " + getPosStr(target));
+                    }
                 }
+                break;
             }
-        } else if (block instanceof Turn) {
-            Turn t = (Turn) block;
-            Direction before = next.getOrientation();
-            next.setOrientation(calculateTurn(next.getOrientation(), t.getDirection()));
-            if (logs != null) logs.add("Step " + next.getStep() + ": Turn " + t.getDirection() + " -> " + before + "→" + next.getOrientation());
-        } else if (block instanceof RepeatUntilGoal) {
-            if (logs != null) logs.add("Step " + next.getStep() + ": RepeatUntilGoal");
-            RepeatUntilGoal r = (RepeatUntilGoal) block;
+            case TURN_LEFT: {
+                Direction before = next.getOrientation();
+                next.setOrientation(getRelativeDir(next.getOrientation(), SensorDirection.LEFT));
+                if (logs != null) logs.add("Step " + next.getStep() + ": TurnLeft -> " + before + "→" + next.getOrientation());
+                break;
+            }
+            case TURN_RIGHT: {
+                Direction before = next.getOrientation();
+                next.setOrientation(getRelativeDir(next.getOrientation(), SensorDirection.RIGHT));
+                if (logs != null) logs.add("Step " + next.getStep() + ": TurnRight -> " + before + "→" + next.getOrientation());
+                break;
+            }
+            default:
+                if (logs != null) logs.add("Step " + next.getStep() + ": " + typeName);
+                break;
+            }
+        } else if (stmt instanceof Loop) {
+            if (logs != null) logs.add("Step " + next.getStep() + ": Loop");
+            Loop r = (Loop) stmt;
             GameState loop = next;
             GridMap map = currentLevel.getMap();
             int maxSteps = map.getWidth() * map.getHeight() * 2;
@@ -484,7 +672,7 @@ public class GameEngine {
                     break;
                 }
                 int previousStep = loop.getStep();
-                loop = executeSequenceWithLogs(r.getBody(), loop, trace, logs);
+                loop = executeBodyWithLogs(r.getBody(), loop, trace, logs);
                 if (loop.getStep() == previousStep) {
                     loop.setStatus(GameStatus.CRASHED);
                     if (logs != null) logs.add("Result: CRASH (empty loop body / no progress)");
@@ -492,17 +680,18 @@ public class GameEngine {
                 }
             }
             return loop;
-        } else if (block instanceof IfStatement) {
-            IfStatement i = (IfStatement) block;
-            boolean cond = checkSensor(next, i.getCondition());
+        } else if (stmt instanceof IfStmt) {
+            IfStmt i = (IfStmt) stmt;
+            boolean cond = checkCondition(next, i.getCondition());
             if (logs != null) {
-                String branch = cond ? "then" : (i.getElseBranch() != null ? "else" : "skip");
-                logs.add("Step " + next.getStep() + ": If " + i.getCondition() + " -> " + cond + " (" + branch + ")");
+                String branch = cond ? "then" : (i.getElseBody() != null ? "else" : "skip");
+                logs.add("Step " + next.getStep() + ": If " + conditionKindToSensor(i.getCondition()) + " -> " + cond + " (" + branch + ")");
             }
             if (cond) {
-                return executeSequenceWithLogs(i.getThenBranch(), next, trace, logs);
-            } else if (i.getElseBranch() != null) {
-                return executeSequenceWithLogs(i.getElseBranch(), next, trace, logs);
+                return executeBodyWithLogs(i.getThenBody(), next, trace, logs);
+            }
+            if (i.getElseBody() != null) {
+                return executeBodyWithLogs(i.getElseBody(), next, trace, logs);
             }
         } else {
             if (logs != null) logs.add("Step " + next.getStep() + ": " + typeName);
@@ -560,10 +749,6 @@ public class GameEngine {
         return curr;
     }
 
-    private Direction calculateTurn(Direction d, TurnDirection td) {
-        return getRelativeDir(d, td == TurnDirection.LEFT ? SensorDirection.LEFT : SensorDirection.RIGHT);
-    }
-
     // --- Level Metadata Sync ---
 
     /**
@@ -587,13 +772,23 @@ public class GameEngine {
             currentLevel.setAllowLoops(allowLoops);
             currentLevel.setAllowConditionals(allowConds);
 
-            Direction dir;
-            switch (startDirCode) {
-                case 0:  dir = Direction.NORTH; break;
-                case 1:  dir = Direction.EAST;  break;
-                case 2:  dir = Direction.SOUTH; break;
-                case 3:  dir = Direction.WEST;  break;
-                default: dir = Direction.EAST;
+            // Blockly's startDirection is frequently unreliable (often defaulting to EAST).
+            // Prefer an explicitly stored model value; otherwise derive it from the map layout.
+            Direction dir = null;
+            if (currentLevel != null && currentLevel.eIsSet(BlockyPackage.Literals.LEVEL__START_ORIENTATION)) {
+                dir = currentLevel.getStartOrientation();
+            } else if (currentLevel != null && currentLevel.getMap() != null) {
+                Cell startCell = getStartCell(currentLevel.getMap());
+                dir = determineStartOrientation(startCell);
+            }
+            if (dir == null) {
+                switch (startDirCode) {
+                    case 0:  dir = Direction.NORTH; break;
+                    case 1:  dir = Direction.EAST;  break;
+                    case 2:  dir = Direction.SOUTH; break;
+                    case 3:  dir = Direction.WEST;  break;
+                    default: dir = Direction.EAST;
+                }
             }
             if (!debugSessionActive) {
                 currentLevel.setStartOrientation(dir);
@@ -716,6 +911,16 @@ public class GameEngine {
         this.resource = newResource;
         this.currentGame = loadedGame;
         this.currentLevel = loadedLevel;
+
+        // If the XMI doesn't explicitly store a start orientation, derive a stable one from the map.
+        // This prevents stale/default WebView metadata (often EAST) from "winning" after a model load.
+        if (this.currentLevel != null
+                && !this.currentLevel.eIsSet(BlockyPackage.Literals.LEVEL__START_ORIENTATION)
+                && this.currentLevel.getMap() != null) {
+            Cell startCell = getStartCell(this.currentLevel.getMap());
+            Direction derived = determineStartOrientation(startCell);
+            this.currentLevel.setStartOrientation(derived);
+        }
         try {
             // Compute old (stored) vs new (re-simulated) paths for immediate feedback.
             ImmediateFeedbackService.Paths paths = ImmediateFeedbackService.computePaths(loadedLevel);
@@ -960,13 +1165,12 @@ public class GameEngine {
     }
 
     /**
-     * Converts the level's solution block tree to Blockly XML string (without outer &lt;xml&gt;).
-     * Returns empty string if solution is null.
+     * Converts a linked list of {@link Container}s to Blockly XML (without outer &lt;xml&gt;).
      */
-    public String blockToXml(Block block) {
-        if (block == null) return "";
+    public String statementChainToXml(Container first) {
+        if (first == null) return "";
         StringBuilder sb = new StringBuilder();
-        appendBlockXml(block, sb);
+        appendStatementXml(first, sb);
         return sb.toString();
     }
 
@@ -978,81 +1182,80 @@ public class GameEngine {
         if (level == null || level.getSolution() == null) {
             return "<xml></xml>";
         }
-        return "<xml>" + blockToXml(level.getSolution()) + "</xml>";
+        return "<xml>" + statementChainToXml(level.getSolution().getFirstContainer()) + "</xml>";
     }
 
-    private void appendBlockXml(Block block, StringBuilder sb) {
-        if (block == null) return;
-        if (block instanceof MoveForward) {
-            sb.append("<block type=\"maze_moveForward\">");
-            if (block.getNext() != null) {
-                sb.append("<next>");
-                appendBlockXml(block.getNext(), sb);
-                sb.append("</next>");
+    private void appendStatementXml(Container c, StringBuilder sb) {
+        if (c == null) return;
+        Statement stmt = c.getStatement();
+        if (stmt == null) return;
+
+        if (stmt instanceof AtomicStatement) {
+            AtomicStatement a = (AtomicStatement) stmt;
+            if (a.getKind() == AtomicStatementKind.MOVE_FORWARD) {
+                sb.append("<block type=\"maze_moveForward\">");
+            } else if (a.getKind() == AtomicStatementKind.TURN_LEFT) {
+                sb.append("<block type=\"maze_turn\"><field name=\"DIR\">turnLeft</field>");
+            } else if (a.getKind() == AtomicStatementKind.TURN_RIGHT) {
+                sb.append("<block type=\"maze_turn\"><field name=\"DIR\">turnRight</field>");
             }
-            sb.append("</block>");
-        } else if (block instanceof Turn) {
-            Turn t = (Turn) block;
-            String dir = t.getDirection() == TurnDirection.RIGHT ? "turnRight" : "turnLeft";
-            sb.append("<block type=\"maze_turn\"><field name=\"DIR\">").append(escapeXml(dir)).append("</field>");
-            if (block.getNext() != null) {
-                sb.append("<next>");
-                appendBlockXml(block.getNext(), sb);
-                sb.append("</next>");
+            if (a.getKind() == AtomicStatementKind.MOVE_FORWARD || a.getKind() == AtomicStatementKind.TURN_LEFT
+                    || a.getKind() == AtomicStatementKind.TURN_RIGHT) {
+                if (c.getNext() != null) {
+                    sb.append("<next>");
+                    appendStatementXml(c.getNext(), sb);
+                    sb.append("</next>");
+                }
+                sb.append("</block>");
             }
-            sb.append("</block>");
-        } else if (block instanceof RepeatUntilGoal) {
-            RepeatUntilGoal r = (RepeatUntilGoal) block;
+        } else if (stmt instanceof Loop) {
+            Loop r = (Loop) stmt;
             sb.append("<block type=\"maze_forever\">");
             sb.append("<statement name=\"DO\">");
             if (r.getBody() != null) {
-                appendBlockXml(r.getBody(), sb);
+                appendStatementXml(r.getBody().getFirstContainer(), sb);
             }
             sb.append("</statement>");
-            if (block.getNext() != null) {
+            if (c.getNext() != null) {
                 sb.append("<next>");
-                appendBlockXml(block.getNext(), sb);
+                appendStatementXml(c.getNext(), sb);
                 sb.append("</next>");
             }
             sb.append("</block>");
-        } else if (block instanceof IfStatement) {
-            IfStatement i = (IfStatement) block;
+        } else if (stmt instanceof IfStmt) {
+            IfStmt i = (IfStmt) stmt;
             String dirField = conditionToBlocklyDir(i.getCondition());
-            boolean hasElse = i.getElseBranch() != null;
+            boolean hasElse = i.getElseBody() != null;
             String blockType = hasElse ? "maze_ifElse" : "maze_if";
             sb.append("<block type=\"").append(blockType).append("\">");
             sb.append("<field name=\"DIR\">").append(escapeXml(dirField)).append("</field>");
             sb.append("<statement name=\"DO\">");
-            if (i.getThenBranch() != null) {
-                appendBlockXml(i.getThenBranch(), sb);
+            if (i.getThenBody() != null) {
+                appendStatementXml(i.getThenBody().getFirstContainer(), sb);
             }
             sb.append("</statement>");
             if (hasElse) {
                 sb.append("<statement name=\"ELSE\">");
-                appendBlockXml(i.getElseBranch(), sb);
+                appendStatementXml(i.getElseBody().getFirstContainer(), sb);
                 sb.append("</statement>");
             }
-            if (block.getNext() != null) {
+            if (c.getNext() != null) {
                 sb.append("<next>");
-                appendBlockXml(block.getNext(), sb);
+                appendStatementXml(c.getNext(), sb);
                 sb.append("</next>");
             }
             sb.append("</block>");
         } else {
-            if (block.getNext() != null) {
-                appendBlockXml(block.getNext(), sb);
+            if (c.getNext() != null) {
+                appendStatementXml(c.getNext(), sb);
             }
         }
     }
 
-    private static String conditionToBlocklyDir(SensorDirection c) {
-        if (c == null) return "isPathForward";
-        switch (c) {
-            case AHEAD: return "isPathForward";
-            case LEFT:  return "isPathLeft";
-            case RIGHT: return "isPathRight";
-            default:    return "isPathForward";
-        }
+    private static String conditionToBlocklyDir(ConditionKind ck) {
+        if (ck == ConditionKind.CHECK_LEFT) return "isPathLeft";
+        if (ck == ConditionKind.CHECK_RIGHT) return "isPathRight";
+        return "isPathForward";
     }
 
     private static String escapeXml(String s) {

@@ -15,10 +15,6 @@
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//Direction/SOUTH"/>
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//Direction/WEST"/>
     </genEnums>
-    <genEnums typeSafeEnumCompatible="false" ecoreEnum="blocky.ecore#//TurnDirection">
-      <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//TurnDirection/LEFT"/>
-      <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//TurnDirection/RIGHT"/>
-    </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="blocky.ecore#//CellType">
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//CellType/EMPTY"/>
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//CellType/WALL"/>
@@ -34,6 +30,16 @@
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//GameStatus/RUNNING"/>
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//GameStatus/WON"/>
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//GameStatus/CRASHED"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="blocky.ecore#//ConditionKind">
+      <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//ConditionKind/CHECK_FORWARD"/>
+      <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//ConditionKind/CHECK_LEFT"/>
+      <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//ConditionKind/CHECK_RIGHT"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="blocky.ecore#//AtomicStatementKind">
+      <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//AtomicStatementKind/TURN_LEFT"/>
+      <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//AtomicStatementKind/TURN_RIGHT"/>
+      <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//AtomicStatementKind/MOVE_FORWARD"/>
     </genEnums>
     <genClasses ecoreClass="blocky.ecore#//Game">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//Game/levels"/>
@@ -72,24 +78,31 @@
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference blocky.ecore#//GameState/position"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute blocky.ecore#//GameState/orientation"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute blocky.ecore#//GameState/status"/>
-      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference blocky.ecore#//GameState/executingBlock"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference blocky.ecore#//GameState/executingStatement"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference blocky.ecore#//GameState/next"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference blocky.ecore#//GameState/previous"/>
     </genClasses>
-    <genClasses image="false" ecoreClass="blocky.ecore#//Block">
-      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//Block/next"/>
+    <genClasses ecoreClass="blocky.ecore#//Body">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//Body/firstContainer"/>
     </genClasses>
-    <genClasses ecoreClass="blocky.ecore#//MoveForward"/>
-    <genClasses ecoreClass="blocky.ecore#//Turn">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute blocky.ecore#//Turn/direction"/>
+    <genClasses ecoreClass="blocky.ecore#//Container">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//Container/statement"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//Container/next"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute blocky.ecore#//Container/generated"/>
     </genClasses>
-    <genClasses ecoreClass="blocky.ecore#//RepeatUntilGoal">
-      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//RepeatUntilGoal/body"/>
+    <genClasses image="false" ecoreClass="blocky.ecore#//Statement">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute blocky.ecore#//Statement/generated"/>
     </genClasses>
-    <genClasses ecoreClass="blocky.ecore#//IfStatement">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute blocky.ecore#//IfStatement/condition"/>
-      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//IfStatement/thenBranch"/>
-      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//IfStatement/elseBranch"/>
+    <genClasses ecoreClass="blocky.ecore#//AtomicStatement">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute blocky.ecore#//AtomicStatement/kind"/>
+    </genClasses>
+    <genClasses ecoreClass="blocky.ecore#//Loop">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//Loop/body"/>
+    </genClasses>
+    <genClasses ecoreClass="blocky.ecore#//IfStmt">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute blocky.ecore#//IfStmt/condition"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//IfStmt/thenBody"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference blocky.ecore#//IfStmt/elseBody"/>
     </genClasses>
   </genPackages>
 </genmodel:GenModel>

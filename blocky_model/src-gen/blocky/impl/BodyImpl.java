@@ -2,9 +2,8 @@
  */
 package blocky.impl;
 
-import blocky.Block;
 import blocky.BlockyPackage;
-import blocky.RepeatUntilGoal;
+import blocky.Body;
 
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
@@ -13,37 +12,38 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.InternalEObject;
 
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
+import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 
 /**
  * <!-- begin-user-doc -->
- * An implementation of the model object '<em><b>Repeat Until Goal</b></em>'.
+ * An implementation of the model object '<em><b>Body</b></em>'.
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
  * </p>
  * <ul>
- *   <li>{@link blocky.impl.RepeatUntilGoalImpl#getBody <em>Body</em>}</li>
+ *   <li>{@link blocky.impl.BodyImpl#getFirstContainer <em>First Container</em>}</li>
  * </ul>
  *
  * @generated
  */
-public class RepeatUntilGoalImpl extends BlockImpl implements RepeatUntilGoal {
+public class BodyImpl extends MinimalEObjectImpl.Container implements Body {
 	/**
-	 * The cached value of the '{@link #getBody() <em>Body</em>}' containment reference.
+	 * The cached value of the '{@link #getFirstContainer() <em>First Container</em>}' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #getBody()
+	 * @see #getFirstContainer()
 	 * @generated
 	 * @ordered
 	 */
-	protected Block body;
+	protected blocky.Container firstContainer;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	protected RepeatUntilGoalImpl() {
+	protected BodyImpl() {
 		super();
 	}
 
@@ -54,7 +54,7 @@ public class RepeatUntilGoalImpl extends BlockImpl implements RepeatUntilGoal {
 	 */
 	@Override
 	protected EClass eStaticClass() {
-		return BlockyPackage.Literals.REPEAT_UNTIL_GOAL;
+		return BlockyPackage.Literals.BODY;
 	}
 
 	/**
@@ -63,8 +63,8 @@ public class RepeatUntilGoalImpl extends BlockImpl implements RepeatUntilGoal {
 	 * @generated
 	 */
 	@Override
-	public Block getBody() {
-		return body;
+	public blocky.Container getFirstContainer() {
+		return firstContainer;
 	}
 
 	/**
@@ -72,12 +72,12 @@ public class RepeatUntilGoalImpl extends BlockImpl implements RepeatUntilGoal {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public NotificationChain basicSetBody(Block newBody, NotificationChain msgs) {
-		Block oldBody = body;
-		body = newBody;
+	public NotificationChain basicSetFirstContainer(blocky.Container newFirstContainer, NotificationChain msgs) {
+		blocky.Container oldFirstContainer = firstContainer;
+		firstContainer = newFirstContainer;
 		if (eNotificationRequired()) {
 			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET,
-					BlockyPackage.REPEAT_UNTIL_GOAL__BODY, oldBody, newBody);
+					BlockyPackage.BODY__FIRST_CONTAINER, oldFirstContainer, newFirstContainer);
 			if (msgs == null)
 				msgs = notification;
 			else
@@ -92,21 +92,21 @@ public class RepeatUntilGoalImpl extends BlockImpl implements RepeatUntilGoal {
 	 * @generated
 	 */
 	@Override
-	public void setBody(Block newBody) {
-		if (newBody != body) {
+	public void setFirstContainer(blocky.Container newFirstContainer) {
+		if (newFirstContainer != firstContainer) {
 			NotificationChain msgs = null;
-			if (body != null)
-				msgs = ((InternalEObject) body).eInverseRemove(this,
-						EOPPOSITE_FEATURE_BASE - BlockyPackage.REPEAT_UNTIL_GOAL__BODY, null, msgs);
-			if (newBody != null)
-				msgs = ((InternalEObject) newBody).eInverseAdd(this,
-						EOPPOSITE_FEATURE_BASE - BlockyPackage.REPEAT_UNTIL_GOAL__BODY, null, msgs);
-			msgs = basicSetBody(newBody, msgs);
+			if (firstContainer != null)
+				msgs = ((InternalEObject) firstContainer).eInverseRemove(this,
+						EOPPOSITE_FEATURE_BASE - BlockyPackage.BODY__FIRST_CONTAINER, null, msgs);
+			if (newFirstContainer != null)
+				msgs = ((InternalEObject) newFirstContainer).eInverseAdd(this,
+						EOPPOSITE_FEATURE_BASE - BlockyPackage.BODY__FIRST_CONTAINER, null, msgs);
+			msgs = basicSetFirstContainer(newFirstContainer, msgs);
 			if (msgs != null)
 				msgs.dispatch();
 		} else if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.REPEAT_UNTIL_GOAL__BODY, newBody,
-					newBody));
+			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.BODY__FIRST_CONTAINER,
+					newFirstContainer, newFirstContainer));
 	}
 
 	/**
@@ -117,8 +117,8 @@ public class RepeatUntilGoalImpl extends BlockImpl implements RepeatUntilGoal {
 	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
-		case BlockyPackage.REPEAT_UNTIL_GOAL__BODY:
-			return basicSetBody(null, msgs);
+		case BlockyPackage.BODY__FIRST_CONTAINER:
+			return basicSetFirstContainer(null, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -131,8 +131,8 @@ public class RepeatUntilGoalImpl extends BlockImpl implements RepeatUntilGoal {
 	@Override
 	public Object eGet(int featureID, boolean resolve, boolean coreType) {
 		switch (featureID) {
-		case BlockyPackage.REPEAT_UNTIL_GOAL__BODY:
-			return getBody();
+		case BlockyPackage.BODY__FIRST_CONTAINER:
+			return getFirstContainer();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -145,8 +145,8 @@ public class RepeatUntilGoalImpl extends BlockImpl implements RepeatUntilGoal {
 	@Override
 	public void eSet(int featureID, Object newValue) {
 		switch (featureID) {
-		case BlockyPackage.REPEAT_UNTIL_GOAL__BODY:
-			setBody((Block) newValue);
+		case BlockyPackage.BODY__FIRST_CONTAINER:
+			setFirstContainer((blocky.Container) newValue);
 			return;
 		}
 		super.eSet(featureID, newValue);
@@ -160,8 +160,8 @@ public class RepeatUntilGoalImpl extends BlockImpl implements RepeatUntilGoal {
 	@Override
 	public void eUnset(int featureID) {
 		switch (featureID) {
-		case BlockyPackage.REPEAT_UNTIL_GOAL__BODY:
-			setBody((Block) null);
+		case BlockyPackage.BODY__FIRST_CONTAINER:
+			setFirstContainer((blocky.Container) null);
 			return;
 		}
 		super.eUnset(featureID);
@@ -175,10 +175,10 @@ public class RepeatUntilGoalImpl extends BlockImpl implements RepeatUntilGoal {
 	@Override
 	public boolean eIsSet(int featureID) {
 		switch (featureID) {
-		case BlockyPackage.REPEAT_UNTIL_GOAL__BODY:
-			return body != null;
+		case BlockyPackage.BODY__FIRST_CONTAINER:
+			return firstContainer != null;
 		}
 		return super.eIsSet(featureID);
 	}
 
-} //RepeatUntilGoalImpl
+} //BodyImpl

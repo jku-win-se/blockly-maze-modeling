@@ -216,12 +216,12 @@ public interface Level extends EObject {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @return the value of the '<em>Solution</em>' containment reference.
-	 * @see #setSolution(Block)
+	 * @see #setSolution(Body)
 	 * @see blocky.BlockyPackage#getLevel_Solution()
 	 * @model containment="true"
 	 * @generated
 	 */
-	Block getSolution();
+	Body getSolution();
 
 	/**
 	 * Sets the value of the '{@link blocky.Level#getSolution <em>Solution</em>}' containment reference.
@@ -231,7 +231,7 @@ public interface Level extends EObject {
 	 * @see #getSolution()
 	 * @generated
 	 */
-	void setSolution(Block value);
+	void setSolution(Body value);
 
 	/**
 	 * Returns the value of the '<em><b>Traces</b></em>' containment reference list.

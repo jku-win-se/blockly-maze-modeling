@@ -4,4 +4,12 @@
    <extension point="org.eclipse.ui.startup">
       <startup class="blocky_momot.BlockyPackageRegistration"/>
    </extension>
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <!-- @generated blocky -->
+      <package
+            uri="http://www.example.org/blocky"
+            class="blocky.BlockyPackage"
+            genModel="model/blocky.genmodel"/>
+   </extension>
+
 </plugin>

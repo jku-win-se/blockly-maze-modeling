@@ -2,8 +2,9 @@
  */
 package blocky.impl;
 
-import blocky.Block;
 import blocky.BlockyPackage;
+import blocky.Body;
+import blocky.Loop;
 
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
@@ -12,38 +13,37 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.InternalEObject;
 
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
-import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 
 /**
  * <!-- begin-user-doc -->
- * An implementation of the model object '<em><b>Block</b></em>'.
+ * An implementation of the model object '<em><b>Loop</b></em>'.
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
  * </p>
  * <ul>
- *   <li>{@link blocky.impl.BlockImpl#getNext <em>Next</em>}</li>
+ *   <li>{@link blocky.impl.LoopImpl#getBody <em>Body</em>}</li>
  * </ul>
  *
  * @generated
  */
-public abstract class BlockImpl extends MinimalEObjectImpl.Container implements Block {
+public class LoopImpl extends StatementImpl implements Loop {
 	/**
-	 * The cached value of the '{@link #getNext() <em>Next</em>}' containment reference.
+	 * The cached value of the '{@link #getBody() <em>Body</em>}' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #getNext()
+	 * @see #getBody()
 	 * @generated
 	 * @ordered
 	 */
-	protected Block next;
+	protected Body body;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	protected BlockImpl() {
+	protected LoopImpl() {
 		super();
 	}
 
@@ -54,7 +54,7 @@ public abstract class BlockImpl extends MinimalEObjectImpl.Container implements 
 	 */
 	@Override
 	protected EClass eStaticClass() {
-		return BlockyPackage.Literals.BLOCK;
+		return BlockyPackage.Literals.LOOP;
 	}
 
 	/**
@@ -63,8 +63,8 @@ public abstract class BlockImpl extends MinimalEObjectImpl.Container implements 
 	 * @generated
 	 */
 	@Override
-	public Block getNext() {
-		return next;
+	public Body getBody() {
+		return body;
 	}
 
 	/**
@@ -72,12 +72,12 @@ public abstract class BlockImpl extends MinimalEObjectImpl.Container implements 
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public NotificationChain basicSetNext(Block newNext, NotificationChain msgs) {
-		Block oldNext = next;
-		next = newNext;
+	public NotificationChain basicSetBody(Body newBody, NotificationChain msgs) {
+		Body oldBody = body;
+		body = newBody;
 		if (eNotificationRequired()) {
-			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, BlockyPackage.BLOCK__NEXT,
-					oldNext, newNext);
+			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, BlockyPackage.LOOP__BODY,
+					oldBody, newBody);
 			if (msgs == null)
 				msgs = notification;
 			else
@@ -92,20 +92,20 @@ public abstract class BlockImpl extends MinimalEObjectImpl.Container implements 
 	 * @generated
 	 */
 	@Override
-	public void setNext(Block newNext) {
-		if (newNext != next) {
+	public void setBody(Body newBody) {
+		if (newBody != body) {
 			NotificationChain msgs = null;
-			if (next != null)
-				msgs = ((InternalEObject) next).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - BlockyPackage.BLOCK__NEXT,
+			if (body != null)
+				msgs = ((InternalEObject) body).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - BlockyPackage.LOOP__BODY,
 						null, msgs);
-			if (newNext != null)
-				msgs = ((InternalEObject) newNext).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - BlockyPackage.BLOCK__NEXT,
+			if (newBody != null)
+				msgs = ((InternalEObject) newBody).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - BlockyPackage.LOOP__BODY,
 						null, msgs);
-			msgs = basicSetNext(newNext, msgs);
+			msgs = basicSetBody(newBody, msgs);
 			if (msgs != null)
 				msgs.dispatch();
 		} else if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.BLOCK__NEXT, newNext, newNext));
+			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.LOOP__BODY, newBody, newBody));
 	}
 
 	/**
@@ -116,8 +116,8 @@ public abstract class BlockImpl extends MinimalEObjectImpl.Container implements 
 	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
-		case BlockyPackage.BLOCK__NEXT:
-			return basicSetNext(null, msgs);
+		case BlockyPackage.LOOP__BODY:
+			return basicSetBody(null, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -130,8 +130,8 @@ public abstract class BlockImpl extends MinimalEObjectImpl.Container implements 
 	@Override
 	public Object eGet(int featureID, boolean resolve, boolean coreType) {
 		switch (featureID) {
-		case BlockyPackage.BLOCK__NEXT:
-			return getNext();
+		case BlockyPackage.LOOP__BODY:
+			return getBody();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -144,8 +144,8 @@ public abstract class BlockImpl extends MinimalEObjectImpl.Container implements 
 	@Override
 	public void eSet(int featureID, Object newValue) {
 		switch (featureID) {
-		case BlockyPackage.BLOCK__NEXT:
-			setNext((Block) newValue);
+		case BlockyPackage.LOOP__BODY:
+			setBody((Body) newValue);
 			return;
 		}
 		super.eSet(featureID, newValue);
@@ -159,8 +159,8 @@ public abstract class BlockImpl extends MinimalEObjectImpl.Container implements 
 	@Override
 	public void eUnset(int featureID) {
 		switch (featureID) {
-		case BlockyPackage.BLOCK__NEXT:
-			setNext((Block) null);
+		case BlockyPackage.LOOP__BODY:
+			setBody((Body) null);
 			return;
 		}
 		super.eUnset(featureID);
@@ -174,10 +174,10 @@ public abstract class BlockImpl extends MinimalEObjectImpl.Container implements 
 	@Override
 	public boolean eIsSet(int featureID) {
 		switch (featureID) {
-		case BlockyPackage.BLOCK__NEXT:
-			return next != null;
+		case BlockyPackage.LOOP__BODY:
+			return body != null;
 		}
 		return super.eIsSet(featureID);
 	}
 
-} //BlockImpl
+} //LoopImpl

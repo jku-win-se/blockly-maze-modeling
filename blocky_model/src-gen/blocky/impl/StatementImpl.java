@@ -3,55 +3,55 @@
 package blocky.impl;
 
 import blocky.BlockyPackage;
-import blocky.Turn;
-import blocky.TurnDirection;
+import blocky.Statement;
 
 import org.eclipse.emf.common.notify.Notification;
 
 import org.eclipse.emf.ecore.EClass;
 
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
+import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 
 /**
  * <!-- begin-user-doc -->
- * An implementation of the model object '<em><b>Turn</b></em>'.
+ * An implementation of the model object '<em><b>Statement</b></em>'.
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
  * </p>
  * <ul>
- *   <li>{@link blocky.impl.TurnImpl#getDirection <em>Direction</em>}</li>
+ *   <li>{@link blocky.impl.StatementImpl#isGenerated <em>Generated</em>}</li>
  * </ul>
  *
  * @generated
  */
-public class TurnImpl extends BlockImpl implements Turn {
+public abstract class StatementImpl extends MinimalEObjectImpl.Container implements Statement {
 	/**
-	 * The default value of the '{@link #getDirection() <em>Direction</em>}' attribute.
+	 * The default value of the '{@link #isGenerated() <em>Generated</em>}' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #getDirection()
+	 * @see #isGenerated()
 	 * @generated
 	 * @ordered
 	 */
-	protected static final TurnDirection DIRECTION_EDEFAULT = TurnDirection.LEFT;
+	protected static final boolean GENERATED_EDEFAULT = false;
 
 	/**
-	 * The cached value of the '{@link #getDirection() <em>Direction</em>}' attribute.
+	 * The cached value of the '{@link #isGenerated() <em>Generated</em>}' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #getDirection()
+	 * @see #isGenerated()
 	 * @generated
 	 * @ordered
 	 */
-	protected TurnDirection direction = DIRECTION_EDEFAULT;
+	protected boolean generated = GENERATED_EDEFAULT;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	protected TurnImpl() {
+	protected StatementImpl() {
 		super();
 	}
 
@@ -62,7 +62,7 @@ public class TurnImpl extends BlockImpl implements Turn {
 	 */
 	@Override
 	protected EClass eStaticClass() {
-		return BlockyPackage.Literals.TURN;
+		return BlockyPackage.Literals.STATEMENT;
 	}
 
 	/**
@@ -71,8 +71,8 @@ public class TurnImpl extends BlockImpl implements Turn {
 	 * @generated
 	 */
 	@Override
-	public TurnDirection getDirection() {
-		return direction;
+	public boolean isGenerated() {
+		return generated;
 	}
 
 	/**
@@ -81,12 +81,12 @@ public class TurnImpl extends BlockImpl implements Turn {
 	 * @generated
 	 */
 	@Override
-	public void setDirection(TurnDirection newDirection) {
-		TurnDirection oldDirection = direction;
-		direction = newDirection == null ? DIRECTION_EDEFAULT : newDirection;
+	public void setGenerated(boolean newGenerated) {
+		boolean oldGenerated = generated;
+		generated = newGenerated;
 		if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.TURN__DIRECTION, oldDirection,
-					direction));
+			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.STATEMENT__GENERATED, oldGenerated,
+					generated));
 	}
 
 	/**
@@ -97,8 +97,8 @@ public class TurnImpl extends BlockImpl implements Turn {
 	@Override
 	public Object eGet(int featureID, boolean resolve, boolean coreType) {
 		switch (featureID) {
-		case BlockyPackage.TURN__DIRECTION:
-			return getDirection();
+		case BlockyPackage.STATEMENT__GENERATED:
+			return isGenerated();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -111,8 +111,8 @@ public class TurnImpl extends BlockImpl implements Turn {
 	@Override
 	public void eSet(int featureID, Object newValue) {
 		switch (featureID) {
-		case BlockyPackage.TURN__DIRECTION:
-			setDirection((TurnDirection) newValue);
+		case BlockyPackage.STATEMENT__GENERATED:
+			setGenerated((Boolean) newValue);
 			return;
 		}
 		super.eSet(featureID, newValue);
@@ -126,8 +126,8 @@ public class TurnImpl extends BlockImpl implements Turn {
 	@Override
 	public void eUnset(int featureID) {
 		switch (featureID) {
-		case BlockyPackage.TURN__DIRECTION:
-			setDirection(DIRECTION_EDEFAULT);
+		case BlockyPackage.STATEMENT__GENERATED:
+			setGenerated(GENERATED_EDEFAULT);
 			return;
 		}
 		super.eUnset(featureID);
@@ -141,8 +141,8 @@ public class TurnImpl extends BlockImpl implements Turn {
 	@Override
 	public boolean eIsSet(int featureID) {
 		switch (featureID) {
-		case BlockyPackage.TURN__DIRECTION:
-			return direction != DIRECTION_EDEFAULT;
+		case BlockyPackage.STATEMENT__GENERATED:
+			return generated != GENERATED_EDEFAULT;
 		}
 		return super.eIsSet(featureID);
 	}
@@ -158,10 +158,10 @@ public class TurnImpl extends BlockImpl implements Turn {
 			return super.toString();
 
 		StringBuilder result = new StringBuilder(super.toString());
-		result.append(" (direction: ");
-		result.append(direction);
+		result.append(" (generated: ");
+		result.append(generated);
 		result.append(')');
 		return result.toString();
 	}
 
-} //TurnImpl
+} //StatementImpl

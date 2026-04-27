@@ -2,10 +2,10 @@
  */
 package blocky.impl;
 
-import blocky.Block;
 import blocky.BlockyPackage;
-import blocky.IfStatement;
-import blocky.SensorDirection;
+import blocky.Body;
+import blocky.ConditionKind;
+import blocky.IfStmt;
 
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
@@ -17,20 +17,20 @@ import org.eclipse.emf.ecore.impl.ENotificationImpl;
 
 /**
  * <!-- begin-user-doc -->
- * An implementation of the model object '<em><b>If Statement</b></em>'.
+ * An implementation of the model object '<em><b>If Stmt</b></em>'.
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
  * </p>
  * <ul>
- *   <li>{@link blocky.impl.IfStatementImpl#getCondition <em>Condition</em>}</li>
- *   <li>{@link blocky.impl.IfStatementImpl#getThenBranch <em>Then Branch</em>}</li>
- *   <li>{@link blocky.impl.IfStatementImpl#getElseBranch <em>Else Branch</em>}</li>
+ *   <li>{@link blocky.impl.IfStmtImpl#getCondition <em>Condition</em>}</li>
+ *   <li>{@link blocky.impl.IfStmtImpl#getThenBody <em>Then Body</em>}</li>
+ *   <li>{@link blocky.impl.IfStmtImpl#getElseBody <em>Else Body</em>}</li>
  * </ul>
  *
  * @generated
  */
-public class IfStatementImpl extends BlockImpl implements IfStatement {
+public class IfStmtImpl extends StatementImpl implements IfStmt {
 	/**
 	 * The default value of the '{@link #getCondition() <em>Condition</em>}' attribute.
 	 * <!-- begin-user-doc -->
@@ -39,7 +39,7 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 * @generated
 	 * @ordered
 	 */
-	protected static final SensorDirection CONDITION_EDEFAULT = SensorDirection.AHEAD;
+	protected static final ConditionKind CONDITION_EDEFAULT = ConditionKind.CHECK_FORWARD;
 
 	/**
 	 * The cached value of the '{@link #getCondition() <em>Condition</em>}' attribute.
@@ -49,34 +49,34 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 * @generated
 	 * @ordered
 	 */
-	protected SensorDirection condition = CONDITION_EDEFAULT;
+	protected ConditionKind condition = CONDITION_EDEFAULT;
 
 	/**
-	 * The cached value of the '{@link #getThenBranch() <em>Then Branch</em>}' containment reference.
+	 * The cached value of the '{@link #getThenBody() <em>Then Body</em>}' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #getThenBranch()
+	 * @see #getThenBody()
 	 * @generated
 	 * @ordered
 	 */
-	protected Block thenBranch;
+	protected Body thenBody;
 
 	/**
-	 * The cached value of the '{@link #getElseBranch() <em>Else Branch</em>}' containment reference.
+	 * The cached value of the '{@link #getElseBody() <em>Else Body</em>}' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #getElseBranch()
+	 * @see #getElseBody()
 	 * @generated
 	 * @ordered
 	 */
-	protected Block elseBranch;
+	protected Body elseBody;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	protected IfStatementImpl() {
+	protected IfStmtImpl() {
 		super();
 	}
 
@@ -87,7 +87,7 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 */
 	@Override
 	protected EClass eStaticClass() {
-		return BlockyPackage.Literals.IF_STATEMENT;
+		return BlockyPackage.Literals.IF_STMT;
 	}
 
 	/**
@@ -96,7 +96,7 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 * @generated
 	 */
 	@Override
-	public SensorDirection getCondition() {
+	public ConditionKind getCondition() {
 		return condition;
 	}
 
@@ -106,11 +106,11 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 * @generated
 	 */
 	@Override
-	public void setCondition(SensorDirection newCondition) {
-		SensorDirection oldCondition = condition;
+	public void setCondition(ConditionKind newCondition) {
+		ConditionKind oldCondition = condition;
 		condition = newCondition == null ? CONDITION_EDEFAULT : newCondition;
 		if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.IF_STATEMENT__CONDITION, oldCondition,
+			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.IF_STMT__CONDITION, oldCondition,
 					condition));
 	}
 
@@ -120,8 +120,8 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 * @generated
 	 */
 	@Override
-	public Block getThenBranch() {
-		return thenBranch;
+	public Body getThenBody() {
+		return thenBody;
 	}
 
 	/**
@@ -129,12 +129,12 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public NotificationChain basicSetThenBranch(Block newThenBranch, NotificationChain msgs) {
-		Block oldThenBranch = thenBranch;
-		thenBranch = newThenBranch;
+	public NotificationChain basicSetThenBody(Body newThenBody, NotificationChain msgs) {
+		Body oldThenBody = thenBody;
+		thenBody = newThenBody;
 		if (eNotificationRequired()) {
 			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET,
-					BlockyPackage.IF_STATEMENT__THEN_BRANCH, oldThenBranch, newThenBranch);
+					BlockyPackage.IF_STMT__THEN_BODY, oldThenBody, newThenBody);
 			if (msgs == null)
 				msgs = notification;
 			else
@@ -149,21 +149,21 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 * @generated
 	 */
 	@Override
-	public void setThenBranch(Block newThenBranch) {
-		if (newThenBranch != thenBranch) {
+	public void setThenBody(Body newThenBody) {
+		if (newThenBody != thenBody) {
 			NotificationChain msgs = null;
-			if (thenBranch != null)
-				msgs = ((InternalEObject) thenBranch).eInverseRemove(this,
-						EOPPOSITE_FEATURE_BASE - BlockyPackage.IF_STATEMENT__THEN_BRANCH, null, msgs);
-			if (newThenBranch != null)
-				msgs = ((InternalEObject) newThenBranch).eInverseAdd(this,
-						EOPPOSITE_FEATURE_BASE - BlockyPackage.IF_STATEMENT__THEN_BRANCH, null, msgs);
-			msgs = basicSetThenBranch(newThenBranch, msgs);
+			if (thenBody != null)
+				msgs = ((InternalEObject) thenBody).eInverseRemove(this,
+						EOPPOSITE_FEATURE_BASE - BlockyPackage.IF_STMT__THEN_BODY, null, msgs);
+			if (newThenBody != null)
+				msgs = ((InternalEObject) newThenBody).eInverseAdd(this,
+						EOPPOSITE_FEATURE_BASE - BlockyPackage.IF_STMT__THEN_BODY, null, msgs);
+			msgs = basicSetThenBody(newThenBody, msgs);
 			if (msgs != null)
 				msgs.dispatch();
 		} else if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.IF_STATEMENT__THEN_BRANCH,
-					newThenBranch, newThenBranch));
+			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.IF_STMT__THEN_BODY, newThenBody,
+					newThenBody));
 	}
 
 	/**
@@ -172,8 +172,8 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 * @generated
 	 */
 	@Override
-	public Block getElseBranch() {
-		return elseBranch;
+	public Body getElseBody() {
+		return elseBody;
 	}
 
 	/**
@@ -181,12 +181,12 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public NotificationChain basicSetElseBranch(Block newElseBranch, NotificationChain msgs) {
-		Block oldElseBranch = elseBranch;
-		elseBranch = newElseBranch;
+	public NotificationChain basicSetElseBody(Body newElseBody, NotificationChain msgs) {
+		Body oldElseBody = elseBody;
+		elseBody = newElseBody;
 		if (eNotificationRequired()) {
 			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET,
-					BlockyPackage.IF_STATEMENT__ELSE_BRANCH, oldElseBranch, newElseBranch);
+					BlockyPackage.IF_STMT__ELSE_BODY, oldElseBody, newElseBody);
 			if (msgs == null)
 				msgs = notification;
 			else
@@ -201,21 +201,21 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	 * @generated
 	 */
 	@Override
-	public void setElseBranch(Block newElseBranch) {
-		if (newElseBranch != elseBranch) {
+	public void setElseBody(Body newElseBody) {
+		if (newElseBody != elseBody) {
 			NotificationChain msgs = null;
-			if (elseBranch != null)
-				msgs = ((InternalEObject) elseBranch).eInverseRemove(this,
-						EOPPOSITE_FEATURE_BASE - BlockyPackage.IF_STATEMENT__ELSE_BRANCH, null, msgs);
-			if (newElseBranch != null)
-				msgs = ((InternalEObject) newElseBranch).eInverseAdd(this,
-						EOPPOSITE_FEATURE_BASE - BlockyPackage.IF_STATEMENT__ELSE_BRANCH, null, msgs);
-			msgs = basicSetElseBranch(newElseBranch, msgs);
+			if (elseBody != null)
+				msgs = ((InternalEObject) elseBody).eInverseRemove(this,
+						EOPPOSITE_FEATURE_BASE - BlockyPackage.IF_STMT__ELSE_BODY, null, msgs);
+			if (newElseBody != null)
+				msgs = ((InternalEObject) newElseBody).eInverseAdd(this,
+						EOPPOSITE_FEATURE_BASE - BlockyPackage.IF_STMT__ELSE_BODY, null, msgs);
+			msgs = basicSetElseBody(newElseBody, msgs);
 			if (msgs != null)
 				msgs.dispatch();
 		} else if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.IF_STATEMENT__ELSE_BRANCH,
-					newElseBranch, newElseBranch));
+			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.IF_STMT__ELSE_BODY, newElseBody,
+					newElseBody));
 	}
 
 	/**
@@ -226,10 +226,10 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
-		case BlockyPackage.IF_STATEMENT__THEN_BRANCH:
-			return basicSetThenBranch(null, msgs);
-		case BlockyPackage.IF_STATEMENT__ELSE_BRANCH:
-			return basicSetElseBranch(null, msgs);
+		case BlockyPackage.IF_STMT__THEN_BODY:
+			return basicSetThenBody(null, msgs);
+		case BlockyPackage.IF_STMT__ELSE_BODY:
+			return basicSetElseBody(null, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -242,12 +242,12 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	@Override
 	public Object eGet(int featureID, boolean resolve, boolean coreType) {
 		switch (featureID) {
-		case BlockyPackage.IF_STATEMENT__CONDITION:
+		case BlockyPackage.IF_STMT__CONDITION:
 			return getCondition();
-		case BlockyPackage.IF_STATEMENT__THEN_BRANCH:
-			return getThenBranch();
-		case BlockyPackage.IF_STATEMENT__ELSE_BRANCH:
-			return getElseBranch();
+		case BlockyPackage.IF_STMT__THEN_BODY:
+			return getThenBody();
+		case BlockyPackage.IF_STMT__ELSE_BODY:
+			return getElseBody();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -260,14 +260,14 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	@Override
 	public void eSet(int featureID, Object newValue) {
 		switch (featureID) {
-		case BlockyPackage.IF_STATEMENT__CONDITION:
-			setCondition((SensorDirection) newValue);
+		case BlockyPackage.IF_STMT__CONDITION:
+			setCondition((ConditionKind) newValue);
 			return;
-		case BlockyPackage.IF_STATEMENT__THEN_BRANCH:
-			setThenBranch((Block) newValue);
+		case BlockyPackage.IF_STMT__THEN_BODY:
+			setThenBody((Body) newValue);
 			return;
-		case BlockyPackage.IF_STATEMENT__ELSE_BRANCH:
-			setElseBranch((Block) newValue);
+		case BlockyPackage.IF_STMT__ELSE_BODY:
+			setElseBody((Body) newValue);
 			return;
 		}
 		super.eSet(featureID, newValue);
@@ -281,14 +281,14 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	@Override
 	public void eUnset(int featureID) {
 		switch (featureID) {
-		case BlockyPackage.IF_STATEMENT__CONDITION:
+		case BlockyPackage.IF_STMT__CONDITION:
 			setCondition(CONDITION_EDEFAULT);
 			return;
-		case BlockyPackage.IF_STATEMENT__THEN_BRANCH:
-			setThenBranch((Block) null);
+		case BlockyPackage.IF_STMT__THEN_BODY:
+			setThenBody((Body) null);
 			return;
-		case BlockyPackage.IF_STATEMENT__ELSE_BRANCH:
-			setElseBranch((Block) null);
+		case BlockyPackage.IF_STMT__ELSE_BODY:
+			setElseBody((Body) null);
 			return;
 		}
 		super.eUnset(featureID);
@@ -302,12 +302,12 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 	@Override
 	public boolean eIsSet(int featureID) {
 		switch (featureID) {
-		case BlockyPackage.IF_STATEMENT__CONDITION:
+		case BlockyPackage.IF_STMT__CONDITION:
 			return condition != CONDITION_EDEFAULT;
-		case BlockyPackage.IF_STATEMENT__THEN_BRANCH:
-			return thenBranch != null;
-		case BlockyPackage.IF_STATEMENT__ELSE_BRANCH:
-			return elseBranch != null;
+		case BlockyPackage.IF_STMT__THEN_BODY:
+			return thenBody != null;
+		case BlockyPackage.IF_STMT__ELSE_BODY:
+			return elseBody != null;
 		}
 		return super.eIsSet(featureID);
 	}
@@ -329,4 +329,4 @@ public class IfStatementImpl extends BlockImpl implements IfStatement {
 		return result.toString();
 	}
 
-} //IfStatementImpl
+} //IfStmtImpl

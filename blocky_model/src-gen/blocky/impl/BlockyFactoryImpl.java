@@ -69,14 +69,16 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 			return createExecutionTrace();
 		case BlockyPackage.GAME_STATE:
 			return createGameState();
-		case BlockyPackage.MOVE_FORWARD:
-			return createMoveForward();
-		case BlockyPackage.TURN:
-			return createTurn();
-		case BlockyPackage.REPEAT_UNTIL_GOAL:
-			return createRepeatUntilGoal();
-		case BlockyPackage.IF_STATEMENT:
-			return createIfStatement();
+		case BlockyPackage.BODY:
+			return createBody();
+		case BlockyPackage.CONTAINER:
+			return createContainer();
+		case BlockyPackage.ATOMIC_STATEMENT:
+			return createAtomicStatement();
+		case BlockyPackage.LOOP:
+			return createLoop();
+		case BlockyPackage.IF_STMT:
+			return createIfStmt();
 		default:
 			throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
 		}
@@ -92,14 +94,16 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 		switch (eDataType.getClassifierID()) {
 		case BlockyPackage.DIRECTION:
 			return createDirectionFromString(eDataType, initialValue);
-		case BlockyPackage.TURN_DIRECTION:
-			return createTurnDirectionFromString(eDataType, initialValue);
 		case BlockyPackage.CELL_TYPE:
 			return createCellTypeFromString(eDataType, initialValue);
 		case BlockyPackage.SENSOR_DIRECTION:
 			return createSensorDirectionFromString(eDataType, initialValue);
 		case BlockyPackage.GAME_STATUS:
 			return createGameStatusFromString(eDataType, initialValue);
+		case BlockyPackage.CONDITION_KIND:
+			return createConditionKindFromString(eDataType, initialValue);
+		case BlockyPackage.ATOMIC_STATEMENT_KIND:
+			return createAtomicStatementKindFromString(eDataType, initialValue);
 		default:
 			throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
@@ -115,14 +119,16 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 		switch (eDataType.getClassifierID()) {
 		case BlockyPackage.DIRECTION:
 			return convertDirectionToString(eDataType, instanceValue);
-		case BlockyPackage.TURN_DIRECTION:
-			return convertTurnDirectionToString(eDataType, instanceValue);
 		case BlockyPackage.CELL_TYPE:
 			return convertCellTypeToString(eDataType, instanceValue);
 		case BlockyPackage.SENSOR_DIRECTION:
 			return convertSensorDirectionToString(eDataType, instanceValue);
 		case BlockyPackage.GAME_STATUS:
 			return convertGameStatusToString(eDataType, instanceValue);
+		case BlockyPackage.CONDITION_KIND:
+			return convertConditionKindToString(eDataType, instanceValue);
+		case BlockyPackage.ATOMIC_STATEMENT_KIND:
+			return convertAtomicStatementKindToString(eDataType, instanceValue);
 		default:
 			throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
@@ -200,9 +206,9 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 	 * @generated
 	 */
 	@Override
-	public MoveForward createMoveForward() {
-		MoveForwardImpl moveForward = new MoveForwardImpl();
-		return moveForward;
+	public Body createBody() {
+		BodyImpl body = new BodyImpl();
+		return body;
 	}
 
 	/**
@@ -211,9 +217,9 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 	 * @generated
 	 */
 	@Override
-	public Turn createTurn() {
-		TurnImpl turn = new TurnImpl();
-		return turn;
+	public blocky.Container createContainer() {
+		ContainerImpl container = new ContainerImpl();
+		return container;
 	}
 
 	/**
@@ -222,9 +228,9 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 	 * @generated
 	 */
 	@Override
-	public RepeatUntilGoal createRepeatUntilGoal() {
-		RepeatUntilGoalImpl repeatUntilGoal = new RepeatUntilGoalImpl();
-		return repeatUntilGoal;
+	public AtomicStatement createAtomicStatement() {
+		AtomicStatementImpl atomicStatement = new AtomicStatementImpl();
+		return atomicStatement;
 	}
 
 	/**
@@ -233,9 +239,20 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 	 * @generated
 	 */
 	@Override
-	public IfStatement createIfStatement() {
-		IfStatementImpl ifStatement = new IfStatementImpl();
-		return ifStatement;
+	public Loop createLoop() {
+		LoopImpl loop = new LoopImpl();
+		return loop;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public IfStmt createIfStmt() {
+		IfStmtImpl ifStmt = new IfStmtImpl();
+		return ifStmt;
 	}
 
 	/**
@@ -257,37 +274,6 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 	 * @generated
 	 */
 	public String convertDirectionToString(EDataType eDataType, Object instanceValue) {
-		return instanceValue == null ? null : instanceValue.toString();
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated NOT
-	 * Accepts literal names (LEFT, RIGHT) or numeric strings (0, 1) for Henshin compatibility.
-	 */
-	public TurnDirection createTurnDirectionFromString(EDataType eDataType, String initialValue) {
-		TurnDirection result = TurnDirection.get(initialValue);
-		if (result == null) {
-			try {
-				int value = Integer.parseInt(initialValue);
-				result = TurnDirection.get(value);
-			} catch (NumberFormatException e) {
-				// fall through to throw
-			}
-		}
-		if (result == null)
-			throw new IllegalArgumentException(
-					"The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
-		return result;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	public String convertTurnDirectionToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 
@@ -316,19 +302,10 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @generated NOT
-	 * Accepts literal names or numeric strings (0, 1, 2) for Henshin compatibility.
+	 * @generated
 	 */
 	public SensorDirection createSensorDirectionFromString(EDataType eDataType, String initialValue) {
 		SensorDirection result = SensorDirection.get(initialValue);
-		if (result == null) {
-			try {
-				int value = Integer.parseInt(initialValue);
-				result = SensorDirection.get(value);
-			} catch (NumberFormatException e) {
-				// fall through to throw
-			}
-		}
 		if (result == null)
 			throw new IllegalArgumentException(
 					"The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
@@ -363,6 +340,50 @@ public class BlockyFactoryImpl extends EFactoryImpl implements BlockyFactory {
 	 * @generated
 	 */
 	public String convertGameStatusToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public ConditionKind createConditionKindFromString(EDataType eDataType, String initialValue) {
+		ConditionKind result = ConditionKind.get(initialValue);
+		if (result == null)
+			throw new IllegalArgumentException(
+					"The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertConditionKindToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public AtomicStatementKind createAtomicStatementKindFromString(EDataType eDataType, String initialValue) {
+		AtomicStatementKind result = AtomicStatementKind.get(initialValue);
+		if (result == null)
+			throw new IllegalArgumentException(
+					"The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertAtomicStatementKindToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

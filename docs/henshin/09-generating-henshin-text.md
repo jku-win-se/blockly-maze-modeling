@@ -126,6 +126,73 @@ If the rules will be used by **MoMoT** (search-based transformation), generate r
 
 ---
 
+## 8. Blocky statement lists: insert / delete / replace patterns (containment linked list)
+
+In `blocky.ecore`, program bodies are **containment linked lists**:
+
+- `Body.firstStatement` is **containment** (head)
+- `Statement.next` is **containment** (rest of list)
+
+This has two practical consequences for correct transformations:
+
+- **Insert** splits into location families (empty / before head / between / after last).
+- **Delete/Replace** must be **containment-safe**: if you delete a statement that has a contained `next`, you must **re-home** that `next` first, otherwise EMF will delete the whole tail as part of containment cleanup.
+
+### 8.1 Minimal safe delete rule set (4 rules)
+
+To delete **exactly one** statement (and keep the remainder intact), you need these four cases:
+
+- **only element in a body**: delete `body->curr:firstStatement`, and require `curr` has **no** `next`
+- **head with successor**: re-home successor to `body.firstStatement`, then delete head
+- **middle with successor**: re-link `prev.next` to `next`, then delete `curr`
+- **last element**: delete `prev->curr:next`, and require `curr` has **no** `next`
+
+These 4 rules are the analogue of “insert position” rules, but for containment-safe deletes.
+
+### 8.2 “Replace at same position” requires anchoring (don’t rely on sequencing)
+
+**Important:** In a sequential unit, a later rule call does *not* automatically reuse the same match objects from an earlier rule. If you do:
+
+`deleteSomething(); createNew(); insertSomewhere();`
+
+the `insertSomewhere` step may match a **different** position if multiple matches exist.
+
+To guarantee “delete here, then insert exactly here”, you must carry **anchors** (EObjects) across steps via parameters/`VAR`, and use **anchored insert rules**.
+
+Typical anchors by case:
+
+- **only-in-body**: `body`
+- **head-with-successor**: `body` and `headNext`
+- **middle-with-successor**: `prev` and `next`
+- **last**: `prev`
+
+Then define anchored insert rules such as:
+
+- `InsertIntoEmptyBodyAt(IN body:Body, INOUT stmt:Statement)`
+- `InsertBeforeSpecificHead(IN body:Body, IN head:Statement, INOUT stmt:Statement)`
+- `InsertBetweenSpecificNext(IN prev:Statement, IN next:Statement, INOUT stmt:Statement)`
+- `InsertAfterSpecificLast(IN prev:Statement, INOUT stmt:Statement)`
+
+and replacement units that follow the pattern:
+
+1. **Delete rule** with `OUT` anchor parameters
+2. **CreateAnything(...)** binding `stmt` (often through `VAR stmt:Statement`)
+3. **Anchored insert** using those anchors + `stmt`
+
+### 8.3 Avoiding generated helper units (“Sequence…INDEPENDENT…”) in compiled `.henshin`
+
+The Henshin Text → Henshin compiler tends to introduce many helper `SequentialUnit`s when:
+
+- branches inside `independent [ ... ]` contain **blocks** like `{ a b c }`, or
+- branches have **different call signatures** (some calls take `kind`, others don’t), so wrappers are inserted to normalize parameters.
+
+To keep compiled `.henshin` concise:
+
+- Prefer `independent [ call1(...), call2(...), call3(...) ]` (no `{ ... }` blocks).
+- Make branch calls share the same signature (e.g. pass `kind`/`condition` through to all create rules, even if ignored).
+
+---
+
 ## 8. References
 
 - [01-file-structure-and-grammar](01-file-structure-and-grammar.md) — Model, ePackageImport, rule/unit syntax.

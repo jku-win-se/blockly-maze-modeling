@@ -17,7 +17,7 @@ import org.eclipse.emf.ecore.EObject;
  *   <li>{@link blocky.GameState#getPosition <em>Position</em>}</li>
  *   <li>{@link blocky.GameState#getOrientation <em>Orientation</em>}</li>
  *   <li>{@link blocky.GameState#getStatus <em>Status</em>}</li>
- *   <li>{@link blocky.GameState#getExecutingBlock <em>Executing Block</em>}</li>
+ *   <li>{@link blocky.GameState#getExecutingStatement <em>Executing Statement</em>}</li>
  *   <li>{@link blocky.GameState#getNext <em>Next</em>}</li>
  *   <li>{@link blocky.GameState#getPrevious <em>Previous</em>}</li>
  * </ul>
@@ -122,26 +122,26 @@ public interface GameState extends EObject {
 	void setStatus(GameStatus value);
 
 	/**
-	 * Returns the value of the '<em><b>Executing Block</b></em>' reference.
+	 * Returns the value of the '<em><b>Executing Statement</b></em>' reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the value of the '<em>Executing Block</em>' reference.
-	 * @see #setExecutingBlock(Block)
-	 * @see blocky.BlockyPackage#getGameState_ExecutingBlock()
+	 * @return the value of the '<em>Executing Statement</em>' reference.
+	 * @see #setExecutingStatement(Statement)
+	 * @see blocky.BlockyPackage#getGameState_ExecutingStatement()
 	 * @model
 	 * @generated
 	 */
-	Block getExecutingBlock();
+	Statement getExecutingStatement();
 
 	/**
-	 * Sets the value of the '{@link blocky.GameState#getExecutingBlock <em>Executing Block</em>}' reference.
+	 * Sets the value of the '{@link blocky.GameState#getExecutingStatement <em>Executing Statement</em>}' reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @param value the new value of the '<em>Executing Block</em>' reference.
-	 * @see #getExecutingBlock()
+	 * @param value the new value of the '<em>Executing Statement</em>' reference.
+	 * @see #getExecutingStatement()
 	 * @generated
 	 */
-	void setExecutingBlock(Block value);
+	void setExecutingStatement(Statement value);
 
 	/**
 	 * Returns the value of the '<em><b>Next</b></em>' reference.

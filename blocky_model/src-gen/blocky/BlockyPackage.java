@@ -442,13 +442,13 @@ public interface BlockyPackage extends EPackage {
 	int GAME_STATE__STATUS = 3;
 
 	/**
-	 * The feature id for the '<em><b>Executing Block</b></em>' reference.
+	 * The feature id for the '<em><b>Executing Statement</b></em>' reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int GAME_STATE__EXECUTING_BLOCK = 4;
+	int GAME_STATE__EXECUTING_STATEMENT = 4;
 
 	/**
 	 * The feature id for the '<em><b>Next</b></em>' reference.
@@ -487,14 +487,60 @@ public interface BlockyPackage extends EPackage {
 	int GAME_STATE_OPERATION_COUNT = 0;
 
 	/**
-	 * The meta object id for the '{@link blocky.impl.BlockImpl <em>Block</em>}' class.
+	 * The meta object id for the '{@link blocky.impl.BodyImpl <em>Body</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see blocky.impl.BlockImpl
-	 * @see blocky.impl.BlockyPackageImpl#getBlock()
+	 * @see blocky.impl.BodyImpl
+	 * @see blocky.impl.BlockyPackageImpl#getBody()
 	 * @generated
 	 */
-	int BLOCK = 6;
+	int BODY = 6;
+
+	/**
+	 * The feature id for the '<em><b>First Container</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BODY__FIRST_CONTAINER = 0;
+
+	/**
+	 * The number of structural features of the '<em>Body</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BODY_FEATURE_COUNT = 1;
+
+	/**
+	 * The number of operations of the '<em>Body</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BODY_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link blocky.impl.ContainerImpl <em>Container</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see blocky.impl.ContainerImpl
+	 * @see blocky.impl.BlockyPackageImpl#getContainer()
+	 * @generated
+	 */
+	int CONTAINER = 7;
+
+	/**
+	 * The feature id for the '<em><b>Statement</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int CONTAINER__STATEMENT = 0;
 
 	/**
 	 * The feature id for the '<em><b>Next</b></em>' containment reference.
@@ -503,127 +549,136 @@ public interface BlockyPackage extends EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int BLOCK__NEXT = 0;
+	int CONTAINER__NEXT = 1;
 
 	/**
-	 * The number of structural features of the '<em>Block</em>' class.
+	 * The feature id for the '<em><b>Generated</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int BLOCK_FEATURE_COUNT = 1;
+	int CONTAINER__GENERATED = 2;
 
 	/**
-	 * The number of operations of the '<em>Block</em>' class.
+	 * The number of structural features of the '<em>Container</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int BLOCK_OPERATION_COUNT = 0;
+	int CONTAINER_FEATURE_COUNT = 3;
 
 	/**
-	 * The meta object id for the '{@link blocky.impl.MoveForwardImpl <em>Move Forward</em>}' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see blocky.impl.MoveForwardImpl
-	 * @see blocky.impl.BlockyPackageImpl#getMoveForward()
-	 * @generated
-	 */
-	int MOVE_FORWARD = 7;
-
-	/**
-	 * The feature id for the '<em><b>Next</b></em>' containment reference.
+	 * The number of operations of the '<em>Container</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int MOVE_FORWARD__NEXT = BLOCK__NEXT;
+	int CONTAINER_OPERATION_COUNT = 0;
 
 	/**
-	 * The number of structural features of the '<em>Move Forward</em>' class.
+	 * The meta object id for the '{@link blocky.impl.StatementImpl <em>Statement</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see blocky.impl.StatementImpl
+	 * @see blocky.impl.BlockyPackageImpl#getStatement()
+	 * @generated
+	 */
+	int STATEMENT = 8;
+
+	/**
+	 * The feature id for the '<em><b>Generated</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int MOVE_FORWARD_FEATURE_COUNT = BLOCK_FEATURE_COUNT + 0;
+	int STATEMENT__GENERATED = 0;
 
 	/**
-	 * The number of operations of the '<em>Move Forward</em>' class.
+	 * The number of structural features of the '<em>Statement</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int MOVE_FORWARD_OPERATION_COUNT = BLOCK_OPERATION_COUNT + 0;
+	int STATEMENT_FEATURE_COUNT = 1;
 
 	/**
-	 * The meta object id for the '{@link blocky.impl.TurnImpl <em>Turn</em>}' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see blocky.impl.TurnImpl
-	 * @see blocky.impl.BlockyPackageImpl#getTurn()
-	 * @generated
-	 */
-	int TURN = 8;
-
-	/**
-	 * The feature id for the '<em><b>Next</b></em>' containment reference.
+	 * The number of operations of the '<em>Statement</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int TURN__NEXT = BLOCK__NEXT;
+	int STATEMENT_OPERATION_COUNT = 0;
 
 	/**
-	 * The feature id for the '<em><b>Direction</b></em>' attribute.
+	 * The meta object id for the '{@link blocky.impl.AtomicStatementImpl <em>Atomic Statement</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see blocky.impl.AtomicStatementImpl
+	 * @see blocky.impl.BlockyPackageImpl#getAtomicStatement()
+	 * @generated
+	 */
+	int ATOMIC_STATEMENT = 9;
+
+	/**
+	 * The feature id for the '<em><b>Generated</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int TURN__DIRECTION = BLOCK_FEATURE_COUNT + 0;
+	int ATOMIC_STATEMENT__GENERATED = STATEMENT__GENERATED;
 
 	/**
-	 * The number of structural features of the '<em>Turn</em>' class.
+	 * The feature id for the '<em><b>Kind</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int TURN_FEATURE_COUNT = BLOCK_FEATURE_COUNT + 1;
+	int ATOMIC_STATEMENT__KIND = STATEMENT_FEATURE_COUNT + 0;
 
 	/**
-	 * The number of operations of the '<em>Turn</em>' class.
+	 * The number of structural features of the '<em>Atomic Statement</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int TURN_OPERATION_COUNT = BLOCK_OPERATION_COUNT + 0;
+	int ATOMIC_STATEMENT_FEATURE_COUNT = STATEMENT_FEATURE_COUNT + 1;
 
 	/**
-	 * The meta object id for the '{@link blocky.impl.RepeatUntilGoalImpl <em>Repeat Until Goal</em>}' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see blocky.impl.RepeatUntilGoalImpl
-	 * @see blocky.impl.BlockyPackageImpl#getRepeatUntilGoal()
-	 * @generated
-	 */
-	int REPEAT_UNTIL_GOAL = 9;
-
-	/**
-	 * The feature id for the '<em><b>Next</b></em>' containment reference.
+	 * The number of operations of the '<em>Atomic Statement</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int REPEAT_UNTIL_GOAL__NEXT = BLOCK__NEXT;
+	int ATOMIC_STATEMENT_OPERATION_COUNT = STATEMENT_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link blocky.impl.LoopImpl <em>Loop</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see blocky.impl.LoopImpl
+	 * @see blocky.impl.BlockyPackageImpl#getLoop()
+	 * @generated
+	 */
+	int LOOP = 10;
+
+	/**
+	 * The feature id for the '<em><b>Generated</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LOOP__GENERATED = STATEMENT__GENERATED;
 
 	/**
 	 * The feature id for the '<em><b>Body</b></em>' containment reference.
@@ -632,44 +687,44 @@ public interface BlockyPackage extends EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int REPEAT_UNTIL_GOAL__BODY = BLOCK_FEATURE_COUNT + 0;
+	int LOOP__BODY = STATEMENT_FEATURE_COUNT + 0;
 
 	/**
-	 * The number of structural features of the '<em>Repeat Until Goal</em>' class.
+	 * The number of structural features of the '<em>Loop</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int REPEAT_UNTIL_GOAL_FEATURE_COUNT = BLOCK_FEATURE_COUNT + 1;
+	int LOOP_FEATURE_COUNT = STATEMENT_FEATURE_COUNT + 1;
 
 	/**
-	 * The number of operations of the '<em>Repeat Until Goal</em>' class.
+	 * The number of operations of the '<em>Loop</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int REPEAT_UNTIL_GOAL_OPERATION_COUNT = BLOCK_OPERATION_COUNT + 0;
+	int LOOP_OPERATION_COUNT = STATEMENT_OPERATION_COUNT + 0;
 
 	/**
-	 * The meta object id for the '{@link blocky.impl.IfStatementImpl <em>If Statement</em>}' class.
+	 * The meta object id for the '{@link blocky.impl.IfStmtImpl <em>If Stmt</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see blocky.impl.IfStatementImpl
-	 * @see blocky.impl.BlockyPackageImpl#getIfStatement()
+	 * @see blocky.impl.IfStmtImpl
+	 * @see blocky.impl.BlockyPackageImpl#getIfStmt()
 	 * @generated
 	 */
-	int IF_STATEMENT = 10;
+	int IF_STMT = 11;
 
 	/**
-	 * The feature id for the '<em><b>Next</b></em>' containment reference.
+	 * The feature id for the '<em><b>Generated</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int IF_STATEMENT__NEXT = BLOCK__NEXT;
+	int IF_STMT__GENERATED = STATEMENT__GENERATED;
 
 	/**
 	 * The feature id for the '<em><b>Condition</b></em>' attribute.
@@ -678,43 +733,43 @@ public interface BlockyPackage extends EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int IF_STATEMENT__CONDITION = BLOCK_FEATURE_COUNT + 0;
+	int IF_STMT__CONDITION = STATEMENT_FEATURE_COUNT + 0;
 
 	/**
-	 * The feature id for the '<em><b>Then Branch</b></em>' containment reference.
+	 * The feature id for the '<em><b>Then Body</b></em>' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int IF_STATEMENT__THEN_BRANCH = BLOCK_FEATURE_COUNT + 1;
+	int IF_STMT__THEN_BODY = STATEMENT_FEATURE_COUNT + 1;
 
 	/**
-	 * The feature id for the '<em><b>Else Branch</b></em>' containment reference.
+	 * The feature id for the '<em><b>Else Body</b></em>' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int IF_STATEMENT__ELSE_BRANCH = BLOCK_FEATURE_COUNT + 2;
+	int IF_STMT__ELSE_BODY = STATEMENT_FEATURE_COUNT + 2;
 
 	/**
-	 * The number of structural features of the '<em>If Statement</em>' class.
+	 * The number of structural features of the '<em>If Stmt</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int IF_STATEMENT_FEATURE_COUNT = BLOCK_FEATURE_COUNT + 3;
+	int IF_STMT_FEATURE_COUNT = STATEMENT_FEATURE_COUNT + 3;
 
 	/**
-	 * The number of operations of the '<em>If Statement</em>' class.
+	 * The number of operations of the '<em>If Stmt</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int IF_STATEMENT_OPERATION_COUNT = BLOCK_OPERATION_COUNT + 0;
+	int IF_STMT_OPERATION_COUNT = STATEMENT_OPERATION_COUNT + 0;
 
 	/**
 	 * The meta object id for the '{@link blocky.Direction <em>Direction</em>}' enum.
@@ -724,17 +779,7 @@ public interface BlockyPackage extends EPackage {
 	 * @see blocky.impl.BlockyPackageImpl#getDirection()
 	 * @generated
 	 */
-	int DIRECTION = 11;
-
-	/**
-	 * The meta object id for the '{@link blocky.TurnDirection <em>Turn Direction</em>}' enum.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see blocky.TurnDirection
-	 * @see blocky.impl.BlockyPackageImpl#getTurnDirection()
-	 * @generated
-	 */
-	int TURN_DIRECTION = 12;
+	int DIRECTION = 12;
 
 	/**
 	 * The meta object id for the '{@link blocky.CellType <em>Cell Type</em>}' enum.
@@ -765,6 +810,26 @@ public interface BlockyPackage extends EPackage {
 	 * @generated
 	 */
 	int GAME_STATUS = 15;
+
+	/**
+	 * The meta object id for the '{@link blocky.ConditionKind <em>Condition Kind</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see blocky.ConditionKind
+	 * @see blocky.impl.BlockyPackageImpl#getConditionKind()
+	 * @generated
+	 */
+	int CONDITION_KIND = 16;
+
+	/**
+	 * The meta object id for the '{@link blocky.AtomicStatementKind <em>Atomic Statement Kind</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see blocky.AtomicStatementKind
+	 * @see blocky.impl.BlockyPackageImpl#getAtomicStatementKind()
+	 * @generated
+	 */
+	int ATOMIC_STATEMENT_KIND = 17;
 
 	/**
 	 * Returns the meta object for class '{@link blocky.Game <em>Game</em>}'.
@@ -1113,15 +1178,15 @@ public interface BlockyPackage extends EPackage {
 	EAttribute getGameState_Status();
 
 	/**
-	 * Returns the meta object for the reference '{@link blocky.GameState#getExecutingBlock <em>Executing Block</em>}'.
+	 * Returns the meta object for the reference '{@link blocky.GameState#getExecutingStatement <em>Executing Statement</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for the reference '<em>Executing Block</em>'.
-	 * @see blocky.GameState#getExecutingBlock()
+	 * @return the meta object for the reference '<em>Executing Statement</em>'.
+	 * @see blocky.GameState#getExecutingStatement()
 	 * @see #getGameState()
 	 * @generated
 	 */
-	EReference getGameState_ExecutingBlock();
+	EReference getGameState_ExecutingStatement();
 
 	/**
 	 * Returns the meta object for the reference '{@link blocky.GameState#getNext <em>Next</em>}'.
@@ -1146,120 +1211,174 @@ public interface BlockyPackage extends EPackage {
 	EReference getGameState_Previous();
 
 	/**
-	 * Returns the meta object for class '{@link blocky.Block <em>Block</em>}'.
+	 * Returns the meta object for class '{@link blocky.Body <em>Body</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Block</em>'.
-	 * @see blocky.Block
+	 * @return the meta object for class '<em>Body</em>'.
+	 * @see blocky.Body
 	 * @generated
 	 */
-	EClass getBlock();
+	EClass getBody();
 
 	/**
-	 * Returns the meta object for the containment reference '{@link blocky.Block#getNext <em>Next</em>}'.
+	 * Returns the meta object for the containment reference '{@link blocky.Body#getFirstContainer <em>First Container</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>First Container</em>'.
+	 * @see blocky.Body#getFirstContainer()
+	 * @see #getBody()
+	 * @generated
+	 */
+	EReference getBody_FirstContainer();
+
+	/**
+	 * Returns the meta object for class '{@link blocky.Container <em>Container</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Container</em>'.
+	 * @see blocky.Container
+	 * @generated
+	 */
+	EClass getContainer();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link blocky.Container#getStatement <em>Statement</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Statement</em>'.
+	 * @see blocky.Container#getStatement()
+	 * @see #getContainer()
+	 * @generated
+	 */
+	EReference getContainer_Statement();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link blocky.Container#getNext <em>Next</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @return the meta object for the containment reference '<em>Next</em>'.
-	 * @see blocky.Block#getNext()
-	 * @see #getBlock()
+	 * @see blocky.Container#getNext()
+	 * @see #getContainer()
 	 * @generated
 	 */
-	EReference getBlock_Next();
+	EReference getContainer_Next();
 
 	/**
-	 * Returns the meta object for class '{@link blocky.MoveForward <em>Move Forward</em>}'.
+	 * Returns the meta object for the attribute '{@link blocky.Container#isGenerated <em>Generated</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Move Forward</em>'.
-	 * @see blocky.MoveForward
+	 * @return the meta object for the attribute '<em>Generated</em>'.
+	 * @see blocky.Container#isGenerated()
+	 * @see #getContainer()
 	 * @generated
 	 */
-	EClass getMoveForward();
+	EAttribute getContainer_Generated();
 
 	/**
-	 * Returns the meta object for class '{@link blocky.Turn <em>Turn</em>}'.
+	 * Returns the meta object for class '{@link blocky.Statement <em>Statement</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Turn</em>'.
-	 * @see blocky.Turn
+	 * @return the meta object for class '<em>Statement</em>'.
+	 * @see blocky.Statement
 	 * @generated
 	 */
-	EClass getTurn();
+	EClass getStatement();
 
 	/**
-	 * Returns the meta object for the attribute '{@link blocky.Turn#getDirection <em>Direction</em>}'.
+	 * Returns the meta object for the attribute '{@link blocky.Statement#isGenerated <em>Generated</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Direction</em>'.
-	 * @see blocky.Turn#getDirection()
-	 * @see #getTurn()
+	 * @return the meta object for the attribute '<em>Generated</em>'.
+	 * @see blocky.Statement#isGenerated()
+	 * @see #getStatement()
 	 * @generated
 	 */
-	EAttribute getTurn_Direction();
+	EAttribute getStatement_Generated();
 
 	/**
-	 * Returns the meta object for class '{@link blocky.RepeatUntilGoal <em>Repeat Until Goal</em>}'.
+	 * Returns the meta object for class '{@link blocky.AtomicStatement <em>Atomic Statement</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Repeat Until Goal</em>'.
-	 * @see blocky.RepeatUntilGoal
+	 * @return the meta object for class '<em>Atomic Statement</em>'.
+	 * @see blocky.AtomicStatement
 	 * @generated
 	 */
-	EClass getRepeatUntilGoal();
+	EClass getAtomicStatement();
 
 	/**
-	 * Returns the meta object for the containment reference '{@link blocky.RepeatUntilGoal#getBody <em>Body</em>}'.
+	 * Returns the meta object for the attribute '{@link blocky.AtomicStatement#getKind <em>Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Kind</em>'.
+	 * @see blocky.AtomicStatement#getKind()
+	 * @see #getAtomicStatement()
+	 * @generated
+	 */
+	EAttribute getAtomicStatement_Kind();
+
+	/**
+	 * Returns the meta object for class '{@link blocky.Loop <em>Loop</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Loop</em>'.
+	 * @see blocky.Loop
+	 * @generated
+	 */
+	EClass getLoop();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link blocky.Loop#getBody <em>Body</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @return the meta object for the containment reference '<em>Body</em>'.
-	 * @see blocky.RepeatUntilGoal#getBody()
-	 * @see #getRepeatUntilGoal()
+	 * @see blocky.Loop#getBody()
+	 * @see #getLoop()
 	 * @generated
 	 */
-	EReference getRepeatUntilGoal_Body();
+	EReference getLoop_Body();
 
 	/**
-	 * Returns the meta object for class '{@link blocky.IfStatement <em>If Statement</em>}'.
+	 * Returns the meta object for class '{@link blocky.IfStmt <em>If Stmt</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>If Statement</em>'.
-	 * @see blocky.IfStatement
+	 * @return the meta object for class '<em>If Stmt</em>'.
+	 * @see blocky.IfStmt
 	 * @generated
 	 */
-	EClass getIfStatement();
+	EClass getIfStmt();
 
 	/**
-	 * Returns the meta object for the attribute '{@link blocky.IfStatement#getCondition <em>Condition</em>}'.
+	 * Returns the meta object for the attribute '{@link blocky.IfStmt#getCondition <em>Condition</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @return the meta object for the attribute '<em>Condition</em>'.
-	 * @see blocky.IfStatement#getCondition()
-	 * @see #getIfStatement()
+	 * @see blocky.IfStmt#getCondition()
+	 * @see #getIfStmt()
 	 * @generated
 	 */
-	EAttribute getIfStatement_Condition();
+	EAttribute getIfStmt_Condition();
 
 	/**
-	 * Returns the meta object for the containment reference '{@link blocky.IfStatement#getThenBranch <em>Then Branch</em>}'.
+	 * Returns the meta object for the containment reference '{@link blocky.IfStmt#getThenBody <em>Then Body</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for the containment reference '<em>Then Branch</em>'.
-	 * @see blocky.IfStatement#getThenBranch()
-	 * @see #getIfStatement()
+	 * @return the meta object for the containment reference '<em>Then Body</em>'.
+	 * @see blocky.IfStmt#getThenBody()
+	 * @see #getIfStmt()
 	 * @generated
 	 */
-	EReference getIfStatement_ThenBranch();
+	EReference getIfStmt_ThenBody();
 
 	/**
-	 * Returns the meta object for the containment reference '{@link blocky.IfStatement#getElseBranch <em>Else Branch</em>}'.
+	 * Returns the meta object for the containment reference '{@link blocky.IfStmt#getElseBody <em>Else Body</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for the containment reference '<em>Else Branch</em>'.
-	 * @see blocky.IfStatement#getElseBranch()
-	 * @see #getIfStatement()
+	 * @return the meta object for the containment reference '<em>Else Body</em>'.
+	 * @see blocky.IfStmt#getElseBody()
+	 * @see #getIfStmt()
 	 * @generated
 	 */
-	EReference getIfStatement_ElseBranch();
+	EReference getIfStmt_ElseBody();
 
 	/**
 	 * Returns the meta object for enum '{@link blocky.Direction <em>Direction</em>}'.
@@ -1270,16 +1389,6 @@ public interface BlockyPackage extends EPackage {
 	 * @generated
 	 */
 	EEnum getDirection();
-
-	/**
-	 * Returns the meta object for enum '{@link blocky.TurnDirection <em>Turn Direction</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for enum '<em>Turn Direction</em>'.
-	 * @see blocky.TurnDirection
-	 * @generated
-	 */
-	EEnum getTurnDirection();
 
 	/**
 	 * Returns the meta object for enum '{@link blocky.CellType <em>Cell Type</em>}'.
@@ -1310,6 +1419,26 @@ public interface BlockyPackage extends EPackage {
 	 * @generated
 	 */
 	EEnum getGameStatus();
+
+	/**
+	 * Returns the meta object for enum '{@link blocky.ConditionKind <em>Condition Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Condition Kind</em>'.
+	 * @see blocky.ConditionKind
+	 * @generated
+	 */
+	EEnum getConditionKind();
+
+	/**
+	 * Returns the meta object for enum '{@link blocky.AtomicStatementKind <em>Atomic Statement Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Atomic Statement Kind</em>'.
+	 * @see blocky.AtomicStatementKind
+	 * @generated
+	 */
+	EEnum getAtomicStatementKind();
 
 	/**
 	 * Returns the factory that creates the instances of the model.
@@ -1603,12 +1732,12 @@ public interface BlockyPackage extends EPackage {
 		EAttribute GAME_STATE__STATUS = eINSTANCE.getGameState_Status();
 
 		/**
-		 * The meta object literal for the '<em><b>Executing Block</b></em>' reference feature.
+		 * The meta object literal for the '<em><b>Executing Statement</b></em>' reference feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EReference GAME_STATE__EXECUTING_BLOCK = eINSTANCE.getGameState_ExecutingBlock();
+		EReference GAME_STATE__EXECUTING_STATEMENT = eINSTANCE.getGameState_ExecutingStatement();
 
 		/**
 		 * The meta object literal for the '<em><b>Next</b></em>' reference feature.
@@ -1627,14 +1756,40 @@ public interface BlockyPackage extends EPackage {
 		EReference GAME_STATE__PREVIOUS = eINSTANCE.getGameState_Previous();
 
 		/**
-		 * The meta object literal for the '{@link blocky.impl.BlockImpl <em>Block</em>}' class.
+		 * The meta object literal for the '{@link blocky.impl.BodyImpl <em>Body</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
-		 * @see blocky.impl.BlockImpl
-		 * @see blocky.impl.BlockyPackageImpl#getBlock()
+		 * @see blocky.impl.BodyImpl
+		 * @see blocky.impl.BlockyPackageImpl#getBody()
 		 * @generated
 		 */
-		EClass BLOCK = eINSTANCE.getBlock();
+		EClass BODY = eINSTANCE.getBody();
+
+		/**
+		 * The meta object literal for the '<em><b>First Container</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference BODY__FIRST_CONTAINER = eINSTANCE.getBody_FirstContainer();
+
+		/**
+		 * The meta object literal for the '{@link blocky.impl.ContainerImpl <em>Container</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see blocky.impl.ContainerImpl
+		 * @see blocky.impl.BlockyPackageImpl#getContainer()
+		 * @generated
+		 */
+		EClass CONTAINER = eINSTANCE.getContainer();
+
+		/**
+		 * The meta object literal for the '<em><b>Statement</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference CONTAINER__STATEMENT = eINSTANCE.getContainer_Statement();
 
 		/**
 		 * The meta object literal for the '<em><b>Next</b></em>' containment reference feature.
@@ -1642,45 +1797,61 @@ public interface BlockyPackage extends EPackage {
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EReference BLOCK__NEXT = eINSTANCE.getBlock_Next();
+		EReference CONTAINER__NEXT = eINSTANCE.getContainer_Next();
 
 		/**
-		 * The meta object literal for the '{@link blocky.impl.MoveForwardImpl <em>Move Forward</em>}' class.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see blocky.impl.MoveForwardImpl
-		 * @see blocky.impl.BlockyPackageImpl#getMoveForward()
-		 * @generated
-		 */
-		EClass MOVE_FORWARD = eINSTANCE.getMoveForward();
-
-		/**
-		 * The meta object literal for the '{@link blocky.impl.TurnImpl <em>Turn</em>}' class.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see blocky.impl.TurnImpl
-		 * @see blocky.impl.BlockyPackageImpl#getTurn()
-		 * @generated
-		 */
-		EClass TURN = eINSTANCE.getTurn();
-
-		/**
-		 * The meta object literal for the '<em><b>Direction</b></em>' attribute feature.
+		 * The meta object literal for the '<em><b>Generated</b></em>' attribute feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute TURN__DIRECTION = eINSTANCE.getTurn_Direction();
+		EAttribute CONTAINER__GENERATED = eINSTANCE.getContainer_Generated();
 
 		/**
-		 * The meta object literal for the '{@link blocky.impl.RepeatUntilGoalImpl <em>Repeat Until Goal</em>}' class.
+		 * The meta object literal for the '{@link blocky.impl.StatementImpl <em>Statement</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
-		 * @see blocky.impl.RepeatUntilGoalImpl
-		 * @see blocky.impl.BlockyPackageImpl#getRepeatUntilGoal()
+		 * @see blocky.impl.StatementImpl
+		 * @see blocky.impl.BlockyPackageImpl#getStatement()
 		 * @generated
 		 */
-		EClass REPEAT_UNTIL_GOAL = eINSTANCE.getRepeatUntilGoal();
+		EClass STATEMENT = eINSTANCE.getStatement();
+
+		/**
+		 * The meta object literal for the '<em><b>Generated</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute STATEMENT__GENERATED = eINSTANCE.getStatement_Generated();
+
+		/**
+		 * The meta object literal for the '{@link blocky.impl.AtomicStatementImpl <em>Atomic Statement</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see blocky.impl.AtomicStatementImpl
+		 * @see blocky.impl.BlockyPackageImpl#getAtomicStatement()
+		 * @generated
+		 */
+		EClass ATOMIC_STATEMENT = eINSTANCE.getAtomicStatement();
+
+		/**
+		 * The meta object literal for the '<em><b>Kind</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute ATOMIC_STATEMENT__KIND = eINSTANCE.getAtomicStatement_Kind();
+
+		/**
+		 * The meta object literal for the '{@link blocky.impl.LoopImpl <em>Loop</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see blocky.impl.LoopImpl
+		 * @see blocky.impl.BlockyPackageImpl#getLoop()
+		 * @generated
+		 */
+		EClass LOOP = eINSTANCE.getLoop();
 
 		/**
 		 * The meta object literal for the '<em><b>Body</b></em>' containment reference feature.
@@ -1688,17 +1859,17 @@ public interface BlockyPackage extends EPackage {
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EReference REPEAT_UNTIL_GOAL__BODY = eINSTANCE.getRepeatUntilGoal_Body();
+		EReference LOOP__BODY = eINSTANCE.getLoop_Body();
 
 		/**
-		 * The meta object literal for the '{@link blocky.impl.IfStatementImpl <em>If Statement</em>}' class.
+		 * The meta object literal for the '{@link blocky.impl.IfStmtImpl <em>If Stmt</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
-		 * @see blocky.impl.IfStatementImpl
-		 * @see blocky.impl.BlockyPackageImpl#getIfStatement()
+		 * @see blocky.impl.IfStmtImpl
+		 * @see blocky.impl.BlockyPackageImpl#getIfStmt()
 		 * @generated
 		 */
-		EClass IF_STATEMENT = eINSTANCE.getIfStatement();
+		EClass IF_STMT = eINSTANCE.getIfStmt();
 
 		/**
 		 * The meta object literal for the '<em><b>Condition</b></em>' attribute feature.
@@ -1706,23 +1877,23 @@ public interface BlockyPackage extends EPackage {
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute IF_STATEMENT__CONDITION = eINSTANCE.getIfStatement_Condition();
+		EAttribute IF_STMT__CONDITION = eINSTANCE.getIfStmt_Condition();
 
 		/**
-		 * The meta object literal for the '<em><b>Then Branch</b></em>' containment reference feature.
+		 * The meta object literal for the '<em><b>Then Body</b></em>' containment reference feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EReference IF_STATEMENT__THEN_BRANCH = eINSTANCE.getIfStatement_ThenBranch();
+		EReference IF_STMT__THEN_BODY = eINSTANCE.getIfStmt_ThenBody();
 
 		/**
-		 * The meta object literal for the '<em><b>Else Branch</b></em>' containment reference feature.
+		 * The meta object literal for the '<em><b>Else Body</b></em>' containment reference feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EReference IF_STATEMENT__ELSE_BRANCH = eINSTANCE.getIfStatement_ElseBranch();
+		EReference IF_STMT__ELSE_BODY = eINSTANCE.getIfStmt_ElseBody();
 
 		/**
 		 * The meta object literal for the '{@link blocky.Direction <em>Direction</em>}' enum.
@@ -1733,16 +1904,6 @@ public interface BlockyPackage extends EPackage {
 		 * @generated
 		 */
 		EEnum DIRECTION = eINSTANCE.getDirection();
-
-		/**
-		 * The meta object literal for the '{@link blocky.TurnDirection <em>Turn Direction</em>}' enum.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see blocky.TurnDirection
-		 * @see blocky.impl.BlockyPackageImpl#getTurnDirection()
-		 * @generated
-		 */
-		EEnum TURN_DIRECTION = eINSTANCE.getTurnDirection();
 
 		/**
 		 * The meta object literal for the '{@link blocky.CellType <em>Cell Type</em>}' enum.
@@ -1773,6 +1934,26 @@ public interface BlockyPackage extends EPackage {
 		 * @generated
 		 */
 		EEnum GAME_STATUS = eINSTANCE.getGameStatus();
+
+		/**
+		 * The meta object literal for the '{@link blocky.ConditionKind <em>Condition Kind</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see blocky.ConditionKind
+		 * @see blocky.impl.BlockyPackageImpl#getConditionKind()
+		 * @generated
+		 */
+		EEnum CONDITION_KIND = eINSTANCE.getConditionKind();
+
+		/**
+		 * The meta object literal for the '{@link blocky.AtomicStatementKind <em>Atomic Statement Kind</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see blocky.AtomicStatementKind
+		 * @see blocky.impl.BlockyPackageImpl#getAtomicStatementKind()
+		 * @generated
+		 */
+		EEnum ATOMIC_STATEMENT_KIND = eINSTANCE.getAtomicStatementKind();
 
 	}
 

@@ -2,8 +2,8 @@
  */
 package blocky.impl;
 
-import blocky.Block;
 import blocky.BlockyPackage;
+import blocky.Body;
 import blocky.Direction;
 import blocky.ExecutionTrace;
 import blocky.GridMap;
@@ -206,7 +206,7 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 	 * @generated
 	 * @ordered
 	 */
-	protected Block solution;
+	protected Body solution;
 
 	/**
 	 * The cached value of the '{@link #getTraces() <em>Traces</em>}' containment reference list.
@@ -460,7 +460,7 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 	 * @generated
 	 */
 	@Override
-	public Block getSolution() {
+	public Body getSolution() {
 		return solution;
 	}
 
@@ -469,8 +469,8 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public NotificationChain basicSetSolution(Block newSolution, NotificationChain msgs) {
-		Block oldSolution = solution;
+	public NotificationChain basicSetSolution(Body newSolution, NotificationChain msgs) {
+		Body oldSolution = solution;
 		solution = newSolution;
 		if (eNotificationRequired()) {
 			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET,
@@ -489,7 +489,7 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 	 * @generated
 	 */
 	@Override
-	public void setSolution(Block newSolution) {
+	public void setSolution(Body newSolution) {
 		if (newSolution != solution) {
 			NotificationChain msgs = null;
 			if (solution != null)
@@ -604,7 +604,7 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 			setAllowConditionals((Boolean) newValue);
 			return;
 		case BlockyPackage.LEVEL__SOLUTION:
-			setSolution((Block) newValue);
+			setSolution((Body) newValue);
 			return;
 		case BlockyPackage.LEVEL__TRACES:
 			getTraces().clear();
@@ -647,7 +647,7 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 			setAllowConditionals(ALLOW_CONDITIONALS_EDEFAULT);
 			return;
 		case BlockyPackage.LEVEL__SOLUTION:
-			setSolution((Block) null);
+			setSolution((Body) null);
 			return;
 		case BlockyPackage.LEVEL__TRACES:
 			getTraces().clear();

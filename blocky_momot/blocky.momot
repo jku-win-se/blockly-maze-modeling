@@ -3,24 +3,39 @@ import blocky.BlockyPackage
 import blocky.Game
 import blocky.GameStatus
 import blocky_momot.BlockySimulator
+import blocky_momot.BlockyProgramDistance
+import blocky_momot.BlockyProgramMetrics
 import at.ac.tuwien.big.momot.^search.^fitness.dimension.TransformationLengthDimension
 import at.ac.tuwien.big.momot.^search.solution.repair.TransformationPlaceholderRepairer
 import at.ac.tuwien.big.moea.^experiment.executor.listener.SeedRuntimePrintListener
 import at.ac.tuwien.big.momot.^search.algorithm.operator.mutation.TransformationPlaceholderMutation
 import at.ac.tuwien.big.momot.^search.algorithm.operator.mutation.TransformationParameterMutation
+import blocky_momot.RandomAtomicKindLiteralValue
+import blocky_momot.RandomConditionKindLiteralValue
+import blocky_momot.EnumParamPreprocessFitnessFunction
 import org.moeaframework.core.operator.OnePointCrossover
 import org.moeaframework.core.operator.TournamentSelection
 
+var input = "model/input/level5.xmi"
+
 initialization = {
+	// Workaround for rare MOEAFramework sorting crashes on some JVMs when
+	// the population comparator becomes non-transitive (TimSort detects and throws).
+	// Legacy merge sort is more forgiving.
+	System.setProperty("java.util.Arrays.useLegacyMergeSort", "true")
+
 	val pkg = BlockyPackage.eINSTANCE
 	EPackage.Registry.INSTANCE.put(pkg.getNsURI(), pkg)
 	EPackage.Registry.INSTANCE.put(pkg.getName(), pkg)
 	pkg.eClass
+
+	// Cache the baseline program once, for closeness / edit-distance fitness.
+	BlockyProgramDistance.initializeBaseline(input)
 }
 
 search = {
 	model = {
-		file = "model/input/game.xmi"
+		file = input
 		adapt = {
 			val game = root as Game
 			if (game.eResource() !== null) {
@@ -31,38 +46,224 @@ search = {
 			return root
 		}
 	}
-	solutionLength = 15
+	// Worst case: delete all existing statements and create exactly maxBlocks statements.
+	solutionLength = BlockyProgramMetrics.inferSolutionLength(input) * 2
 	transformations = {
-		modules = [ "../blocky_model/transformations/add_block_to_empty_slot_henshin_text.henshin" ]
+		modules = [ "../blocky_model/transformations/statement_insertions_henshin_text.henshin" ]
 		ignoreUnits = [
-			"AddIfAheadToNext", "AddIfLeftToNext", "AddIfRightToNext", "AddRepeatUntilGoalToNext",
-			"AddIfAheadToBody", "AddIfLeftToBody", "AddIfRightToBody", "AddRepeatUntilGoalToBody",
-			"AddIfAheadToThenBranch", "AddIfLeftToThenBranch", "AddIfRightToThenBranch", "AddRepeatUntilGoalToThenBranch",
-			"AddIfAheadToElseBranch", "AddIfLeftToElseBranch", "AddIfRightToElseBranch", "AddRepeatUntilGoalToElseBranch"
+			// Keep only the high-level edit operator:
+			// - CreateThenInsertContainerThenPopulate
+			// - DeleteContainerAnywhere
+			//
+			// Everything else is excluded from MOMoT's selectable operator set.
+			// (Sub-units can still be executed when invoked by the high-level unit.)
+			"statement_insertions_henshin_text::InsertContainerIntoEmptyBody",
+			"statement_insertions_henshin_text::InsertContainerBeforeBodyHead",
+			"statement_insertions_henshin_text::InsertContainerBetweenNext",
+			"statement_insertions_henshin_text::InsertContainerAfterLast",
+			"statement_insertions_henshin_text::InsertContainerAnywhere",
+			"statement_insertions_henshin_text::PopulateEmptyContainerWithAtomic",
+			"statement_insertions_henshin_text::PopulateEmptyContainerWithLoop",
+			"statement_insertions_henshin_text::PopulateEmptyContainerWithIf",
+			"statement_insertions_henshin_text::PopulateAnyEmptyContainer",
+			"statement_insertions_henshin_text::DeleteOnlyContainerFromBody",
+			"statement_insertions_henshin_text::DeleteHeadContainerWithNext",
+			"statement_insertions_henshin_text::DeleteBetweenContainerWithNext",
+			"statement_insertions_henshin_text::DeleteLastContainer"
+
+			// Fallbacks for runtimes that use unqualified unit IDs
+			, "InsertContainerIntoEmptyBody"
+			, "InsertContainerBeforeBodyHead"
+			, "InsertContainerBetweenNext"
+			, "InsertContainerAfterLast"
+			, "InsertContainerAnywhere"
+			, "PopulateEmptyContainerWithAtomic"
+			, "PopulateEmptyContainerWithLoop"
+			, "PopulateEmptyContainerWithIf"
+			, "PopulateAnyEmptyContainer"
+			, "DeleteOnlyContainerFromBody"
+			, "DeleteHeadContainerWithNext"
+			, "DeleteBetweenContainerWithNext"
+			, "DeleteLastContainer"
+
+			// Dot-qualified fallbacks
+			, "statement_insertions_henshin_text.InsertContainerIntoEmptyBody"
+			, "statement_insertions_henshin_text.InsertContainerBeforeBodyHead"
+			, "statement_insertions_henshin_text.InsertContainerBetweenNext"
+			, "statement_insertions_henshin_text.InsertContainerAfterLast"
+			, "statement_insertions_henshin_text.InsertContainerAnywhere"
+			, "statement_insertions_henshin_text.PopulateEmptyContainerWithAtomic"
+			, "statement_insertions_henshin_text.PopulateEmptyContainerWithLoop"
+			, "statement_insertions_henshin_text.PopulateEmptyContainerWithIf"
+			, "statement_insertions_henshin_text.PopulateAnyEmptyContainer"
+			, "statement_insertions_henshin_text.DeleteOnlyContainerFromBody"
+			, "statement_insertions_henshin_text.DeleteHeadContainerWithNext"
+			, "statement_insertions_henshin_text.DeleteBetweenContainerWithNext"
+			, "statement_insertions_henshin_text.DeleteLastContainer"
+
+			// Some runtimes qualify rules with an extra namespace segment
+			, "statement_insertions_henshin_text::HenshinDSL::InsertContainerIntoEmptyBody"
+			, "statement_insertions_henshin_text::HenshinDSL::InsertContainerBeforeBodyHead"
+			, "statement_insertions_henshin_text::HenshinDSL::InsertContainerBetweenNext"
+			, "statement_insertions_henshin_text::HenshinDSL::InsertContainerAfterLast"
+			, "statement_insertions_henshin_text::HenshinDSL::InsertContainerAnywhere"
+			, "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithAtomic"
+			, "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithLoop"
+			, "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithIf"
+			, "statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer"
+			, "statement_insertions_henshin_text::HenshinDSL::DeleteOnlyContainerFromBody"
+			, "statement_insertions_henshin_text::HenshinDSL::DeleteHeadContainerWithNext"
+			, "statement_insertions_henshin_text::HenshinDSL::DeleteBetweenContainerWithNext"
+			, "statement_insertions_henshin_text::HenshinDSL::DeleteLastContainer"
+
+			// Actual compiled module/unit naming (compiled module is "HenshinDSL")
+			, "HenshinDSL::InsertContainerIntoEmptyBody"
+			, "HenshinDSL::InsertContainerBeforeBodyHead"
+			, "HenshinDSL::InsertContainerBetweenNext"
+			, "HenshinDSL::InsertContainerAfterLast"
+			, "HenshinDSL::InsertContainerAnywhere"
+			, "HenshinDSL::PopulateEmptyContainerWithAtomic"
+			, "HenshinDSL::PopulateEmptyContainerWithLoop"
+			, "HenshinDSL::PopulateEmptyContainerWithIf"
+			, "HenshinDSL::PopulateAnyEmptyContainer"
+			, "HenshinDSL::DeleteOnlyContainerFromBody"
+			, "HenshinDSL::DeleteHeadContainerWithNext"
+			, "HenshinDSL::DeleteBetweenContainerWithNext"
+			, "HenshinDSL::DeleteLastContainer"
+
+			, "HenshinDSL.InsertContainerIntoEmptyBody"
+			, "HenshinDSL.InsertContainerBeforeBodyHead"
+			, "HenshinDSL.InsertContainerBetweenNext"
+			, "HenshinDSL.InsertContainerAfterLast"
+			, "HenshinDSL.InsertContainerAnywhere"
+			, "HenshinDSL.PopulateEmptyContainerWithAtomic"
+			, "HenshinDSL.PopulateEmptyContainerWithLoop"
+			, "HenshinDSL.PopulateEmptyContainerWithIf"
+			, "HenshinDSL.PopulateAnyEmptyContainer"
+			, "HenshinDSL.DeleteOnlyContainerFromBody"
+			, "HenshinDSL.DeleteHeadContainerWithNext"
+			, "HenshinDSL.DeleteBetweenContainerWithNext"
+			, "HenshinDSL.DeleteLastContainer"
 		]
+//		ignoreParameters = [
+			// Keep empty for now:
+			// In this project setup, ignoring IN parameters prevents MOMoT from
+			// materializing and setting them on UnitApplication before execution.
+			// We still provide randomized values via `parameterValues` below.
+//		]
+		parameterValues = {
+			// Canonical MOMoT qualified parameter names: Module.Unit.Parameter
+			"HenshinDSL.CreateThenInsertContainerThenPopulate.k" : new RandomAtomicKindLiteralValue
+			"HenshinDSL.CreateThenInsertContainerThenPopulate.cnd" : new RandomConditionKindLiteralValue
+
+			// Extra naming variants seen at runtime (Henshin API / MOMoT resolution)
+			"HenshinDSL::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"HenshinDSL::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+			"CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+			"HenshinDSL.CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"HenshinDSL.CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+
+			// Safety net bindings for low-level population units (same random generators)
+			"HenshinDSL.PopulateAnyEmptyContainer.k" : new RandomAtomicKindLiteralValue
+			"HenshinDSL.PopulateAnyEmptyContainer.cnd" : new RandomConditionKindLiteralValue
+			"HenshinDSL.PopulateEmptyContainerWithAtomic.k" : new RandomAtomicKindLiteralValue
+			"HenshinDSL.PopulateEmptyContainerWithIf.cnd" : new RandomConditionKindLiteralValue
+
+			// Common fallbacks (depending on runtime name resolution)
+			"CreateThenInsertContainerThenPopulate.k" : new RandomAtomicKindLiteralValue
+			"CreateThenInsertContainerThenPopulate.cnd" : new RandomConditionKindLiteralValue
+			"PopulateAnyEmptyContainer.k" : new RandomAtomicKindLiteralValue
+			"PopulateAnyEmptyContainer.cnd" : new RandomConditionKindLiteralValue
+			"PopulateEmptyContainerWithAtomic.k" : new RandomAtomicKindLiteralValue
+			"PopulateEmptyContainerWithIf.cnd" : new RandomConditionKindLiteralValue
+
+			// Legacy separator variants seen in some setups
+			"statement_insertions_henshin_text::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_henshin_text::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_henshin_text::HenshinDSL::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_henshin_text::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+
+			// Legacy separator variants for low-level units
+			"statement_insertions_henshin_text::PopulateAnyEmptyContainer::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_henshin_text::PopulateAnyEmptyContainer::cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_henshin_text::PopulateEmptyContainerWithAtomic::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_henshin_text::PopulateEmptyContainerWithIf::cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer::cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithAtomic::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithIf::cnd" : new RandomConditionKindLiteralValue
+		}
 	}
-	fitness = {
+	fitness = new EnumParamPreprocessFitnessFunction {
 		objectives = {
 			GoalReached : maximize {
-				val game = root as Game
-				val level = if (game.levels.isEmpty) null else game.levels.get(0)
-				val status = if (level == null) GameStatus.CRASHED else BlockySimulator.run(level)
-				if (status == GameStatus.WON) 1 else 0
+				try {
+					val game = root as Game
+					val level = if (game.levels.isEmpty) null else game.levels.get(0)
+					val status = if (level == null) GameStatus.CRASHED else BlockySimulator.run(level)
+					val v = if (status == GameStatus.WON) 1.0 else 0.0
+					if (Double.isFinite(v)) v else 0.0
+				} catch (Throwable t) {
+					0.0
+				}
 			}
-			SolutionLength : minimize new TransformationLengthDimension
-		}
-		constraints = {
-			MustReachGoal : minimize {
-				val game = root as Game
-				val level = if (game.levels.isEmpty) null else game.levels.get(0)
-				val status = if (level == null) GameStatus.CRASHED else BlockySimulator.run(level)
-				if (status == GameStatus.WON) 0 else 1000
+			Edits : minimize {
+				try {
+					val v = BlockyProgramDistance.distanceToBaseline(root as Game) as double
+					if (Double.isFinite(v)) v else 1000000000.0
+				} catch (Throwable t) {
+					1000000000.0
+				}
+			}
+			ShortestPath : minimize {
+				try {
+					val game = root as Game
+					val level = if (game.levels.isEmpty) null else game.levels.get(0)
+					val v = (if (level == null) 100000.0 else BlockySimulator.stepsToGoalOrPenalty(level) as double)
+					if (Double.isFinite(v)) v else 1000000000.0
+				} catch (Throwable t) {
+					1000000000.0
+				}
+			}
+			MustReachGoalPenalty : minimize {
+				try {
+					val game = root as Game
+					val level = if (game.levels.isEmpty) null else game.levels.get(0)
+					val status = if (level == null) GameStatus.CRASHED else BlockySimulator.run(level)
+					val v = if (status == GameStatus.WON) 0.0 else 1000.0
+					if (Double.isFinite(v)) v else 1000.0
+				} catch (Throwable t) {
+					1000.0
+				}
+			}
+			MaxBlocksPenalty : minimize {
+				try {
+					val game = root as Game
+					val level = if (game.levels.isEmpty) null else game.levels.get(0)
+					if (level == null) return 1000.0
+
+					val maxBlocks = level.maxBlocks
+					if (maxBlocks <= 0) return 0.0
+
+					val blocks = BlockyProgramMetrics.countStatements(game)
+
+					val v = if (blocks <= maxBlocks) 0.0 else (blocks - maxBlocks) as double
+					if (Double.isFinite(v)) v else 1000.0
+				} catch (Throwable t) {
+					1000.0
+				}
 			}
 		}
+		// IMPORTANT:
+		// We model "must reach goal" as a *penalty objective* instead of a constraint.
+		// MOMoT/ MOEA marks infeasible individuals by setting other objectives to Infinity.
 		solutionRepairer = new TransformationPlaceholderRepairer
 	}
 	algorithms = {
-		Random : moea.createRandomSearch()
+		// Start with Random to sanity-check rule applicability quickly.
+//		Random : moea.createRandomSearch()
+
 		NSGA_II : moea.createNSGAII(
 			new TournamentSelection(2),
 			new OnePointCrossover(1.0),
@@ -74,7 +275,7 @@ search = {
 experiment = {
 	populationSize = 50
 	maxEvaluations = 2000
-	nrRuns = 5
+	nrRuns = 10
 	progressListeners = [ new SeedRuntimePrintListener ]
 }
 
@@ -87,7 +288,7 @@ results = {
 		outputFile = "output/solutions.txt"
 		outputDirectory = "output/solutions/"
 	}
-	models = {
+	models     = {
 		outputDirectory = "output/models/"
 	}
 }

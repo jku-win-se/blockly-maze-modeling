@@ -145,6 +145,7 @@ public class BlockyUI extends Application {
         // Blockly.Xml.workspaceToDom(ws) produces well-structured XML with
         // <block type>, <field name>, <statement name>, and <next> elements.
         String script = "(function() {\n" +
+                "  try { window.__blockyRunStarted = false; } catch(e) {}\n" +
                 "  var lastXml = '';\n" +
                 "  function log(msg) {\n" +
                 "    try {\n" +
@@ -241,6 +242,16 @@ public class BlockyUI extends Application {
                 "              log('Run observer ignored while debug session is active.');\n" +
                 "              continue;\n" +
                 "            }\n" +
+                "            try {\n" +
+                "              // Blockly often resets the start direction to EAST (T=1) when Run starts.\n" +
+                "              // If we loaded a model-specific start orientation, keep pegman facing it.\n" +
+                "              if (typeof window.__modelStartT === 'number') {\n" +
+                "                window.__stableStartT = window.__modelStartT;\n" +
+                "                window.T = window.__modelStartT;\n" +
+                "                if (typeof Z === 'function') Z(window.Q, window.S, 4 * window.T);\n" +
+                "              }\n" +
+                "            } catch(e) { /* ignore */ }\n" +
+                "            try { window.__blockyRunStarted = true; } catch(e) {}\n" +
                 "            log('Run button hidden — syncing state, saving XMI, then running simulation.');\n" +
                 "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);\n" +
                 "            if (bridge) {\n" +
@@ -463,10 +474,212 @@ public class BlockyUI extends Application {
                 + "      return true; "
                 + "    } catch(e) { return false; } "
                 + "  } "
+                + "  function __momotEnsure() { "
+                + "    try { "
+                + "      if (window.__momotReady) return true; "
+                + "      var host = document.getElementById('blockly'); "
+                + "      if (!host) return false; "
+                + "      var existing = document.getElementById('__momotPanel'); "
+                + "      if (!existing) { "
+                + "        var panel = document.createElement('div'); panel.id = '__momotPanel'; "
+                + "        panel.style.position = 'absolute'; "
+                + "        panel.style.right = '10px'; "
+                + "        panel.style.bottom = '70px'; "
+                + "        panel.style.width = '420px'; "
+                + "        panel.style.height = '260px'; "
+                + "        panel.style.minWidth = '300px'; "
+                + "        panel.style.minHeight = '140px'; "
+                + "        panel.style.maxWidth = '680px'; "
+                + "        panel.style.maxHeight = '560px'; "
+                + "        panel.style.overflow = 'hidden'; "
+                + "        panel.style.background = 'rgba(32,32,32,0.88)'; "
+                + "        panel.style.borderRadius = '8px'; "
+                + "        panel.style.border = '1px solid rgba(255,255,255,0.15)'; "
+                + "        panel.style.boxShadow = '2px 2px 5px rgba(0,0,0,0.35)'; "
+                + "        panel.style.zIndex = '999'; "
+                + "        panel.style.display = 'none'; "
+                + "        var header = document.createElement('div'); header.id = '__momotHeader'; "
+                + "        header.style.display = 'flex'; header.style.alignItems = 'center'; header.style.justifyContent = 'space-between'; "
+                + "        header.style.padding = '6px 8px'; header.style.color = '#fff'; header.style.fontSize = '14px'; header.style.userSelect = 'none'; "
+                + "        header.style.cursor = 'move'; "
+                + "        var title = document.createElement('div'); title.textContent = 'MoMoT solutions'; title.style.fontWeight = 'bold'; "
+                + "        var right = document.createElement('div'); right.style.display = 'flex'; right.style.gap = '6px'; "
+                + "        function mkBtn(id, label, tip) { "
+                + "          var b = document.createElement('button'); b.id = id; b.textContent = label; b.title = tip; "
+                + "          b.style.margin = '0'; b.style.padding = '4px 8px'; b.style.fontSize = '12px'; "
+                + "          b.style.borderRadius = '4px'; b.style.border = '1px solid rgba(255,255,255,0.25)'; "
+                + "          b.style.background = 'rgba(255,255,255,0.10)'; b.style.color = '#fff'; "
+                + "          return b; "
+                + "        } "
+                + "        var refreshBtn = mkBtn('__momotRefreshBtn', 'Refresh', 'Reload solutions from output folders'); "
+                + "        right.appendChild(refreshBtn); "
+                + "        header.appendChild(title); header.appendChild(right); "
+                + "        var body = document.createElement('div'); body.id = '__momotBody'; "
+                + "        body.style.padding = '6px 8px'; body.style.height = 'calc(100% - 38px)'; body.style.overflow = 'auto'; "
+                + "        body.style.color = '#fff'; body.style.fontFamily = 'Consolas, Menlo, Monaco, monospace'; body.style.fontSize = '12px'; "
+                + "        var list = document.createElement('div'); list.id = '__momotList'; "
+                + "        var actions = document.createElement('div'); actions.id = '__momotActions'; "
+                + "        actions.style.display = 'flex'; actions.style.gap = '6px'; actions.style.marginTop = '8px'; "
+                + "        var loadBtn = mkBtn('__momotLoadBtn', 'Load', 'Load selected model into the game'); "
+                + "        var runBtn2 = mkBtn('__momotRunBtn', 'Run', 'Run selected solution'); "
+                + "        var dbgBtn = mkBtn('__momotDebugBtn', 'Debug', 'Start debugger for selected solution'); "
+                + "        actions.appendChild(loadBtn); actions.appendChild(runBtn2); actions.appendChild(dbgBtn); "
+                + "        var status = document.createElement('div'); status.id = '__momotStatus'; status.style.marginTop = '6px'; status.style.opacity = '0.9'; "
+                + "        status.textContent = 'Click Refresh to load solutions.'; "
+                + "        body.appendChild(list); body.appendChild(actions); body.appendChild(status); "
+                + "        panel.appendChild(header); panel.appendChild(body); "
+                + "        var rh = document.createElement('div'); rh.id = '__momotResizeHandle'; "
+                + "        rh.style.position = 'absolute'; rh.style.right = '2px'; rh.style.bottom = '2px'; "
+                + "        rh.style.width = '14px'; rh.style.height = '14px'; "
+                + "        rh.style.cursor = 'se-resize'; "
+                + "        rh.style.opacity = '0.85'; "
+                + "        rh.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.0) 45%, rgba(255,255,255,0.35) 46%, rgba(255,255,255,0.35) 55%, rgba(255,255,255,0.0) 56%, rgba(255,255,255,0.0) 100%)'; "
+                + "        panel.appendChild(rh); "
+                + "        host.appendChild(panel); "
+                + "        window.__momotSelectedPath = null; "
+                + "        function setStatus(msg) { try { status.textContent = msg || ''; } catch(e) {} } "
+                + "        function renderSolutions(arr) { "
+                + "          try { "
+                + "            list.innerHTML = ''; "
+                + "            window.__momotSelectedPath = null; "
+                + "            if (!arr || !arr.length) { setStatus('No solutions found under blocky_momot/output*'); return; } "
+                + "            setStatus(arr.length + ' solution model(s) found.'); "
+                + "            for (var i=0; i<arr.length; i++) { "
+                + "              var it = arr[i] || {}; "
+                + "              var row = document.createElement('div'); "
+                + "              row.style.padding = '6px 6px'; "
+                + "              row.style.border = '1px solid rgba(255,255,255,0.10)'; "
+                + "              row.style.borderRadius = '6px'; "
+                + "              row.style.marginBottom = '6px'; "
+                + "              row.style.cursor = 'pointer'; "
+                + "              var obj = (it.objectiveLine && it.objectiveLine.length) ? ('Objectives: ' + it.objectiveLine) : 'Objectives: (unknown)'; "
+                + "              var path = it.modelPath || ''; "
+                + "              var summary = (it.summary && it.summary.length) ? it.summary : ''; "
+                + "              row.textContent = obj + '\\n' + path + (summary ? ('\\n' + summary) : ''); "
+                + "              row.addEventListener('click', (function(p, el){ "
+                + "                return function(){ "
+                + "                  try { "
+                + "                    window.__momotSelectedPath = p; "
+                + "                    // highlight selection\n"
+                + "                    var kids = list.children; "
+                + "                    for (var k=0; k<kids.length; k++) kids[k].style.background = 'transparent'; "
+                + "                    el.style.background = 'rgba(255,255,255,0.07)'; "
+                + "                    setStatus('Selected: ' + p); "
+                + "                  } catch(e) {} "
+                + "                }; "
+                + "              })(path, row)); "
+                + "              list.appendChild(row); "
+                + "            } "
+                + "          } catch(e) { setStatus('Failed to render solutions'); } "
+                + "        } "
+                + "        function refresh() { "
+                + "          try { "
+                + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
+                + "            if (!bridge || !bridge.listMomotSolutions) { setStatus('Java bridge listMomotSolutions not available'); return; } "
+                + "            setStatus('Loading solutions...'); "
+                + "            var txt = bridge.listMomotSolutions(); "
+                + "            var arr = []; "
+                + "            try { arr = JSON.parse(txt); } catch(e2) { arr = []; } "
+                + "            renderSolutions(arr); "
+                + "          } catch(e) { setStatus('Refresh failed'); } "
+                + "        } "
+                + "        window.__momotShowAndRefresh = function(){ try { panel.style.display = 'block'; } catch(e) {} try { refresh(); } catch(e2) {} }; "
+                + "        refreshBtn.addEventListener('click', function(){ refresh(); }); "
+                + "        loadBtn.addEventListener('click', function(){ "
+                + "          try { "
+                + "            var p = window.__momotSelectedPath; "
+                + "            if (!p) { setStatus('Select a solution first'); return; } "
+                + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
+                + "            if (!bridge || !bridge.loadMomotSolution) { setStatus('Java bridge loadMomotSolution not available'); return; } "
+                + "            setStatus('Loading model...'); "
+                + "            bridge.loadMomotSolution(p); "
+                + "          } catch(e) { setStatus('Load failed'); } "
+                + "        }); "
+                + "        runBtn2.addEventListener('click', function(){ "
+                + "          try { "
+                + "            var rb = document.getElementById('runButton'); "
+                + "            if (rb && typeof rb.click === 'function') rb.click(); "
+                + "          } catch(e) {} "
+                + "        }); "
+                + "        dbgBtn.addEventListener('click', function(){ "
+                + "          try { if (typeof __dbgStart === 'function') __dbgStart(); } catch(e) {} "
+                + "        }); "
+                + "        setStatus('Hidden until Direct Manipulation teleport.'); "
+                + "        (function(){ "
+                + "          try { "
+                + "            var dragging = false; var resizing = false; "
+                + "            var startX = 0, startY = 0, startLeft = 0, startTop = 0; "
+                + "            var startW = 0, startH = 0; "
+                + "            function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); } "
+                + "            function onMove(ev) { "
+                + "              try { "
+                + "                var hb = host.getBoundingClientRect(); "
+                + "                if (resizing) { "
+                + "                  var dx = ev.clientX - startX; var dy = ev.clientY - startY; "
+                + "                  var newW = startW + dx; var newH = startH + dy; "
+                + "                  var minW = 300, minH = 140, maxW = 680, maxH = 560; "
+                + "                  newW = clamp(newW, minW, maxW); newH = clamp(newH, minH, maxH); "
+                + "                  var pb = panel.getBoundingClientRect(); "
+                + "                  var leftInHost = pb.left - hb.left; var topInHost = pb.top - hb.top; "
+                + "                  newW = clamp(newW, minW, Math.max(minW, hb.width - leftInHost)); "
+                + "                  newH = clamp(newH, minH, Math.max(minH, hb.height - topInHost)); "
+                + "                  panel.style.width = Math.round(newW) + 'px'; panel.style.height = Math.round(newH) + 'px'; "
+                + "                  return; "
+                + "                } "
+                + "                if (dragging) { "
+                + "                  var dx2 = ev.clientX - startX; var dy2 = ev.clientY - startY; "
+                + "                  var pb2 = panel.getBoundingClientRect(); "
+                + "                  var newLeft = startLeft + dx2; var newTop = startTop + dy2; "
+                + "                  var maxLeft = Math.max(0, hb.width - pb2.width); "
+                + "                  var maxTop  = Math.max(0, hb.height - pb2.height); "
+                + "                  newLeft = clamp(newLeft, 0, maxLeft); newTop = clamp(newTop, 0, maxTop); "
+                + "                  panel.style.left = newLeft + 'px'; panel.style.top = newTop + 'px'; "
+                + "                  panel.style.right = 'auto'; panel.style.bottom = 'auto'; "
+                + "                } "
+                + "              } catch(e) {} "
+                + "            } "
+                + "            function onUp() { "
+                + "              dragging = false; resizing = false; "
+                + "              try { document.removeEventListener('mousemove', onMove, true); document.removeEventListener('mouseup', onUp, true); } catch(e) {} "
+                + "            } "
+                + "            header.addEventListener('mousedown', function(ev){ "
+                + "              try { "
+                + "                if (ev && ev.button !== 0) return; "
+                + "                var hb = host.getBoundingClientRect(); "
+                + "                var pb = panel.getBoundingClientRect(); "
+                + "                dragging = true; startX = ev.clientX; startY = ev.clientY; "
+                + "                startLeft = pb.left - hb.left; startTop = pb.top - hb.top; "
+                + "                panel.style.left = startLeft + 'px'; panel.style.top = startTop + 'px'; "
+                + "                panel.style.right = 'auto'; panel.style.bottom = 'auto'; "
+                + "                document.addEventListener('mousemove', onMove, true); document.addEventListener('mouseup', onUp, true); "
+                + "                if (ev && ev.preventDefault) ev.preventDefault(); "
+                + "              } catch(e) {} "
+                + "            }, true); "
+                + "            rh.addEventListener('mousedown', function(ev){ "
+                + "              try { "
+                + "                if (ev && ev.button !== 0) return; "
+                + "                var hb = host.getBoundingClientRect(); "
+                + "                var pb = panel.getBoundingClientRect(); "
+                + "                resizing = true; startX = ev.clientX; startY = ev.clientY; "
+                + "                startW = pb.width; startH = pb.height; "
+                + "                panel.style.left = (pb.left - hb.left) + 'px'; panel.style.top = (pb.top - hb.top) + 'px'; "
+                + "                panel.style.right = 'auto'; panel.style.bottom = 'auto'; "
+                + "                document.addEventListener('mousemove', onMove, true); document.addEventListener('mouseup', onUp, true); "
+                + "                if (ev && ev.preventDefault) ev.preventDefault(); "
+                + "              } catch(e) {} "
+                + "            }, true); "
+                + "          } catch(e) {} "
+                + "        })(); "
+                + "      } "
+                + "      window.__momotReady = true; "
+                + "      return true; "
+                + "    } catch(e) { return false; } "
+                + "  } "
                 + "  var attempts = 0, maxAttempts = 60, interval = 100; "
                 + "  var id = setInterval(function() { "
                 + "    try { "
                 + "      __execLogEnsure(); "
+                + "      __momotEnsure(); "
                 + "      var runBtn = document.getElementById('runButton'); "
                 + "      if (!runBtn) { attempts++; return; } "
                 + "      var container = runBtn.parentNode; "
@@ -649,6 +862,9 @@ public class BlockyUI extends Application {
                 + "        var debugStopBtn = __dbgMkBtn('debugStopButton', 'Stop', 'Stop debugging and reset'); "
                 + "        var debugStepBtn = __dbgMkBtn('debugStepButton', 'Step', 'Execute one step'); "
                 + "        var debugSkipBtn = __dbgMkBtn('debugSkipEndButton', 'Skip End', 'Jump to final outcome'); "
+                + "        var directManipBtn = __dbgMkBtn('directManipulationButton', 'Direct Manipulation', 'Teleport pegman to an empty/goal cell (paused or before run)'); "
+                + "        // Keep same look as other debug buttons (className='primary'); only add spacing.\n"
+                + "        directManipBtn.style.marginLeft = '8px'; "
                 + "        debugPauseResumeBtn.addEventListener('click', function() { __dbgTogglePause(); }); "
                 + "        debugStopBtn.addEventListener('click', function() { __dbgStop(); }); "
                 + "        debugStepBtn.addEventListener('click', function() { __dbgStep(); }); "
@@ -663,6 +879,74 @@ public class BlockyUI extends Application {
                 + "            if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
                 + "          } catch(e) {} "
                 + "        }); "
+                + "        window.__dmActive = false; "
+                + "        function __dmCanEnable() { "
+                + "          try { "
+                + "            var paused = (!window.__dbgTimer); "
+                + "            var inDebug = !!window.__dbgSessionStarted; "
+                + "            var beforeRun = !window.__blockyRunStarted && !inDebug; "
+                + "            return beforeRun || (inDebug && paused); "
+                + "          } catch(e) { return false; } "
+                + "        } "
+                + "        function __dmUpdateButton() { "
+                + "          try { "
+                + "            if (!directManipBtn) return; "
+                + "            var en = __dmCanEnable(); "
+                + "            directManipBtn.disabled = !en; "
+                + "            directManipBtn.style.opacity = en ? '1.0' : '0.55'; "
+                + "            directManipBtn.textContent = window.__dmActive ? 'Direct Manipulation (click a cell)' : 'Direct Manipulation'; "
+                + "          } catch(e) {} "
+                + "        } "
+                + "        function __dmStop() { "
+                + "          try { window.__dmActive = false; __dmUpdateButton(); } catch(e) {} "
+                + "          try { if (window.__dmClickHandler && window.__dmClickTarget) window.__dmClickTarget.removeEventListener('click', window.__dmClickHandler, true); } catch(e) {} "
+                + "          try { window.__dmClickHandler = null; window.__dmClickTarget = null; } catch(e) {} "
+                + "          try { document.body.style.cursor = ''; } catch(e) {} "
+                + "        } "
+                + "        function __dmStart() { "
+                + "          try { "
+                + "            if (!__dmCanEnable()) { __dmStop(); return; } "
+                + "            var svg = document.getElementById('svgMaze'); "
+                + "            if (!svg) return; "
+                + "            window.__dmActive = true; __dmUpdateButton(); "
+                + "            try { document.body.style.cursor = 'crosshair'; } catch(e) {} "
+                + "            window.__dmClickTarget = svg; "
+                + "            window.__dmClickHandler = function(ev) { "
+                + "              try { "
+                + "                if (!window.__dmActive) return; "
+                + "                if (!ev) return; "
+                + "                var rect = svg.getBoundingClientRect(); "
+                + "                var cx = ev.clientX - rect.left; "
+                + "                var cy = ev.clientY - rect.top; "
+                + "                var grid = window.X; "
+                + "                if (!grid || !grid.length || !grid[0] || !grid[0].length) return; "
+                + "                var height = grid.length; "
+                + "                var width  = grid[0].length; "
+                + "                var col = Math.floor((cx / rect.width)  * width); "
+                + "                var row = Math.floor((cy / rect.height) * height); "
+                + "                if (col < 0 || row < 0 || col >= width || row >= height) return; "
+                + "                var v = grid[row][col]; "
+                + "                if (!(v === 1 || v === 3)) { "
+                + "                  try { if (window.javaBridge) window.javaBridge.logJS('[DM] Reject cell row=' + row + ' col=' + col + ' v=' + v); } catch(e2) {} "
+                + "                  return; "
+                + "                } "
+                + "                var t = (typeof window.T === 'number') ? window.T : ((typeof window.__stableStartT === 'number') ? window.__stableStartT : 1); "
+                + "                try { if (typeof __dbgSetPegman === 'function') __dbgSetPegman(col, row, t); } catch(e3) {} "
+                + "                try { "
+                + "                  var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
+                + "                  if (bridge && bridge.teleportPegman) bridge.teleportPegman(col, row, t); "
+                + "                } catch(e4) {} "
+                + "                try { if (window.__momotShowAndRefresh) window.__momotShowAndRefresh(); } catch(e4b) {} "
+                + "                __dmStop(); "
+                + "              } catch(e5) { __dmStop(); } "
+                + "            }; "
+                + "            svg.addEventListener('click', window.__dmClickHandler, true); "
+                + "          } catch(e) {} "
+                + "        } "
+                + "        directManipBtn.addEventListener('click', function(){ try { if (window.__dmActive) __dmStop(); else __dmStart(); } catch(e) {} }); "
+                + "        // Keep enablement in sync with debug state.\n"
+                + "        try { setInterval(__dmUpdateButton, 200); } catch(e) {} "
+                + "        __dmUpdateButton(); "
                 + "      } "
                 + "      if (window.__dbgButtonsBound) clearInterval(id); "
                 + "      attempts++; "
@@ -722,6 +1006,49 @@ public class BlockyUI extends Application {
                 return;
             }
             runSimulation();
+        }
+
+        /**
+         * Direct manipulation teleport from WebView.
+         * q,s are cell coordinates; t is direction code (0=N,1=E,2=S,3=W).
+         */
+        public void teleportPegman(int q, int s, int t) {
+            try {
+                System.out.println("[JSBridge] teleportPegman q=" + q + " s=" + s + " t=" + t);
+                engine.teleportPegman(q, s, t);
+            } catch (Exception e) {
+                System.err.println("[JSBridge] teleportPegman failed: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
+        /** Returns MoMoT solutions as a JSON array for WebView rendering. */
+        public String listMomotSolutions() {
+            try {
+                List<MomotResultsService.SolutionEntry> sols = MomotResultsService.loadAll();
+                StringBuilder sb = new StringBuilder();
+                sb.append("[");
+                for (int i = 0; i < sols.size(); i++) {
+                    MomotResultsService.SolutionEntry e = sols.get(i);
+                    if (i > 0) sb.append(",");
+                    sb.append("{");
+                    sb.append("\"outputDir\":\"").append(escapeJsonString(e.outputDir)).append("\",");
+                    sb.append("\"modelPath\":\"").append(escapeJsonString(e.modelPath)).append("\",");
+                    sb.append("\"objectiveLine\":\"").append(escapeJsonString(e.objectiveLine)).append("\",");
+                    sb.append("\"summary\":\"").append(escapeJsonString(e.summary)).append("\"");
+                    sb.append("}");
+                }
+                sb.append("]");
+                return sb.toString();
+            } catch (Exception ex) {
+                return "[]";
+            }
+        }
+
+        /** Loads a MoMoT-produced solution model XMI and applies it to the WebView. */
+        public void loadMomotSolution(String xmiPath) {
+            if (xmiPath == null || xmiPath.trim().isEmpty()) return;
+            Platform.runLater(() -> loadXmiFromPathImpl(xmiPath.trim()));
         }
 
         // --- Debugger controls (Java-driven stepping) ---
@@ -822,6 +1149,28 @@ public class BlockyUI extends Application {
                 e.printStackTrace();
             }
         }
+    }
+
+    private void loadXmiFromPathImpl(String xmiPath) {
+        File xmiFile = new File(xmiPath);
+        if (!xmiFile.exists()) {
+            Platform.runLater(() -> new Alert(Alert.AlertType.WARNING, "Solution model not found: " + xmiFile.getPath()).showAndWait());
+            return;
+        }
+        try {
+            engine.loadFromFile(xmiFile);
+        } catch (IOException e) {
+            Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Failed to load solution model: " + e.getMessage()).showAndWait());
+            return;
+        } catch (IllegalArgumentException e) {
+            Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Invalid solution model: " + e.getMessage()).showAndWait());
+            return;
+        }
+        Level level = engine.getCurrentLevel();
+        int levelId = level != null ? Math.max(1, Math.min(10, level.getId())) : 1;
+        pendingApplyLevel = true;
+        suppressSync = true;
+        webView.getEngine().load(getMazeBaseUrl() + "?lang=en&level=" + levelId);
     }
 
     private static String toJsonStringArrayLiteral(List<String> lines) {

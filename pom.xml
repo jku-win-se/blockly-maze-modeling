@@ -20,7 +20,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <emf.version>2.35.0</emf.version>
+        <emf.version>2.39.0</emf.version>
         <javafx.version>21.0.1</javafx.version>
     </properties>
 </project>

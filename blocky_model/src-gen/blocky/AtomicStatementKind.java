@@ -10,83 +10,105 @@ import org.eclipse.emf.common.util.Enumerator;
 
 /**
  * <!-- begin-user-doc -->
- * A representation of the literals of the enumeration '<em><b>Turn Direction</b></em>',
+ * A representation of the literals of the enumeration '<em><b>Atomic Statement Kind</b></em>',
  * and utility methods for working with them.
  * <!-- end-user-doc -->
- * @see blocky.BlockyPackage#getTurnDirection()
+ * @see blocky.BlockyPackage#getAtomicStatementKind()
  * @model
  * @generated
  */
-public enum TurnDirection implements Enumerator {
+public enum AtomicStatementKind implements Enumerator {
 	/**
-	 * The '<em><b>LEFT</b></em>' literal object.
+	 * The '<em><b>TURN LEFT</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #LEFT_VALUE
+	 * @see #TURN_LEFT_VALUE
 	 * @generated
 	 * @ordered
 	 */
-	LEFT(0, "LEFT", "LEFT"),
+	TURN_LEFT(0, "TURN_LEFT", "TURN_LEFT"),
 
 	/**
-	 * The '<em><b>RIGHT</b></em>' literal object.
+	 * The '<em><b>TURN RIGHT</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #RIGHT_VALUE
+	 * @see #TURN_RIGHT_VALUE
 	 * @generated
 	 * @ordered
 	 */
-	RIGHT(1, "RIGHT", "RIGHT");
+	TURN_RIGHT(1, "TURN_RIGHT", "TURN_RIGHT"),
 
 	/**
-	 * The '<em><b>LEFT</b></em>' literal value.
+	 * The '<em><b>MOVE FORWARD</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #LEFT
+	 * @see #MOVE_FORWARD_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	MOVE_FORWARD(2, "MOVE_FORWARD", "MOVE_FORWARD");
+
+	/**
+	 * The '<em><b>TURN LEFT</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #TURN_LEFT
 	 * @model
 	 * @generated
 	 * @ordered
 	 */
-	public static final int LEFT_VALUE = 0;
+	public static final int TURN_LEFT_VALUE = 0;
 
 	/**
-	 * The '<em><b>RIGHT</b></em>' literal value.
+	 * The '<em><b>TURN RIGHT</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #RIGHT
+	 * @see #TURN_RIGHT
 	 * @model
 	 * @generated
 	 * @ordered
 	 */
-	public static final int RIGHT_VALUE = 1;
+	public static final int TURN_RIGHT_VALUE = 1;
 
 	/**
-	 * An array of all the '<em><b>Turn Direction</b></em>' enumerators.
+	 * The '<em><b>MOVE FORWARD</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #MOVE_FORWARD
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int MOVE_FORWARD_VALUE = 2;
+
+	/**
+	 * An array of all the '<em><b>Atomic Statement Kind</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private static final TurnDirection[] VALUES_ARRAY = new TurnDirection[] { LEFT, RIGHT, };
+	private static final AtomicStatementKind[] VALUES_ARRAY = new AtomicStatementKind[] { TURN_LEFT, TURN_RIGHT,
+			MOVE_FORWARD, };
 
 	/**
-	 * A public read-only list of all the '<em><b>Turn Direction</b></em>' enumerators.
+	 * A public read-only list of all the '<em><b>Atomic Statement Kind</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public static final List<TurnDirection> VALUES = Collections.unmodifiableList(Arrays.asList(VALUES_ARRAY));
+	public static final List<AtomicStatementKind> VALUES = Collections.unmodifiableList(Arrays.asList(VALUES_ARRAY));
 
 	/**
-	 * Returns the '<em><b>Turn Direction</b></em>' literal with the specified literal value.
+	 * Returns the '<em><b>Atomic Statement Kind</b></em>' literal with the specified literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @param literal the literal.
 	 * @return the matching enumerator or <code>null</code>.
 	 * @generated
 	 */
-	public static TurnDirection get(String literal) {
+	public static AtomicStatementKind get(String literal) {
 		for (int i = 0; i < VALUES_ARRAY.length; ++i) {
-			TurnDirection result = VALUES_ARRAY[i];
+			AtomicStatementKind result = VALUES_ARRAY[i];
 			if (result.toString().equals(literal)) {
 				return result;
 			}
@@ -95,16 +117,16 @@ public enum TurnDirection implements Enumerator {
 	}
 
 	/**
-	 * Returns the '<em><b>Turn Direction</b></em>' literal with the specified name.
+	 * Returns the '<em><b>Atomic Statement Kind</b></em>' literal with the specified name.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @param name the name.
 	 * @return the matching enumerator or <code>null</code>.
 	 * @generated
 	 */
-	public static TurnDirection getByName(String name) {
+	public static AtomicStatementKind getByName(String name) {
 		for (int i = 0; i < VALUES_ARRAY.length; ++i) {
-			TurnDirection result = VALUES_ARRAY[i];
+			AtomicStatementKind result = VALUES_ARRAY[i];
 			if (result.getName().equals(name)) {
 				return result;
 			}
@@ -113,19 +135,21 @@ public enum TurnDirection implements Enumerator {
 	}
 
 	/**
-	 * Returns the '<em><b>Turn Direction</b></em>' literal with the specified integer value.
+	 * Returns the '<em><b>Atomic Statement Kind</b></em>' literal with the specified integer value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @param value the integer value.
 	 * @return the matching enumerator or <code>null</code>.
 	 * @generated
 	 */
-	public static TurnDirection get(int value) {
+	public static AtomicStatementKind get(int value) {
 		switch (value) {
-		case LEFT_VALUE:
-			return LEFT;
-		case RIGHT_VALUE:
-			return RIGHT;
+		case TURN_LEFT_VALUE:
+			return TURN_LEFT;
+		case TURN_RIGHT_VALUE:
+			return TURN_RIGHT;
+		case MOVE_FORWARD_VALUE:
+			return MOVE_FORWARD;
 		}
 		return null;
 	}
@@ -157,7 +181,7 @@ public enum TurnDirection implements Enumerator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private TurnDirection(int value, String name, String literal) {
+	private AtomicStatementKind(int value, String name, String literal) {
 		this.value = value;
 		this.name = name;
 		this.literal = literal;
@@ -204,4 +228,4 @@ public enum TurnDirection implements Enumerator {
 		return literal;
 	}
 
-} //TurnDirection
+} //AtomicStatementKind

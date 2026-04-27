@@ -108,45 +108,50 @@ public class BlockySwitch<T> extends Switch<T> {
 				result = defaultCase(theEObject);
 			return result;
 		}
-		case BlockyPackage.BLOCK: {
-			Block block = (Block) theEObject;
-			T result = caseBlock(block);
+		case BlockyPackage.BODY: {
+			Body body = (Body) theEObject;
+			T result = caseBody(body);
 			if (result == null)
 				result = defaultCase(theEObject);
 			return result;
 		}
-		case BlockyPackage.MOVE_FORWARD: {
-			MoveForward moveForward = (MoveForward) theEObject;
-			T result = caseMoveForward(moveForward);
-			if (result == null)
-				result = caseBlock(moveForward);
+		case BlockyPackage.CONTAINER: {
+			Container container = (Container) theEObject;
+			T result = caseContainer(container);
 			if (result == null)
 				result = defaultCase(theEObject);
 			return result;
 		}
-		case BlockyPackage.TURN: {
-			Turn turn = (Turn) theEObject;
-			T result = caseTurn(turn);
-			if (result == null)
-				result = caseBlock(turn);
+		case BlockyPackage.STATEMENT: {
+			Statement statement = (Statement) theEObject;
+			T result = caseStatement(statement);
 			if (result == null)
 				result = defaultCase(theEObject);
 			return result;
 		}
-		case BlockyPackage.REPEAT_UNTIL_GOAL: {
-			RepeatUntilGoal repeatUntilGoal = (RepeatUntilGoal) theEObject;
-			T result = caseRepeatUntilGoal(repeatUntilGoal);
+		case BlockyPackage.ATOMIC_STATEMENT: {
+			AtomicStatement atomicStatement = (AtomicStatement) theEObject;
+			T result = caseAtomicStatement(atomicStatement);
 			if (result == null)
-				result = caseBlock(repeatUntilGoal);
+				result = caseStatement(atomicStatement);
 			if (result == null)
 				result = defaultCase(theEObject);
 			return result;
 		}
-		case BlockyPackage.IF_STATEMENT: {
-			IfStatement ifStatement = (IfStatement) theEObject;
-			T result = caseIfStatement(ifStatement);
+		case BlockyPackage.LOOP: {
+			Loop loop = (Loop) theEObject;
+			T result = caseLoop(loop);
 			if (result == null)
-				result = caseBlock(ifStatement);
+				result = caseStatement(loop);
+			if (result == null)
+				result = defaultCase(theEObject);
+			return result;
+		}
+		case BlockyPackage.IF_STMT: {
+			IfStmt ifStmt = (IfStmt) theEObject;
+			T result = caseIfStmt(ifStmt);
+			if (result == null)
+				result = caseStatement(ifStmt);
 			if (result == null)
 				result = defaultCase(theEObject);
 			return result;
@@ -247,77 +252,92 @@ public class BlockySwitch<T> extends Switch<T> {
 	}
 
 	/**
-	 * Returns the result of interpreting the object as an instance of '<em>Block</em>'.
+	 * Returns the result of interpreting the object as an instance of '<em>Body</em>'.
 	 * <!-- begin-user-doc -->
 	 * This implementation returns null;
 	 * returning a non-null result will terminate the switch.
 	 * <!-- end-user-doc -->
 	 * @param object the target of the switch.
-	 * @return the result of interpreting the object as an instance of '<em>Block</em>'.
+	 * @return the result of interpreting the object as an instance of '<em>Body</em>'.
 	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
 	 * @generated
 	 */
-	public T caseBlock(Block object) {
+	public T caseBody(Body object) {
 		return null;
 	}
 
 	/**
-	 * Returns the result of interpreting the object as an instance of '<em>Move Forward</em>'.
+	 * Returns the result of interpreting the object as an instance of '<em>Container</em>'.
 	 * <!-- begin-user-doc -->
 	 * This implementation returns null;
 	 * returning a non-null result will terminate the switch.
 	 * <!-- end-user-doc -->
 	 * @param object the target of the switch.
-	 * @return the result of interpreting the object as an instance of '<em>Move Forward</em>'.
+	 * @return the result of interpreting the object as an instance of '<em>Container</em>'.
 	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
 	 * @generated
 	 */
-	public T caseMoveForward(MoveForward object) {
+	public T caseContainer(Container object) {
 		return null;
 	}
 
 	/**
-	 * Returns the result of interpreting the object as an instance of '<em>Turn</em>'.
+	 * Returns the result of interpreting the object as an instance of '<em>Statement</em>'.
 	 * <!-- begin-user-doc -->
 	 * This implementation returns null;
 	 * returning a non-null result will terminate the switch.
 	 * <!-- end-user-doc -->
 	 * @param object the target of the switch.
-	 * @return the result of interpreting the object as an instance of '<em>Turn</em>'.
+	 * @return the result of interpreting the object as an instance of '<em>Statement</em>'.
 	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
 	 * @generated
 	 */
-	public T caseTurn(Turn object) {
+	public T caseStatement(Statement object) {
 		return null;
 	}
 
 	/**
-	 * Returns the result of interpreting the object as an instance of '<em>Repeat Until Goal</em>'.
+	 * Returns the result of interpreting the object as an instance of '<em>Atomic Statement</em>'.
 	 * <!-- begin-user-doc -->
 	 * This implementation returns null;
 	 * returning a non-null result will terminate the switch.
 	 * <!-- end-user-doc -->
 	 * @param object the target of the switch.
-	 * @return the result of interpreting the object as an instance of '<em>Repeat Until Goal</em>'.
+	 * @return the result of interpreting the object as an instance of '<em>Atomic Statement</em>'.
 	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
 	 * @generated
 	 */
-	public T caseRepeatUntilGoal(RepeatUntilGoal object) {
+	public T caseAtomicStatement(AtomicStatement object) {
 		return null;
 	}
 
 	/**
-	 * Returns the result of interpreting the object as an instance of '<em>If Statement</em>'.
+	 * Returns the result of interpreting the object as an instance of '<em>Loop</em>'.
 	 * <!-- begin-user-doc -->
 	 * This implementation returns null;
 	 * returning a non-null result will terminate the switch.
 	 * <!-- end-user-doc -->
 	 * @param object the target of the switch.
-	 * @return the result of interpreting the object as an instance of '<em>If Statement</em>'.
+	 * @return the result of interpreting the object as an instance of '<em>Loop</em>'.
 	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
 	 * @generated
 	 */
-	public T caseIfStatement(IfStatement object) {
+	public T caseLoop(Loop object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>If Stmt</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>If Stmt</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseIfStmt(IfStmt object) {
 		return null;
 	}
 

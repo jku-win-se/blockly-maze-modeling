@@ -97,28 +97,33 @@ public class BlockyAdapterFactory extends AdapterFactoryImpl {
 		}
 
 		@Override
-		public Adapter caseBlock(Block object) {
-			return createBlockAdapter();
+		public Adapter caseBody(Body object) {
+			return createBodyAdapter();
 		}
 
 		@Override
-		public Adapter caseMoveForward(MoveForward object) {
-			return createMoveForwardAdapter();
+		public Adapter caseContainer(Container object) {
+			return createContainerAdapter();
 		}
 
 		@Override
-		public Adapter caseTurn(Turn object) {
-			return createTurnAdapter();
+		public Adapter caseStatement(Statement object) {
+			return createStatementAdapter();
 		}
 
 		@Override
-		public Adapter caseRepeatUntilGoal(RepeatUntilGoal object) {
-			return createRepeatUntilGoalAdapter();
+		public Adapter caseAtomicStatement(AtomicStatement object) {
+			return createAtomicStatementAdapter();
 		}
 
 		@Override
-		public Adapter caseIfStatement(IfStatement object) {
-			return createIfStatementAdapter();
+		public Adapter caseLoop(Loop object) {
+			return createLoopAdapter();
+		}
+
+		@Override
+		public Adapter caseIfStmt(IfStmt object) {
+			return createIfStmtAdapter();
 		}
 
 		@Override
@@ -225,72 +230,86 @@ public class BlockyAdapterFactory extends AdapterFactoryImpl {
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link blocky.Block <em>Block</em>}'.
+	 * Creates a new adapter for an object of class '{@link blocky.Body <em>Body</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see blocky.Block
+	 * @see blocky.Body
 	 * @generated
 	 */
-	public Adapter createBlockAdapter() {
+	public Adapter createBodyAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link blocky.MoveForward <em>Move Forward</em>}'.
+	 * Creates a new adapter for an object of class '{@link blocky.Container <em>Container</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see blocky.MoveForward
+	 * @see blocky.Container
 	 * @generated
 	 */
-	public Adapter createMoveForwardAdapter() {
+	public Adapter createContainerAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link blocky.Turn <em>Turn</em>}'.
+	 * Creates a new adapter for an object of class '{@link blocky.Statement <em>Statement</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see blocky.Turn
+	 * @see blocky.Statement
 	 * @generated
 	 */
-	public Adapter createTurnAdapter() {
+	public Adapter createStatementAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link blocky.RepeatUntilGoal <em>Repeat Until Goal</em>}'.
+	 * Creates a new adapter for an object of class '{@link blocky.AtomicStatement <em>Atomic Statement</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see blocky.RepeatUntilGoal
+	 * @see blocky.AtomicStatement
 	 * @generated
 	 */
-	public Adapter createRepeatUntilGoalAdapter() {
+	public Adapter createAtomicStatementAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link blocky.IfStatement <em>If Statement</em>}'.
+	 * Creates a new adapter for an object of class '{@link blocky.Loop <em>Loop</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see blocky.IfStatement
+	 * @see blocky.Loop
 	 * @generated
 	 */
-	public Adapter createIfStatementAdapter() {
+	public Adapter createLoopAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link blocky.IfStmt <em>If Stmt</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see blocky.IfStmt
+	 * @generated
+	 */
+	public Adapter createIfStmtAdapter() {
 		return null;
 	}
 
