@@ -29,6 +29,18 @@ public class GameEngine {
     private int[][] pastPath = new int[0][0];
     private int[][] newPath = new int[0][0];
 
+    // --- Direct Manipulation (MoMoT results) overlay diff ---
+    // Baseline: predicted path for the model at the time DM was requested.
+    // Solution: predicted path for a MoMoT result model loaded afterwards.
+    // Used to draw common-prefix vs divergence overlays.
+    private boolean dmCompareArmed;
+    private int dmStartX;
+    private int dmStartY;
+    private Direction dmStartDir;
+    private int[][] dmBaselinePath = new int[0][0];
+    private int[][] dmSolutionPath = new int[0][0];
+    private int dmCommonLen;
+
     // --- Debugger session state (Java-driven stepping) ---
     private ExecutionTrace debugTrace;
     private List<String> debugLogLines;
@@ -42,6 +54,10 @@ public class GameEngine {
     private int debugCurrentY;
     private Direction debugCurrentDir;
     private boolean debugSessionActive;
+    // Immediate Feedback during debugging (paused edits): remember the last executed prefix path
+    // so we can compare it with the newly predicted path after edits.
+    private int[][] debugPastPrefixPath = new int[0][0];
+    private String debugImmediateFeedbackNote;
 
     private Cell findCellByXY(int x, int y) {
         if (currentLevel == null || currentLevel.getMap() == null || currentLevel.getMap().getCells() == null) return null;
@@ -132,6 +148,22 @@ public class GameEngine {
         initialState.setOrientation(dir);
         initialState.setStatus(GameStatus.RUNNING);
         trace.getStates().add(initialState);
+
+        // Capture DM baseline path for MoMoT result comparison (best-effort).
+        // We use the teleported state as the start situation for both baseline and MoMoT results.
+        dmStartX = x;
+        dmStartY = y;
+        dmStartDir = dir;
+        try {
+            blocky_game.DebuggingService.DebugTraceResult base =
+                    blocky_game.DebuggingService.computeTraceFromState(currentLevel, dmStartX, dmStartY, dmStartDir);
+            dmBaselinePath = compressTracePositions(base.trace, base.trace != null && base.trace.getStates() != null ? base.trace.getStates().size() - 1 : 0);
+        } catch (Exception e) {
+            dmBaselinePath = new int[0][0];
+        }
+        // Reset previous solution diff (will be computed when a MoMoT solution is loaded).
+        dmSolutionPath = new int[0][0];
+        dmCommonLen = 0;
 
         // If a debug session is active, recompute trace from the new snapshot when paused/next step.
         if (debugSessionActive) {
@@ -1005,7 +1037,45 @@ public class GameEngine {
             this.newPath = new int[0][0];
         }
 
+        // If the next load is a MoMoT solution (armed by UI), compute DM path diff overlays.
+        if (dmCompareArmed && dmBaselinePath != null && dmBaselinePath.length > 0) {
+            try {
+                blocky_game.DebuggingService.DebugTraceResult sol =
+                        blocky_game.DebuggingService.computeTraceFromState(loadedLevel, dmStartX, dmStartY, dmStartDir);
+                dmSolutionPath = compressTracePositions(sol.trace, sol.trace != null && sol.trace.getStates() != null ? sol.trace.getStates().size() - 1 : 0);
+                dmCommonLen = longestCommonPrefixLenByXY(dmBaselinePath, dmSolutionPath);
+            } catch (Exception e) {
+                dmSolutionPath = new int[0][0];
+                dmCommonLen = 0;
+            } finally {
+                dmCompareArmed = false;
+            }
+        } else {
+            dmCompareArmed = false;
+        }
+
         System.out.println("[GameEngine] Loaded level id=" + loadedLevel.getId() + " from " + file.getAbsolutePath());
+    }
+
+    /** Arm DM comparison overlays for the next model load (used when loading a MoMoT result). */
+    public void armDirectManipulationComparison() {
+        this.dmCompareArmed = true;
+    }
+
+    public boolean hasDirectManipulationComparison() {
+        return dmSolutionPath != null && dmSolutionPath.length > 0 && dmBaselinePath != null && dmBaselinePath.length > 0;
+    }
+
+    public int[][] getDmBaselinePath() {
+        return dmBaselinePath != null ? dmBaselinePath : new int[0][0];
+    }
+
+    public int[][] getDmSolutionPath() {
+        return dmSolutionPath != null ? dmSolutionPath : new int[0][0];
+    }
+
+    public int getDmCommonLen() {
+        return dmCommonLen;
     }
 
     // --- Debugger Controls (Java-driven stepping) ---
@@ -1038,6 +1108,8 @@ public class GameEngine {
         debugTrace = result.trace;
         debugLogLines = result.logLines;
         debugIndex = 0;
+        debugPastPrefixPath = new int[0][0];
+        debugImmediateFeedbackNote = null;
 
         // Return frame for UI rendering.
         return debugFrameJson();
@@ -1050,9 +1122,8 @@ public class GameEngine {
         }
         debugPaused = !debugPaused;
         if (!debugPaused && debugDirtySolution) {
-            // Recompute from the current state snapshot with updated solution blocks.
-            recomputeDebugTraceFromCurrentState();
-            debugIndex = 0;
+            // User resumes after editing while paused: perform Immediate Feedback alignment.
+            alignDebugTraceAfterPausedEdits(/*advanceOneStepAfterAlign*/ false);
             debugDirtySolution = false;
         }
         return debugFrameJson();
@@ -1066,9 +1137,12 @@ public class GameEngine {
         }
 
         if (debugDirtySolution) {
-            recomputeDebugTraceFromCurrentState();
-            debugIndex = 0;
+            // User steps after editing while paused: align to last common point, then step one.
+            alignDebugTraceAfterPausedEdits(/*advanceOneStepAfterAlign*/ true);
             debugDirtySolution = false;
+            debugPaused = true;
+            syncCurrentStateSnapshotFromTraceIndex();
+            return debugFrameJson();
         }
 
         int lastIndex = debugTrace.getStates().size() - 1;
@@ -1133,14 +1207,135 @@ public class GameEngine {
         }
 
         if (debugDirtySolution) {
-            // If user edited blocks while we were running, pause + recompute from current snapshot.
-            recomputeDebugTraceFromCurrentState();
-            debugIndex = 0;
+            // If user edited blocks while we were running, pause + align to last common point
+            // between already navigated prefix and newly predicted path.
+            alignDebugTraceAfterPausedEdits(/*advanceOneStepAfterAlign*/ false);
             debugDirtySolution = false;
             debugPaused = true;
         }
 
         return debugFrameJson();
+    }
+
+    /**
+     * Immediate Feedback during debugging: when user edits blocks while paused, we:
+     * - keep the already navigated prefix path as "past"
+     * - recompute the new trace from the original debug start snapshot
+     * - find the last common point (path-only match by (x,y))
+     * - teleport/align debugger state to that point in the new trace
+     * - optionally advance one step (for Step button semantics)
+     */
+    private void alignDebugTraceAfterPausedEdits(boolean advanceOneStepAfterAlign) {
+        if (currentLevel == null) return;
+        if (debugTrace == null || debugTrace.getStates() == null || debugTrace.getStates().isEmpty()) return;
+
+        // Past prefix (compressed) from current trace up to current index.
+        int[][] pastPrefix = compressTracePositions(debugTrace, debugIndex);
+        debugPastPrefixPath = pastPrefix != null ? pastPrefix : new int[0][0];
+
+        // New predicted full trace from the original debug start snapshot with updated solution blocks.
+        blocky_game.DebuggingService.DebugTraceResult result =
+                blocky_game.DebuggingService.computeTraceFromState(currentLevel, debugStartX, debugStartY, debugStartDir);
+        ExecutionTrace newTrace = result.trace;
+        if (newTrace == null || newTrace.getStates() == null || newTrace.getStates().isEmpty()) {
+            return;
+        }
+
+        int[][] newFull = compressTracePositions(newTrace, newTrace.getStates().size() - 1);
+
+        // Find longest common prefix length by (x,y).
+        int commonLen = longestCommonPrefixLenByXY(debugPastPrefixPath, newFull);
+        // Always keep at least the start point if available.
+        if (commonLen <= 0 && newFull != null && newFull.length > 0) {
+            commonLen = 1;
+        }
+
+        int mappedIndex = 0;
+        int commonX = debugStartX;
+        int commonY = debugStartY;
+        if (commonLen > 0 && newFull != null && newFull.length >= commonLen) {
+            int[] commonPt = newFull[commonLen - 1];
+            commonX = commonPt[0];
+            commonY = commonPt[1];
+            mappedIndex = findLastStateIndexAtOrBefore(newTrace, commonPt[0], commonPt[1]);
+        }
+
+        debugTrace = newTrace;
+        debugLogLines = result.logLines;
+        debugIndex = Math.max(0, Math.min(mappedIndex, newTrace.getStates().size() - 1));
+        syncCurrentStateSnapshotFromTraceIndex();
+
+        // Emit a one-shot note to the UI log so users can see that a program change caused a realignment.
+        debugImmediateFeedbackNote = "Immediate Feedback: program changed -> aligned to last common cell ("
+                + commonX + "," + commonY + "), commonPrefixLen=" + commonLen
+                + (advanceOneStepAfterAlign ? " (then stepped once)" : "");
+
+        if (advanceOneStepAfterAlign) {
+            int lastIndex = debugTrace.getStates().size() - 1;
+            if (debugIndex < lastIndex) {
+                debugIndex++;
+                syncCurrentStateSnapshotFromTraceIndex();
+            }
+        }
+    }
+
+    private static int longestCommonPrefixLenByXY(int[][] a, int[][] b) {
+        if (a == null || b == null) return 0;
+        int n = Math.min(a.length, b.length);
+        int i = 0;
+        for (; i < n; i++) {
+            int[] pa = a[i];
+            int[] pb = b[i];
+            if (pa == null || pb == null || pa.length < 2 || pb.length < 2) break;
+            if (pa[0] != pb[0] || pa[1] != pb[1]) break;
+        }
+        return i;
+    }
+
+    private static int findLastStateIndexAtOrBefore(ExecutionTrace trace, int x, int y) {
+        if (trace == null || trace.getStates() == null) return 0;
+        int best = 0;
+        List<GameState> states = trace.getStates();
+        for (int i = 0; i < states.size(); i++) {
+            GameState s = states.get(i);
+            Cell pos = s != null ? s.getPosition() : null;
+            if (pos == null) continue;
+            if (pos.getX() == x && pos.getY() == y) {
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Compresses a trace into unique (x,y) points up to {@code uptoIndexInclusive}.
+     * Turn-only steps are collapsed since they keep the same cell position.
+     */
+    private static int[][] compressTracePositions(ExecutionTrace trace, int uptoIndexInclusive) {
+        if (trace == null || trace.getStates() == null || trace.getStates().isEmpty()) return new int[0][0];
+        List<GameState> states = trace.getStates();
+        int safeUpto = Math.max(0, Math.min(uptoIndexInclusive, states.size() - 1));
+        List<int[]> pts = new ArrayList<>();
+        Integer lastX = null;
+        Integer lastY = null;
+        for (int i = 0; i <= safeUpto; i++) {
+            GameState s = states.get(i);
+            Cell pos = s != null ? s.getPosition() : null;
+            if (pos == null) continue;
+            int x = pos.getX();
+            int y = pos.getY();
+            if (lastX != null && lastX == x && lastY == y) continue;
+            pts.add(new int[] { x, y });
+            lastX = x;
+            lastY = y;
+        }
+        int[][] arr = new int[pts.size()][2];
+        for (int i = 0; i < pts.size(); i++) {
+            int[] p = pts.get(i);
+            arr[i][0] = p[0];
+            arr[i][1] = p[1];
+        }
+        return arr;
     }
 
     private void recomputeDebugTraceFromCurrentState() {
@@ -1167,7 +1362,7 @@ public class GameEngine {
 
     private String debugFrameJson() {
         if (currentLevel == null || debugTrace == null || debugTrace.getStates() == null) {
-            return "{\"index\":0,\"total\":0,\"q\":0,\"s\":0,\"t\":0,\"prefix\":[]}";
+            return "{\"index\":0,\"total\":0,\"q\":0,\"s\":0,\"t\":0,\"prefix\":[],\"pastPrefix\":[],\"newPreview\":[],\"common\":0}";
         }
         List<GameState> states = debugTrace.getStates();
         int total = states.size();
@@ -1193,6 +1388,12 @@ public class GameEngine {
         }
         sb.append("]");
 
+        // Immediate Feedback for paused edits: past prefix vs newly predicted preview (path-only).
+        int[][] pastPrefixPath = (debugPastPrefixPath != null) ? debugPastPrefixPath : new int[0][0];
+        // newPreview should be the full predicted path from the (possibly updated) program.
+        int[][] newPreviewPath = compressTracePositions(debugTrace, debugTrace.getStates().size() - 1);
+        int commonLen = longestCommonPrefixLenByXY(pastPrefixPath, newPreviewPath);
+
         String result = "RUNNING";
         if (safeIndex >= total - 1) {
             GameStatus st = s != null ? s.getStatus() : null;
@@ -1217,15 +1418,27 @@ public class GameEngine {
         }
         logLine = escapeJsonString(logLine);
 
+        // notes are one-shot: return once, then clear so the UI won't append duplicates
+        String note = debugImmediateFeedbackNote != null ? debugImmediateFeedbackNote : "";
+        if (note != null && !note.isEmpty()) {
+            debugImmediateFeedbackNote = null;
+        }
+        note = escapeJsonString(note);
+
         return "{\"index\":" + safeIndex
                 + ",\"total\":" + total
                 + ",\"q\":" + q
                 + ",\"s\":" + r
                 + ",\"t\":" + t
                 + ",\"prefix\":" + sb.toString()
+                + ",\"pastPrefix\":" + ImmediateFeedbackService.toJsonArray(pastPrefixPath)
+                + ",\"newPreview\":" + ImmediateFeedbackService.toJsonArray(newPreviewPath)
+                + ",\"common\":" + commonLen
                 + ",\"paused\":" + debugPaused
+                + ",\"dirty\":" + debugDirtySolution
                 + ",\"result\":\"" + result + "\""
                 + ",\"logLine\":\"" + logLine + "\""
+                + ",\"note\":\"" + note + "\""
                 + "}";
     }
 
@@ -1243,7 +1456,7 @@ public class GameEngine {
     public String statementChainToXml(Container first) {
         if (first == null) return "";
         StringBuilder sb = new StringBuilder();
-        appendStatementXml(first, sb);
+        appendStatementXml(first, null, sb);
         return sb.toString();
     }
 
@@ -1255,13 +1468,47 @@ public class GameEngine {
         if (level == null || level.getSolution() == null) {
             return "<xml></xml>";
         }
-        return "<xml>" + statementChainToXml(level.getSolution().getFirstContainer()) + "</xml>";
+        Container first = level.getSolution().getFirstContainer();
+        if (first == null) return "<xml></xml>";
+
+        // Blockly Maze expects a single top-level "maze_forever" with a DO statement.
+        // IMPORTANT: It does NOT support a "maze_forever" nested inside another "maze_forever".
+        // If the model solution already starts with a Loop, we unwrap it and inject only its body
+        // into the single top-level forever block.
+        if (first.getStatement() instanceof Loop) {
+            Loop top = (Loop) first.getStatement();
+            String inner = "";
+            try {
+                if (top.getBody() != null) {
+                    inner = statementChainToXml(top.getBody().getFirstContainer());
+                }
+            } catch (Exception ignored) {
+            }
+            // Any `first.getNext()` after a forever-loop is not representable in Blockly Maze; ignore it.
+            return "<xml><block type=\"maze_forever\" x=\"0\" y=\"0\"><statement name=\"DO\">"
+                    + inner
+                    + "</statement></block></xml>";
+        }
+
+        String inner = statementChainToXml(first);
+        return "<xml><block type=\"maze_forever\" x=\"0\" y=\"0\"><statement name=\"DO\">"
+                + inner
+                + "</statement></block></xml>";
     }
 
-    private void appendStatementXml(Container c, StringBuilder sb) {
+    /**
+     * Appends Blockly XML for a container chain.
+     *
+     * @param c            current container
+     * @param overrideNext if non-null, use this as the "next" container instead of {@code c.getNext()}.
+     *                     This is used to "inline" non-representable constructs (e.g. nested loops) while
+     *                     still preserving the overall statement sequence.
+     */
+    private void appendStatementXml(Container c, Container overrideNext, StringBuilder sb) {
         if (c == null) return;
         Statement stmt = c.getStatement();
         if (stmt == null) return;
+        Container next = overrideNext != null ? overrideNext : c.getNext();
 
         if (stmt instanceof AtomicStatement) {
             AtomicStatement a = (AtomicStatement) stmt;
@@ -1274,53 +1521,54 @@ public class GameEngine {
             }
             if (a.getKind() == AtomicStatementKind.MOVE_FORWARD || a.getKind() == AtomicStatementKind.TURN_LEFT
                     || a.getKind() == AtomicStatementKind.TURN_RIGHT) {
-                if (c.getNext() != null) {
+                if (next != null) {
                     sb.append("<next>");
-                    appendStatementXml(c.getNext(), sb);
+                    appendStatementXml(next, null, sb);
                     sb.append("</next>");
                 }
                 sb.append("</block>");
             }
         } else if (stmt instanceof Loop) {
             Loop r = (Loop) stmt;
-            sb.append("<block type=\"maze_forever\">");
-            sb.append("<statement name=\"DO\">");
-            if (r.getBody() != null) {
-                appendStatementXml(r.getBody().getFirstContainer(), sb);
+            // Blockly Maze supports only ONE top-level forever-loop. Any nested loop must be inlined.
+            Container bodyFirst = (r.getBody() != null) ? r.getBody().getFirstContainer() : null;
+            if (bodyFirst != null) {
+                // Inline the loop body and stitch its tail to our "next".
+                appendStatementXml(bodyFirst, next, sb);
+            } else {
+                // Empty loop = no-op; just continue with "next".
+                if (next != null) {
+                    appendStatementXml(next, null, sb);
+                }
             }
-            sb.append("</statement>");
-            if (c.getNext() != null) {
-                sb.append("<next>");
-                appendStatementXml(c.getNext(), sb);
-                sb.append("</next>");
-            }
-            sb.append("</block>");
         } else if (stmt instanceof IfStmt) {
             IfStmt i = (IfStmt) stmt;
             String dirField = conditionToBlocklyDir(i.getCondition());
-            boolean hasElse = i.getElseBody() != null;
+            // Blockly Maze's if-else block expects an ELSE statement input to exist.
+            // Treat an empty else-body as "no else" to keep the XML loadable.
+            boolean hasElse = i.getElseBody() != null && i.getElseBody().getFirstContainer() != null;
             String blockType = hasElse ? "maze_ifElse" : "maze_if";
             sb.append("<block type=\"").append(blockType).append("\">");
             sb.append("<field name=\"DIR\">").append(escapeXml(dirField)).append("</field>");
             sb.append("<statement name=\"DO\">");
             if (i.getThenBody() != null) {
-                appendStatementXml(i.getThenBody().getFirstContainer(), sb);
+                appendStatementXml(i.getThenBody().getFirstContainer(), null, sb);
             }
             sb.append("</statement>");
             if (hasElse) {
                 sb.append("<statement name=\"ELSE\">");
-                appendStatementXml(i.getElseBody().getFirstContainer(), sb);
+                appendStatementXml(i.getElseBody().getFirstContainer(), null, sb);
                 sb.append("</statement>");
             }
-            if (c.getNext() != null) {
+            if (next != null) {
                 sb.append("<next>");
-                appendStatementXml(c.getNext(), sb);
+                appendStatementXml(next, null, sb);
                 sb.append("</next>");
             }
             sb.append("</block>");
         } else {
-            if (c.getNext() != null) {
-                appendStatementXml(c.getNext(), sb);
+            if (next != null) {
+                appendStatementXml(next, null, sb);
             }
         }
     }

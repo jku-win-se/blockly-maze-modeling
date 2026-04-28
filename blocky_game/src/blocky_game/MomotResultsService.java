@@ -52,7 +52,7 @@ public final class MomotResultsService {
         return all;
     }
 
-    private static List<SolutionEntry> loadFromOutputDir(File outDir) {
+    public static List<SolutionEntry> loadFromOutputDir(File outDir) {
         if (outDir == null || !outDir.isDirectory()) return Collections.emptyList();
 
         List<String> objectiveLines = readLines(new File(outDir, "objectives.pf"));

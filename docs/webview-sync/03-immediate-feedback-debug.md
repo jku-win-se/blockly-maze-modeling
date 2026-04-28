@@ -3,7 +3,8 @@
 This document describes the current implementation of:
 
 - **Immediate feedback overlays** (old trace vs new simulated trace when loading XMI)
-- **Java-driven debug controls** in the WebView (`Pause/Resume`, `Stop`, `Step`, `Skip End`)
+- **Debugging features** in the WebView (`Pause/Resume`, `Stop`, `Step`, `Skip End`)
+- **Immediate Feedback during paused edits** (while debugging): compare already-navigated prefix vs newly predicted path, highlight deviations, and align pegman to the last common point
 - **Execution log panel** in the WebView (step-by-step commands shown below the blocks)
 
 It is intended for contributors/agents extending `blocky_game` without breaking sync behavior.
@@ -61,6 +62,22 @@ Enable step-by-step program debugging directly in WebView:
 - `Skip End` (jump to final state: GOAL/CRASH/INFINITE_LOOP heuristic)
 
 Users can edit blocks while paused; next resume/step recomputes from current state.
+
+### Immediate Feedback during paused edits (debugging)
+
+When a user edits blocks while paused in a debug session and then presses **Resume** or **Step**, the system provides Immediate Feedback by:
+
+- **Past prefix**: the already-navigated path prefix so far
+- **New preview**: the newly predicted full path after the edit
+- **Deviation highlight**: draw the diverging segment in a different style/color
+- **Teleport/alignment**: move pegman to the **last common cell** (path-only match by `(x,y)`)
+- **Correct continuation**: resume/step continues from the aligned state, not from statement 1
+
+Implementation notes:
+
+- The alignment happens on **Resume/Step**, not on every workspace change.
+- `GameEngine.debugFrameJson()` includes `pastPrefix`, `newPreview`, and `common` (common prefix length) for overlay rendering.
+- A one-shot `note` line is emitted into the execution log when such alignment occurs.
 
 ### Important design choices
 
@@ -127,6 +144,7 @@ The log panel is intentionally implemented as injected DOM/CSS so we don’t hav
   - Java computes a trace from arbitrary `(q,s,dir)` via `DebuggingService.computeTraceFromState(...)`.
   - `GameEngine.debugFrameJson()` returns `logLine` aligned with the current trace index.
   - Injected JS appends `fr.logLine` exactly once per new `fr.index` (tracked by `window.__dbgLastLoggedIndex`).
+  - If paused edits caused an alignment, `GameEngine.debugFrameJson()` also returns `note` and injected JS appends it once (tracked by `window.__dbgLastNote`).
 
 - **Normal Run**:
   - `JSBridge.runSimulation()` clears the panel then calls `GameEngine.simulateUserProgramWithLogs()`.
@@ -146,6 +164,7 @@ Current behavior:
 
 - removes green immediate-feedback overlay (`pathNew`) while debugging
 - draws a **cumulative** path for all debug steps in the current prefix
+- optionally draws **pastPrefix vs newPreview** (Immediate Feedback during paused edits) and highlights deviation
 - highlights current cell
 - disables `Step`/`Skip End` when a terminal frame is reached (`GOAL`, `CRASH`, `INFINITE_LOOP`)
 - uses a step in-flight lock so rapid clicking cannot queue overlapping step calls

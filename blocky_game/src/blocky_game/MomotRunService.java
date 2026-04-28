@@ -139,6 +139,14 @@ public final class MomotRunService {
     }
 
     public static void runAsync(RunSpec spec, Consumer<String> logLine, Runnable onDone) {
+        runAsync(spec, logLine, onDone, null);
+    }
+
+    /**
+     * Runs MoMoT and (best-effort) reports the final moved output directory path.
+     * The output directory may differ from {@link RunSpec#outputBase} if a suffix is applied.
+     */
+    public static void runAsync(RunSpec spec, Consumer<String> logLine, Runnable onDone, Consumer<String> onOutputDirReady) {
         Thread t = new Thread(() -> {
             try {
                 if (logLine != null) logLine.accept("[MoMoT] Starting…");
@@ -258,6 +266,10 @@ public final class MomotRunService {
                         Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
                         Files.move(produced, target, StandardCopyOption.REPLACE_EXISTING);
                         if (logLine != null) logLine.accept("[MoMoT] Moved outputs: " + produced + " -> " + target);
+                        try {
+                            if (onOutputDirReady != null) onOutputDirReady.accept(target.toString());
+                        } catch (Exception ignored) {
+                        }
                     } else {
                         if (logLine != null) logLine.accept("[MoMoT] No output directory found to move (expected 'output/' or 'blocky_momot/output').");
                     }

@@ -101,6 +101,23 @@ This repository wires MoMoT into the game as an **optional** “synthesize after
 
 - **Intermediate goal**: `CellType.DMG` marks the **Direct Manipulation Goal** (DMG). It is distinct from the level’s original `GOAL`.
 - **Request model**: after a DM click, the game writes a MoMoT input snapshot to `blocky_momot/model/input/direct_manipulation_request.xmi`.
-- **Results**: each run is stored under `blocky_momot/output_dm_*/` (objectives, solutions, and exported models). The game’s MoMoT panel lists models by scanning `blocky_momot/output*`.
+- **Results**: each run is stored under `blocky_momot/output_dm_*/` (objectives, solutions, and exported models).
+  - **UI behavior**: the game’s MoMoT panel shows **only solutions from the most recent run** (the output directory of the current DM-triggered run). Older runs are kept on disk but hidden in the panel by default.
 
 **Java 17 note:** MoMoT/MOEA may require `--add-opens java.base/java.util=ALL-UNNAMED` when run inside the app (see [INSTALL.md](../../INSTALL.md)).
+
+## Repo-specific: Loading a MoMoT solution in the UI (in-place)
+
+When the user selects a MoMoT-produced solution model (`*.xmi`) from the MoMoT panel, the app applies it **in-place**:
+
+- **No WebView reload**: the Maze page is not reloaded.
+- **MoMoT panel stays open** and the execution log panel remains intact.
+- **Blocks update as-if edited**: the Blockly workspace is replaced programmatically with the solution’s program.
+- **DM overlays update**: baseline/solution path-diff overlays are re-rendered using the already-captured DM baseline.
+
+### Implementation notes (Blocky UI / Blockly Maze constraints)
+
+- Blockly Maze expects a **single top-level** `maze_forever` with a `<statement name="DO"> ... </statement>`.
+- Nested `maze_forever` blocks are **not supported** by Maze’s loader. To keep all MoMoT solutions loadable, the Java-side XML generator:
+  - wraps plain statement chains into a single top-level `maze_forever`, and
+  - **inlines** any loop encountered inside a body (treats it as its body) when generating Blockly XML.

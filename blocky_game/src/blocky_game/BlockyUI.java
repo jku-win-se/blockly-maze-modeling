@@ -45,6 +45,8 @@ public class BlockyUI extends Application {
     private volatile boolean awaitingInjectComplete;
     /** If true, after the next injectComplete we show+refresh the MoMoT solutions panel. */
     private volatile boolean pendingShowMomotPanel;
+    /** When set, MoMoT panel only shows solutions from this output directory (current run). */
+    private volatile String momotCurrentOutputDir;
     /** Monotonically increasing generation id for each successful page load. */
     private final java.util.concurrent.atomic.AtomicInteger pageGen = new java.util.concurrent.atomic.AtomicInteger(0);
     /** Current generation id for the currently loaded page. */
@@ -594,6 +596,17 @@ public class BlockyUI extends Application {
                 + "                  } catch(e) {} "
                 + "                }; "
                 + "              })(path, row)); "
+                + "              row.addEventListener('dblclick', (function(p){ "
+                + "                return function(){ "
+                + "                  try { "
+                + "                    if (!p) return; "
+                + "                    var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
+                + "                    if (!bridge || !bridge.loadMomotSolution) { setStatus('Java bridge loadMomotSolution not available'); return; } "
+                + "                    setStatus('Loading model (double-click)...'); "
+                + "                    bridge.loadMomotSolution(p); "
+                + "                  } catch(e) { setStatus('Load failed'); } "
+                + "                }; "
+                + "              })(path)); "
                 + "              list.appendChild(row); "
                 + "            } "
                 + "          } catch(e) { setStatus('Failed to render solutions'); } "
@@ -733,6 +746,15 @@ public class BlockyUI extends Application {
                 + "            if (typeof getWS === 'function' && typeof sync === 'function') { "
                 + "              var ws = getWS(); if (ws) sync(ws); "
                 + "            } "
+                + "            // After a paused edit, refresh the current debug frame so buttons/overlays\n"
+                + "            // reflect dirty=true even if we are currently in a terminal state.\n"
+                + "            try { "
+                + "              if (window.__dbgSessionStarted && bridge.debugTick) { "
+                + "                var gen0 = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0; "
+                + "                var fr0 = JSON.parse((bridge.debugTickWithGen ? bridge.debugTickWithGen(gen0) : bridge.debugTick())); "
+                + "                __dbgRenderFrame(fr0); "
+                + "              } "
+                + "            } catch(e2) {} "
                 + "            /* intentionally skip syncMap/syncLevelMeta during debug stepping */ "
                 + "          } catch(e) {} "
                 + "        } "
@@ -770,18 +792,25 @@ public class BlockyUI extends Application {
                 + "          try { "
                 + "            if (!fr) return; "
                 + "            window.__dbgSessionStarted = true; "
-                + "            if (typeof __dbgRenderOverlay === 'function') __dbgRenderOverlay(fr.prefix); "
+                + "            if (typeof __dbgRenderOverlay === 'function') __dbgRenderOverlay(fr.prefix, fr.pastPrefix, fr.newPreview, fr.common); "
                 + "            __dbgSetPegman(fr.q, fr.s, fr.t); "
                 + "            var pauseBtn = document.getElementById('debugPauseResumeButton'); "
                 + "            var stepBtn = document.getElementById('debugStepButton'); "
                 + "            var skipBtn = document.getElementById('debugSkipEndButton'); "
                 + "            var terminal = !!fr.result && fr.result !== 'RUNNING'; "
+                + "            var terminalEditable = terminal && !!fr.dirty; "
                 + "            if (pauseBtn) pauseBtn.textContent = fr.paused ? 'Resume' : 'Pause'; "
                 + "            if (pauseBtn && terminal) pauseBtn.textContent = 'Resume'; "
-                + "            if (stepBtn) { stepBtn.disabled = terminal; stepBtn.title = terminal ? ('Debugger finished: ' + fr.result) : 'Execute one step'; } "
-                + "            if (skipBtn) { skipBtn.disabled = terminal; skipBtn.title = terminal ? ('Debugger finished: ' + fr.result) : 'Jump to final outcome'; } "
+                + "            if (stepBtn) { "
+                + "              stepBtn.disabled = terminal && !terminalEditable; "
+                + "              stepBtn.title = (terminal && terminalEditable) ? ('Program changed after ' + fr.result + ' — realign & step') : (terminal ? ('Debugger finished: ' + fr.result) : 'Execute one step'); "
+                + "            } "
+                + "            if (skipBtn) { "
+                + "              skipBtn.disabled = terminal && !terminalEditable; "
+                + "              skipBtn.title = (terminal && terminalEditable) ? ('Program changed after ' + fr.result + ' — realign & jump') : (terminal ? ('Debugger finished: ' + fr.result) : 'Jump to final outcome'); "
+                + "            } "
                 + "            if (fr.paused && window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
-                + "            if (terminal) { "
+                + "            if (terminal && !terminalEditable) { "
                 + "              window.__dbgActive = false; "
                 + "              if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
                 + "            } "
@@ -807,6 +836,7 @@ public class BlockyUI extends Application {
                 + "            var fr = JSON.parse((window.javaBridge.debugStartWithGen ? window.javaBridge.debugStartWithGen(seedQ, seedS, seedT, gen) : window.javaBridge.debugStart(seedQ, seedS, seedT))); "
                 + "            try { window.javaBridge.logJS('__dbgStart frame q=' + fr.q + ' s=' + fr.s + ' t=' + fr.t + ' paused=' + fr.paused + ' result=' + fr.result); } catch(e) {} "
                 + "            __dbgRenderFrame(fr); "
+                + "            try { if (fr && fr.note && fr.note.length && window.__execLogAppend) { if (!window.__dbgLastNote || window.__dbgLastNote !== fr.note) { window.__dbgLastNote = fr.note; window.__execLogAppend(fr.note); } } } catch(e) {} "
                 + "            try { if (fr && typeof fr.index === 'number' && window.__dbgLastLoggedIndex !== fr.index) { window.__dbgLastLoggedIndex = fr.index; if (fr.logLine && window.__execLogAppend) window.__execLogAppend(fr.logLine); } } catch(e) {} "
                 + "            return fr; "
                 + "          } catch(e) { window.__dbgActive = false; return null; } "
@@ -820,6 +850,7 @@ public class BlockyUI extends Application {
                 + "            var fr = JSON.parse((window.javaBridge.debugTogglePauseWithGen ? window.javaBridge.debugTogglePauseWithGen(gen) : window.javaBridge.debugTogglePause())); "
                 + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgTogglePause frame q=' + fr.q + ' s=' + fr.s + ' t=' + fr.t + ' paused=' + fr.paused + ' result=' + fr.result); } catch(e) {} "
                 + "            __dbgRenderFrame(fr); "
+                + "            try { if (fr && fr.note && fr.note.length && window.__execLogAppend) { if (!window.__dbgLastNote || window.__dbgLastNote !== fr.note) { window.__dbgLastNote = fr.note; window.__execLogAppend(fr.note); } } } catch(e) {} "
                 + "            try { if (fr && typeof fr.index === 'number' && window.__dbgLastLoggedIndex !== fr.index) { window.__dbgLastLoggedIndex = fr.index; if (fr.logLine && window.__execLogAppend) window.__execLogAppend(fr.logLine); } } catch(e) {} "
                 + "            if (!fr.paused && !window.__dbgTimer) { "
                 + "              window.__dbgTimer = setInterval(function() { "
@@ -828,6 +859,7 @@ public class BlockyUI extends Application {
                 + "                  var fr2 = JSON.parse((window.javaBridge.debugTickWithGen ? window.javaBridge.debugTickWithGen(gen2) : window.javaBridge.debugTick())); "
                 + "                  try { if (window.javaBridge) window.javaBridge.logJS('__dbgTick frame q=' + fr2.q + ' s=' + fr2.s + ' t=' + fr2.t + ' paused=' + fr2.paused + ' result=' + fr2.result); } catch(e) {} "
                 + "                  __dbgRenderFrame(fr2); "
+                + "                  try { if (fr2 && fr2.note && fr2.note.length && window.__execLogAppend) { if (!window.__dbgLastNote || window.__dbgLastNote !== fr2.note) { window.__dbgLastNote = fr2.note; window.__execLogAppend(fr2.note); } } } catch(e) {} "
                 + "                  try { if (fr2 && typeof fr2.index === 'number' && window.__dbgLastLoggedIndex !== fr2.index) { window.__dbgLastLoggedIndex = fr2.index; if (fr2.logLine && window.__execLogAppend) window.__execLogAppend(fr2.logLine); } } catch(e) {} "
                 + "                  if (fr2.paused && window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
                 + "                } catch(e) {} "
@@ -848,6 +880,7 @@ public class BlockyUI extends Application {
                 + "            var fr = JSON.parse((window.javaBridge.debugStepWithGen ? window.javaBridge.debugStepWithGen(gen) : window.javaBridge.debugStep())); "
                 + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgStep frame q=' + fr.q + ' s=' + fr.s + ' t=' + fr.t + ' paused=' + fr.paused + ' result=' + fr.result); } catch(e) {} "
                 + "            __dbgRenderFrame(fr); "
+                + "            try { if (fr && fr.note && fr.note.length && window.__execLogAppend) { if (!window.__dbgLastNote || window.__dbgLastNote !== fr.note) { window.__dbgLastNote = fr.note; window.__execLogAppend(fr.note); } } } catch(e) {} "
                 + "            try { if (fr && typeof fr.index === 'number' && window.__dbgLastLoggedIndex !== fr.index) { window.__dbgLastLoggedIndex = fr.index; if (fr.logLine && window.__execLogAppend) window.__execLogAppend(fr.logLine); } } catch(e) {} "
                 + "            try { if (window.javaBridge) window.javaBridge.logJS('__dbgStep after render T=' + window.T + ' Q=' + window.Q + ' S=' + window.S); } catch(e) {} "
                 + "            if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
@@ -892,6 +925,7 @@ public class BlockyUI extends Application {
                 + "            var gen = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0; "
                 + "            var fr = JSON.parse((window.javaBridge.debugSkipToEndWithGen ? window.javaBridge.debugSkipToEndWithGen(gen) : window.javaBridge.debugSkipToEnd())); "
                 + "            __dbgRenderFrame(fr); "
+                + "            try { if (fr && fr.note && fr.note.length && window.__execLogAppend) { if (!window.__dbgLastNote || window.__dbgLastNote !== fr.note) { window.__dbgLastNote = fr.note; window.__execLogAppend(fr.note); } } } catch(e) {} "
                 + "            try { if (fr && typeof fr.index === 'number' && window.__dbgLastLoggedIndex !== fr.index) { window.__dbgLastLoggedIndex = fr.index; if (fr.logLine && window.__execLogAppend) window.__execLogAppend(fr.logLine); } } catch(e) {} "
                 + "            if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
                 + "          } catch(e) {} "
@@ -1054,7 +1088,16 @@ public class BlockyUI extends Application {
         /** Returns MoMoT solutions as a JSON array for WebView rendering. */
         public String listMomotSolutions() {
             try {
-                List<MomotResultsService.SolutionEntry> sols = MomotResultsService.loadAll();
+                List<MomotResultsService.SolutionEntry> sols;
+                String filterDir = momotCurrentOutputDir;
+                if (filterDir != null && !filterDir.trim().isEmpty()) {
+                    File outDir = new File(filterDir.trim());
+                    sols = outDir.exists() && outDir.isDirectory()
+                            ? MomotResultsService.loadFromOutputDir(outDir)
+                            : MomotResultsService.loadAll();
+                } else {
+                    sols = MomotResultsService.loadAll();
+                }
                 StringBuilder sb = new StringBuilder();
                 sb.append("[");
                 for (int i = 0; i < sols.size(); i++) {
@@ -1077,9 +1120,10 @@ public class BlockyUI extends Application {
         /** Loads a MoMoT-produced solution model XMI and applies it to the WebView. */
         public void loadMomotSolution(String xmiPath) {
             if (xmiPath == null || xmiPath.trim().isEmpty()) return;
-            // The WebView will reload for injection; re-open the MoMoT panel after injection completes.
+            System.out.println("[JSBridge] loadMomotSolution path=" + xmiPath);
+            // Keep the MoMoT panel open (no page reload).
             pendingShowMomotPanel = true;
-            Platform.runLater(() -> loadXmiFromPathImpl(xmiPath.trim()));
+            Platform.runLater(() -> loadMomotSolutionInPlace(xmiPath.trim()));
         }
 
         // --- Debugger controls (Java-driven stepping) ---
@@ -1196,6 +1240,7 @@ public class BlockyUI extends Application {
         }
 
         MomotRunService.RunSpec spec = MomotRunService.defaultDirectManipulationSpec();
+        momotCurrentOutputDir = spec.outputBase;
         MomotRunService.runAsync(spec, (txt) -> {
             if (txt == null) return;
             final String safe = txt.replace("\\", "\\\\").replace("\"", "\\\"").replace("\r", "\\r").replace("\n", "\\n");
@@ -1217,6 +1262,10 @@ public class BlockyUI extends Application {
                     "} catch(e) {}"
                 );
             } catch (Exception ignored3) {
+            }
+        }, (finalOutDir) -> {
+            if (finalOutDir != null && !finalOutDir.trim().isEmpty()) {
+                momotCurrentOutputDir = finalOutDir.trim();
             }
         });
     }
@@ -1243,6 +1292,178 @@ public class BlockyUI extends Application {
         webView.getEngine().load(getMazeBaseUrl() + "?lang=en&level=" + levelId);
     }
 
+    /**
+     * Loads a MoMoT-produced solution XMI and applies it to the CURRENT WebView page (no reload).
+     * This keeps the MoMoT panel and execution log intact while updating blocks as-if the user edited them.
+     */
+    private void loadMomotSolutionInPlace(String xmiPath) {
+        File xmiFile = new File(xmiPath);
+        if (!xmiFile.exists()) {
+            try {
+                String msg = escapeForJsStringLiteral("Solution model not found: " + xmiFile.getPath());
+                webView.getEngine().executeScript(
+                    "try { if (window.__momotSetStatus) window.__momotSetStatus(\"" + msg + "\"); } catch(e) {}"
+                );
+            } catch (Exception ignored) {}
+            return;
+        }
+
+        // Arm DM comparison overlays so THIS model load computes baseline vs solution diff.
+        try { engine.armDirectManipulationComparison(); } catch (Exception ignored) {}
+
+        try {
+            engine.loadFromFile(xmiFile);
+        } catch (IOException e) {
+            try {
+                String msg = escapeForJsStringLiteral("Failed to load solution model: " + e.getMessage());
+                webView.getEngine().executeScript(
+                    "try { if (window.__momotSetStatus) window.__momotSetStatus(\"" + msg + "\"); } catch(e) {}"
+                );
+            } catch (Exception ignored) {}
+            return;
+        } catch (IllegalArgumentException e) {
+            try {
+                String msg = escapeForJsStringLiteral("Invalid solution model: " + e.getMessage());
+                webView.getEngine().executeScript(
+                    "try { if (window.__momotSetStatus) window.__momotSetStatus(\"" + msg + "\"); } catch(e) {}"
+                );
+            } catch (Exception ignored) {}
+            return;
+        }
+
+        Level level = engine.getCurrentLevel();
+        if (level == null) return;
+
+        // Build block XML to inject into the existing workspace.
+        String xml = engine.solutionToBlocklyXml(level);
+        // Some Blockly builds are finicky with namespaces when loading programmatically; keep it simple.
+        if (xml != null) {
+            xml = xml.replace(" xmlns=\"https://developers.google.com/blockly/xml\"", "");
+        }
+        try {
+            final String preview = xml == null ? "null" : (xml.length() > 400 ? xml.substring(0, 400) + "…" : xml);
+            System.out.println("[BlockyUI] MoMoT inject XML preview: " + preview);
+        } catch (Exception ignored) {
+        }
+        String escapedForJson = escapeForJsStringLiteral(xml);
+
+        // Prepare overlay data for immediate feedback + DM diff (if armed).
+        String injectPastNew = ImmediateFeedbackService.buildWindowInjectPathsScript(engine.getPastPath(), engine.getNewPath());
+        String injectDm;
+        if (engine.hasDirectManipulationComparison()) {
+            injectDm = ""
+                + "window.__injectDmEnabled = true;"
+                + "window.__injectDmBaselinePath = " + ImmediateFeedbackService.toJsonArray(engine.getDmBaselinePath()) + ";"
+                + "window.__injectDmSolutionPath = " + ImmediateFeedbackService.toJsonArray(engine.getDmSolutionPath()) + ";"
+                + "window.__injectDmCommonLen = " + engine.getDmCommonLen() + ";";
+        } else {
+            injectDm = ""
+                + "window.__injectDmEnabled = false;"
+                + "window.__injectDmBaselinePath = [];"
+                + "window.__injectDmSolutionPath = [];"
+                + "window.__injectDmCommonLen = 0;";
+        }
+
+        suppressSync = true;
+        awaitingInjectComplete = true;
+
+        try {
+            // 1) Apply blocks (in-place), with strong logging so failures can't be silent.
+            webView.getEngine().executeScript(
+                "(function(){"
+                    + "var __b = window.javaBridge || (window.parent && window.parent.javaBridge);"
+                    + "try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: injection script started'); } catch(e0) {}"
+                    + "try {"
+                    + "  if (window.__momotSetStatus) window.__momotSetStatus('Applying solution…');"
+                    + "} catch(e1) {}"
+                    + "try { " + injectPastNew + " } catch(e2) {}"
+                    + "try { " + injectDm + " } catch(e3) {}"
+                    + "try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: xmlLen=" + escapedForJson.length() + "'); } catch(e3b) {}"
+                    + "try {"
+                    + "  var __xml = \"" + escapedForJson + "\";"
+                    + "  function __ws(){"
+                    + "    var w=null;"
+                    + "    try { if (window.BlocklyInterface && window.BlocklyInterface.getWorkspace) w = window.BlocklyInterface.getWorkspace(); } catch(e) {}"
+                    + "    try { if (!w && window.Blockly && window.Blockly.getMainWorkspace) w = window.Blockly.getMainWorkspace(); } catch(e2) {}"
+                    + "    return w;"
+                    + "  }"
+                    + "  function __afterLoad(w){"
+                    + "    try { if (!w) return; if (typeof w.clearUndo === 'function') w.clearUndo(); } catch(e0) {}"
+                    + "    try { if (w && w.undoStack_ && w.undoStack_.length !== undefined) w.undoStack_.length = 0; } catch(e1) {}"
+                    + "    try { if (w && w.redoStack_ && w.redoStack_.length !== undefined) w.redoStack_.length = 0; } catch(e2) {}"
+                    + "    try { if (w && typeof w.render === 'function') w.render(); } catch(e3) {}"
+                    + "    try { if (window.Blockly && typeof window.Blockly.svgResize === 'function') window.Blockly.svgResize(w); } catch(e4) {}"
+                    + "  }"
+                    + "  function __loadFallback(){"
+                    + "    try {"
+                    + "      var w = __ws(); if (!w || !window.Blockly || !window.Blockly.Xml) return false;"
+                    + "      var dom=null;"
+                    + "      try { dom = window.Blockly.utils.xml.textToDom(__xml); } catch(e1) { dom=null; }"
+                    + "      if (!dom) { try { dom = (new DOMParser()).parseFromString(__xml, 'text/xml').documentElement; } catch(e2) { dom=null; } }"
+                    + "      if (!dom) return false;"
+                    + "      if (dom.nodeName && dom.nodeName.toLowerCase() !== 'xml') { try { var wrap=document.createElement('xml'); wrap.appendChild(dom); dom=wrap; } catch(e3) {} }"
+                    + "      if (typeof window.Blockly.Xml.clearWorkspaceAndLoadFromXml === 'function') window.Blockly.Xml.clearWorkspaceAndLoadFromXml(dom, w);"
+                    + "      else { try { w.clear(); } catch(e4) {} window.Blockly.Xml.domToWorkspace(dom, w); }"
+                    + "      __afterLoad(w);"
+                    + "      return true;"
+                    + "    } catch(ex) { return false; }"
+                    + "  }"
+                    + "  function __applyOnce(tag){"
+                    + "    try {"
+                    + "      var missing=[];"
+                    + "      if (!window.BlocklyInterface) missing.push('BlocklyInterface');"
+                    + "      if (!window.BlocklyInterface || !window.BlocklyInterface.Kv) missing.push('BlocklyInterface.Kv');"
+                    + "      if (missing.length) {"
+                    + "        try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: not-ready(' + tag + '): ' + missing.join(',')); } catch(eNR) {}"
+                    + "        return null;"
+                    + "      }"
+                    + "      var before=''; try { if (window.BlocklyInterface.getCode) before = String(window.BlocklyInterface.getCode()||''); } catch(eB) {}"
+                    + "      var ok=false;"
+                    + "      try { window.BlocklyInterface.Kv(__xml); ok=true; } catch(eKv) { ok=false; try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: Kv failed: ' + eKv); } catch(eL) {} }"
+                    + "      if (!ok) { try { ok = __loadFallback(); } catch(eFb) { ok=false; } }"
+                    + "      var after=''; try { if (window.BlocklyInterface.getCode) after = String(window.BlocklyInterface.getCode()||''); } catch(eA) {}"
+                    + "      try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: ok=' + ok + ' codeChanged=' + (before!==after) + ' beforeLen=' + before.length + ' afterLen=' + after.length); } catch(eLog) {}"
+                    + "      try { if (window.__momotSetStatus) window.__momotSetStatus(ok ? 'Solution applied.' : 'Failed to apply blocks.'); } catch(eS) {}"
+                    + "      try { var b2 = window.javaBridge || (window.parent && window.parent.javaBridge); if (b2 && b2.injectComplete) b2.injectComplete(); } catch(eIC) {}"
+                    + "      return ok;"
+                    + "    } catch(exTop) {"
+                    + "      try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: exception ' + exTop); } catch(eX) {}"
+                    + "      try { if (window.__momotSetStatus) window.__momotSetStatus('Failed: ' + exTop); } catch(eS2) {}"
+                    + "      try { var b3 = window.javaBridge || (window.parent && window.parent.javaBridge); if (b3 && b3.injectComplete) b3.injectComplete(); } catch(eIC2) {}"
+                    + "      return false;"
+                    + "    }"
+                    + "  }"
+                    + "  var tries=0, maxTries=60;"
+                    + "  var done = __applyOnce('initial');"
+                    + "  if (done === null) {"
+                    + "    var id=setInterval(function(){"
+                    + "      tries++;"
+                    + "      var r = __applyOnce('t'+tries);"
+                    + "      if (r !== null) { clearInterval(id); }"
+                    + "      if (tries >= maxTries) { clearInterval(id); try { if (window.__momotSetStatus) window.__momotSetStatus('Failed: Blockly not ready.'); } catch(e) {}"
+                    + "        try { var b4 = window.javaBridge || (window.parent && window.parent.javaBridge); if (b4 && b4.injectComplete) b4.injectComplete(); } catch(eIC3) {}"
+                    + "      }"
+                    + "    }, 100);"
+                    + "  }"
+                    + "} catch(__top) {"
+                    + "  try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: top-level error ' + __top); } catch(eT) {}"
+                    + "  try { var b5 = window.javaBridge || (window.parent && window.parent.javaBridge); if (b5 && b5.injectComplete) b5.injectComplete(); } catch(eIC4) {}"
+                    + "}"
+                    + "})();"
+            );
+
+            // 2) Redraw overlays (separate call keeps this resilient even if the block load script changes).
+            try {
+                webView.getEngine().executeScript("(function(){ try { " + ImmediateFeedbackService.buildOverlayRenderJs() + " } catch(e) {} })();");
+            } catch (Exception ignored) {}
+        } catch (Exception e) {
+            System.err.println("[BlockyUI] loadMomotSolutionInPlace executeScript failed: " + e.getMessage());
+            e.printStackTrace();
+            awaitingInjectComplete = false;
+            suppressSync = false;
+        }
+    }
+
     private static String toJsonStringArrayLiteral(List<String> lines) {
         if (lines == null || lines.isEmpty()) return "[]";
         StringBuilder sb = new StringBuilder();
@@ -1261,6 +1482,18 @@ public class BlockyUI extends Application {
                 .replace("\"", "\\\"")
                 .replace("\r", "\\r")
                 .replace("\n", "\\n");
+    }
+
+    /**
+     * Escapes a Java string for inclusion inside a JS double-quoted string literal.
+     * Keep this slightly stricter than JSON to avoid parsing edge-cases.
+     */
+    private static String escapeForJsStringLiteral(String s) {
+        if (s == null) return "";
+        return escapeJsonString(s)
+                .replace("\t", "\\t")
+                .replace("\u2028", "\\u2028")
+                .replace("\u2029", "\\u2029");
     }
 
     // --- Blockly XML parser ---
@@ -1469,6 +1702,18 @@ public class BlockyUI extends Application {
             webEngine.executeScript("window.__modelStartT = " + engine.directionToT(level.getStartOrientation()) + ";");
             // Immediate feedback overlay data (old stored trace vs new simulated trace).
             webEngine.executeScript(ImmediateFeedbackService.buildWindowInjectPathsScript(engine.getPastPath(), engine.getNewPath()));
+            // Direct Manipulation (MoMoT results): baseline vs solution diff overlays.
+            if (engine.hasDirectManipulationComparison()) {
+                webEngine.executeScript("window.__injectDmEnabled = true;");
+                webEngine.executeScript("window.__injectDmBaselinePath = " + ImmediateFeedbackService.toJsonArray(engine.getDmBaselinePath()) + ";");
+                webEngine.executeScript("window.__injectDmSolutionPath = " + ImmediateFeedbackService.toJsonArray(engine.getDmSolutionPath()) + ";");
+                webEngine.executeScript("window.__injectDmCommonLen = " + engine.getDmCommonLen() + ";");
+            } else {
+                webEngine.executeScript("window.__injectDmEnabled = false;");
+                webEngine.executeScript("window.__injectDmBaselinePath = [];");
+                webEngine.executeScript("window.__injectDmSolutionPath = [];");
+                webEngine.executeScript("window.__injectDmCommonLen = 0;");
+            }
 
             String xml = engine.solutionToBlocklyXml(level);
             String escapedForJson = xml.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
