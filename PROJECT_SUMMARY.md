@@ -61,7 +61,7 @@ Defined in [`blocky.ecore`](file:///c:/Users/domin/eclipse-workspace-blocky/bloc
 ### Enums
 - **Direction** – `NORTH`, `EAST`, `SOUTH`, `WEST`
 - **TurnDirection** – `LEFT`, `RIGHT`
-- **CellType** – `EMPTY`, `WALL`, `START`, `GOAL`
+- **CellType** – `EMPTY`, `WALL`, `START`, `GOAL`, `DMG` (Direct Manipulation Goal / intermediate target)
 - **SensorDirection** – `AHEAD`, `LEFT`, `RIGHT`
 - **GameStatus** – `RUNNING`, `WON`, `CRASHED`
 
@@ -117,6 +117,13 @@ All visuals are rendered by an embedded **JavaFX WebView** loading the Blockly G
 For agent-oriented documentation of the sync protocol and how to extend it (e.g. map editing via UI), see **[docs/webview-sync/README.md](docs/webview-sync/README.md)**.
 
 The `JSBridge` is a public inner class of `BlockyUI`. An instance is stored in the `jsBridge` field (strong reference to prevent GC) and attached to the WebView's `window.javaBridge` after each page load. The injected JavaScript calls these methods to push data from the Blockly Maze runtime into the Java/EMF model.
+
+### Direct Manipulation + MoMoT auto-run
+
+- The WebView exposes a **Direct Manipulation** mode that lets the user click an **EMPTY** cell (or the original GOAL) to teleport Pegman.
+- On teleport, Java marks the clicked empty cell as `CellType.DMG` (intermediate goal) and saves a request XMI for MoMoT under `blocky_momot/model/input/direct_manipulation_request.xmi`.
+- The UI shows `DMG` as the visual “goal marker” (Maze’s `window.od`) when present.
+- MoMoT runs asynchronously and writes solutions under `blocky_momot/output_dm_*/`, which the MoMoT panel can list and load.
 
 ### Bridge Methods
 

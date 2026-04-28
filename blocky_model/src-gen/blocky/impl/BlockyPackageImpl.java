@@ -1075,6 +1075,7 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		addEEnumLiteral(cellTypeEEnum, CellType.WALL);
 		addEEnumLiteral(cellTypeEEnum, CellType.START);
 		addEEnumLiteral(cellTypeEEnum, CellType.GOAL);
+		addEEnumLiteral(cellTypeEEnum, CellType.DMG);
 
 		initEEnum(sensorDirectionEEnum, SensorDirection.class, "SensorDirection");
 		addEEnumLiteral(sensorDirectionEEnum, SensorDirection.AHEAD);

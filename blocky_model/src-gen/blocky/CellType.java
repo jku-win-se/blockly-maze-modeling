@@ -56,7 +56,17 @@ public enum CellType implements Enumerator {
 	 * @generated
 	 * @ordered
 	 */
-	GOAL(3, "GOAL", "GOAL");
+	GOAL(3, "GOAL", "GOAL"),
+
+	/**
+	 * The '<em><b>DMG</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #DMG_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	DMG(4, "DMG", "DMG");
 
 	/**
 	 * The '<em><b>EMPTY</b></em>' literal value.
@@ -103,12 +113,23 @@ public enum CellType implements Enumerator {
 	public static final int GOAL_VALUE = 3;
 
 	/**
+	 * The '<em><b>DMG</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #DMG
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int DMG_VALUE = 4;
+
+	/**
 	 * An array of all the '<em><b>Cell Type</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private static final CellType[] VALUES_ARRAY = new CellType[] { EMPTY, WALL, START, GOAL, };
+	private static final CellType[] VALUES_ARRAY = new CellType[] { EMPTY, WALL, START, GOAL, DMG, };
 
 	/**
 	 * A public read-only list of all the '<em><b>Cell Type</b></em>' enumerators.
@@ -172,6 +193,8 @@ public enum CellType implements Enumerator {
 			return START;
 		case GOAL_VALUE:
 			return GOAL;
+		case DMG_VALUE:
+			return DMG;
 		}
 		return null;
 	}

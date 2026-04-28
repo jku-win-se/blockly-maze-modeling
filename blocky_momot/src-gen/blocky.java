@@ -46,7 +46,7 @@ import org.moeaframework.util.progress.ProgressListener;
 
 @SuppressWarnings("all")
 public class blocky {
-  protected static String input = "model/input/level5.xmi";
+  protected static String input = System.getProperty("blocky.input", "model/input/level5.xmi");
 
   protected static final String INITIAL_MODEL = blocky.input;
 

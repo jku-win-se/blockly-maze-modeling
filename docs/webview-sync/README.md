@@ -26,6 +26,7 @@ This folder documents how the **Blockly Maze WebView** and the **Java/EMF game m
 | **Level meta** | Level number, max blocks, start direction, allow loops/conditionals. Synced via `syncLevelMeta(metaJson)`. |
 | **Run hook** | When the user clicks “Run Program”, Blockly hides `#runButton`. A MutationObserver detects that and calls `javaBridge.runSimulation()` after syncing map, meta, and workspace. |
 | **suppressSync** | Java flag. When true, `JSBridge.syncModel` returns without updating the model so that applying loaded state from Java does not overwrite the model with stale WebView state. |
+| **Direct Manipulation (DM)** | WebView mode that lets the user click an empty cell to teleport Pegman. Java stores the clicked cell as an intermediate goal (`CellType.DMG`) and can trigger MoMoT synthesis. |
 
 ## Document index
 

@@ -66,6 +66,20 @@ The window shows the Blockly Maze in a WebView. Use the level bar for levels 1�
 
 **Regenerating the EMF model (e.g. after editing `blocky.ecore`)** still requires Eclipse with EMF, or an EMF code-generation Maven plugin; the checked-in `blocky_model/src-gen/` is used by Maven as-is.
 
+## Direct Manipulation → MoMoT auto-run (solution synthesis)
+
+Blocky supports **Direct Manipulation**: teleport Pegman to a chosen empty cell and treat that cell as an **intermediate goal** for synthesis.
+
+- **DMG (Direct Manipulation Goal)** is represented in the model as `CellType.DMG` (distinct from the level’s `GOAL`).
+- After a DM click, the app writes a request model to:
+  - `blocky_game/direct_manipulation_request.xmi` (snapshot), and
+  - `blocky_momot/model/input/direct_manipulation_request.xmi` (MoMoT input snapshot)
+- MoMoT can be invoked automatically (when MoMoT is available on the runtime classpath). Progress is printed into the MoMoT panel, and solutions are listed from `blocky_momot/output*` (each run is saved under `blocky_momot/output_dm_*/`).
+
+**Runtime notes (Java 17 / MoMoT):**
+- MoMoT/MOEA may require: `--add-opens java.base/java.util=ALL-UNNAMED` (see [INSTALL.md](INSTALL.md)).
+- Running MoMoT is typically done from **Eclipse with the modeling target platform** active (PDE + MoMoT bundles). Maven-only runs generally do not include MoMoT.
+
 ## Licenses
 
 **This project is licensed under the [Apache License, Version 2.0](LICENSE).**

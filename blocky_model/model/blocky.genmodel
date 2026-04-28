@@ -20,6 +20,7 @@
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//CellType/WALL"/>
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//CellType/START"/>
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//CellType/GOAL"/>
+      <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//CellType/DMG"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="blocky.ecore#//SensorDirection">
       <genEnumLiterals ecoreEnumLiteral="blocky.ecore#//SensorDirection/AHEAD"/>

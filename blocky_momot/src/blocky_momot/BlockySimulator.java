@@ -67,10 +67,12 @@ public final class BlockySimulator {
         initialState.setOrientation(startDir);
         initialState.setStatus(GameStatus.RUNNING);
 
+        final CellType winCellType = determineWinCellType(level);
+
         ExecutionTrace trace = BlockyFactory.eINSTANCE.createExecutionTrace();
         trace.getStates().add(initialState);
 
-        GameState last = executeBody(solution, initialState, trace, level);
+        GameState last = executeBody(solution, initialState, trace, level, winCellType);
         return last != null ? last.getStatus() : GameStatus.CRASHED;
     }
 
@@ -117,8 +119,19 @@ public final class BlockySimulator {
         state.setOrientation(startDir);
         state.setStatus(GameStatus.RUNNING);
 
-        GameState last = executeBodyLite(solution, state, level);
+        final CellType winCellType = determineWinCellType(level);
+        GameState last = executeBodyLite(solution, state, level, winCellType);
         return (last != null && last.getStatus() == GameStatus.WON) ? last.getStep() : penalty;
+    }
+
+    private static CellType determineWinCellType(Level level) {
+        if (level == null || level.getMap() == null) return CellType.GOAL;
+        for (Cell c : level.getMap().getCells()) {
+            if (c != null && c.getType() == CellType.DMG) {
+                return CellType.DMG;
+            }
+        }
+        return CellType.GOAL;
     }
 
     private static Direction determineStartOrientation(Level level, Cell start) {
@@ -144,39 +157,39 @@ public final class BlockySimulator {
         return checkSensor(state, conditionKindToSensor(ck));
     }
 
-    private static GameState executeBody(Body body, GameState state, ExecutionTrace trace, Level level) {
+    private static GameState executeBody(Body body, GameState state, ExecutionTrace trace, Level level, CellType winCellType) {
         if (body == null) return state;
-        return executeContainerChain(body.getFirstContainer(), state, trace, level);
+        return executeContainerChain(body.getFirstContainer(), state, trace, level, winCellType);
     }
 
-    private static GameState executeBodyLite(Body body, GameState state, Level level) {
+    private static GameState executeBodyLite(Body body, GameState state, Level level, CellType winCellType) {
         if (body == null) return state;
-        return executeContainerChainLite(body.getFirstContainer(), state, level);
+        return executeContainerChainLite(body.getFirstContainer(), state, level, winCellType);
     }
 
-    private static GameState executeContainerChain(Container first, GameState state, ExecutionTrace trace, Level level) {
+    private static GameState executeContainerChain(Container first, GameState state, ExecutionTrace trace, Level level, CellType winCellType) {
         Container current = first;
         GameState last = state;
         while (current != null && last.getStatus() == GameStatus.RUNNING) {
             Statement stmt = current.getStatement();
-            last = executeSingle(stmt, last, trace, level);
+            last = executeSingle(stmt, last, trace, level, winCellType);
             current = current.getNext();
         }
         return last;
     }
 
-    private static GameState executeContainerChainLite(Container first, GameState state, Level level) {
+    private static GameState executeContainerChainLite(Container first, GameState state, Level level, CellType winCellType) {
         Container current = first;
         GameState last = state;
         while (current != null && last.getStatus() == GameStatus.RUNNING) {
             Statement stmt = current.getStatement();
-            last = executeSingleLite(stmt, last, level);
+            last = executeSingleLite(stmt, last, level, winCellType);
             current = current.getNext();
         }
         return last;
     }
 
-    private static GameState executeSingle(Statement stmt, GameState prev, ExecutionTrace trace, Level level) {
+    private static GameState executeSingle(Statement stmt, GameState prev, ExecutionTrace trace, Level level, CellType winCellType) {
         GameState next = BlockyFactory.eINSTANCE.createGameState();
         next.setStep(prev.getStep() + 1);
         next.setOrientation(prev.getOrientation());
@@ -204,7 +217,7 @@ public final class BlockySimulator {
                     next.setStatus(GameStatus.CRASHED);
                 } else {
                     next.setPosition(target);
-                    if (target.getType() == CellType.GOAL) {
+                    if (target.getType() == winCellType) {
                         next.setStatus(GameStatus.WON);
                     }
                 }
@@ -224,13 +237,13 @@ public final class BlockySimulator {
             GameState loop = next;
             GridMap map = level.getMap();
             int maxSteps = map.getWidth() * map.getHeight() * 2;
-            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != CellType.GOAL) {
+            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != winCellType) {
                 if (loop.getStep() > maxSteps) {
                     loop.setStatus(GameStatus.CRASHED);
                     break;
                 }
                 int previousStep = loop.getStep();
-                loop = executeBody(r.getBody(), loop, trace, level);
+                loop = executeBody(r.getBody(), loop, trace, level, winCellType);
                 if (loop.getStep() == previousStep) {
                     loop.setStatus(GameStatus.CRASHED);
                     break;
@@ -241,16 +254,16 @@ public final class BlockySimulator {
             IfStmt i = (IfStmt) stmt;
             boolean cond = checkCondition(next, i.getCondition());
             if (cond) {
-                return executeBody(i.getThenBody(), next, trace, level);
+                return executeBody(i.getThenBody(), next, trace, level, winCellType);
             }
             if (i.getElseBody() != null) {
-                return executeBody(i.getElseBody(), next, trace, level);
+                return executeBody(i.getElseBody(), next, trace, level, winCellType);
             }
         }
         return next;
     }
 
-    private static GameState executeSingleLite(Statement stmt, GameState prev, Level level) {
+    private static GameState executeSingleLite(Statement stmt, GameState prev, Level level, CellType winCellType) {
         GameState next = BlockyFactory.eINSTANCE.createGameState();
         next.setStep(prev.getStep() + 1);
         next.setOrientation(prev.getOrientation());
@@ -277,7 +290,7 @@ public final class BlockySimulator {
                     next.setStatus(GameStatus.CRASHED);
                 } else {
                     next.setPosition(target);
-                    if (target.getType() == CellType.GOAL) {
+                    if (target.getType() == winCellType) {
                         next.setStatus(GameStatus.WON);
                     }
                 }
@@ -297,13 +310,13 @@ public final class BlockySimulator {
             GameState loop = next;
             GridMap map = level.getMap();
             int maxSteps = map.getWidth() * map.getHeight() * 2;
-            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != CellType.GOAL) {
+            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != winCellType) {
                 if (loop.getStep() > maxSteps) {
                     loop.setStatus(GameStatus.CRASHED);
                     break;
                 }
                 int previousStep = loop.getStep();
-                loop = executeBodyLite(r.getBody(), loop, level);
+                loop = executeBodyLite(r.getBody(), loop, level, winCellType);
                 if (loop.getStep() == previousStep) {
                     loop.setStatus(GameStatus.CRASHED);
                     break;
@@ -314,10 +327,10 @@ public final class BlockySimulator {
             IfStmt i = (IfStmt) stmt;
             boolean cond = checkCondition(next, i.getCondition());
             if (cond) {
-                return executeBodyLite(i.getThenBody(), next, level);
+                return executeBodyLite(i.getThenBody(), next, level, winCellType);
             }
             if (i.getElseBody() != null) {
-                return executeBodyLite(i.getElseBody(), next, level);
+                return executeBodyLite(i.getElseBody(), next, level, winCellType);
             }
         }
         return next;

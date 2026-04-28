@@ -91,6 +91,7 @@
     <eLiterals name="WALL" value="1"/>
     <eLiterals name="START" value="2"/>
     <eLiterals name="GOAL" value="3"/>
+    <eLiterals name="DMG" value="4"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="SensorDirection">
     <eLiterals name="AHEAD"/>

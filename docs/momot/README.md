@@ -33,6 +33,13 @@ Agents that take .ecore and .henshin files plus a user prompt and output a compl
 - **[08-reference](08-reference.md)** — Compact grammar and reference tables
 - **[examples/](examples/)** — Minimal .momot snippets and examples
 
+## Agent prompts (repo-specific)
+
+- **`AGENT_PROMPT-update-momot-goal-and-edits.md`** — Update `blocky_momot/blocky.momot` to use the Blocky statement insert/delete/replace module and optimize:
+  - least edits (closeness to input),
+  - reaching GOAL,
+  - shortest execution path.
+
 ## Minimum valid .momot
 
 A minimal valid `.momot` file must define **search** and **experiment**. The following is a minimal example (paths must exist in the project).
@@ -87,3 +94,13 @@ Replace `my.project.momot`, `my.project.metamodel.MyPackage`, `model/input.xmi`,
 ## Eclipse tooling (human developers)
 
 This folder documents the **`.momot` language** for agents. To **run** MoMoT in Eclipse (as in the **`blocky_momot`** project), install Henshin, Papyrus, and MoMoT — easiest via the shared target platform in **[INSTALL.md](../../INSTALL.md)** §1.2 and [`releng/blocky-modeling-2026-06.target`](../../releng/blocky-modeling-2026-06.target).
+
+## Repo-specific: Direct Manipulation → MoMoT auto-run
+
+This repository wires MoMoT into the game as an **optional** “synthesize after direct manipulation” workflow:
+
+- **Intermediate goal**: `CellType.DMG` marks the **Direct Manipulation Goal** (DMG). It is distinct from the level’s original `GOAL`.
+- **Request model**: after a DM click, the game writes a MoMoT input snapshot to `blocky_momot/model/input/direct_manipulation_request.xmi`.
+- **Results**: each run is stored under `blocky_momot/output_dm_*/` (objectives, solutions, and exported models). The game’s MoMoT panel lists models by scanning `blocky_momot/output*`.
+
+**Java 17 note:** MoMoT/MOEA may require `--add-opens java.base/java.util=ALL-UNNAMED` when run inside the app (see [INSTALL.md](../../INSTALL.md)).

@@ -51,6 +51,32 @@ public class GameEngine {
         return null;
     }
 
+    private static void ensureLevelHasNonNullSolution(Level level) {
+        if (level == null) return;
+        if (level.getSolution() != null) return;
+        Body b = BlockyFactory.eINSTANCE.createBody();
+        Container c = BlockyFactory.eINSTANCE.createContainer();
+        // Keep statement unset (null) — represents an empty program.
+        b.setFirstContainer(c);
+        level.setSolution(b);
+    }
+
+    private static void ensureGameHasNonNullSolutions(Game game) {
+        if (game == null || game.getLevels() == null) return;
+        for (Level lvl : game.getLevels()) {
+            ensureLevelHasNonNullSolution(lvl);
+        }
+    }
+
+    private void clearDirectManipulationGoal() {
+        if (currentLevel == null || currentLevel.getMap() == null) return;
+        for (Cell c : currentLevel.getMap().getCells()) {
+            if (c != null && c.getType() == CellType.DMG) {
+                c.setType(CellType.EMPTY);
+            }
+        }
+    }
+
     /**
      * Teleport pegman to a specific map cell for direct manipulation.
      * This is allowed only onto EMPTY or GOAL cells.
@@ -76,6 +102,13 @@ public class GameEngine {
         }
 
         Direction dir = blocky_game.DebuggingService.tToDirection(t);
+
+        // Mark DM goal: the clicked cell becomes a DMG marker unless it's already the real GOAL.
+        // DMG is an intermediate target for synthesis and UI display; GOAL remains the semantic level goal.
+        clearDirectManipulationGoal();
+        if (target.getType() == CellType.EMPTY) {
+            target.setType(CellType.DMG);
+        }
 
         // Update debugger snapshot (so Resume/Step continues from here if paused).
         debugCurrentX = x;
@@ -107,6 +140,7 @@ public class GameEngine {
 
         // Persist a direct manipulation request model for downstream tools (MoMoT).
         saveDirectManipulationRequestXmi();
+        saveMomotInputRequestXmi();
     }
 
     /**
@@ -125,6 +159,7 @@ public class GameEngine {
             Resource outRes = resSet.createResource(URI.createFileURI(out.getAbsolutePath()));
 
             Game snapshot = currentGame != null ? EcoreUtil.copy(currentGame) : null;
+            ensureGameHasNonNullSolutions(snapshot);
             if (snapshot != null) {
                 outRes.getContents().add(snapshot);
                 outRes.save(null);
@@ -132,6 +167,42 @@ public class GameEngine {
             }
         } catch (Exception e) {
             System.err.println("[GameEngine] Direct manipulation request save failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Saves the DM request model to the default MoMoT input location.
+     * This is intended to be used as the search.model.file for automated MoMoT runs.
+     */
+    public void saveMomotInputRequestXmi() {
+        try {
+            File out = new File("blocky_momot/model/input/direct_manipulation_request.xmi");
+            if (!out.getParentFile().exists()) {
+                out = new File("../blocky_momot/model/input/direct_manipulation_request.xmi");
+            }
+            if (!out.getParentFile().exists()) {
+                // best-effort: fall back to repo root
+                out = new File("direct_manipulation_request_momot.xmi");
+            } else {
+                out.getParentFile().mkdirs();
+            }
+
+            BlockyPackage.eINSTANCE.eClass();
+            Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put("xmi", new XMIResourceFactoryImpl());
+
+            ResourceSet resSet = new ResourceSetImpl();
+            Resource outRes = resSet.createResource(URI.createFileURI(out.getAbsolutePath()));
+
+            Game snapshot = currentGame != null ? EcoreUtil.copy(currentGame) : null;
+            ensureGameHasNonNullSolutions(snapshot);
+            if (snapshot != null) {
+                outRes.getContents().add(snapshot);
+                outRes.save(null);
+                System.out.println("[GameEngine] MoMoT DM request saved to: " + outRes.getURI().toFileString());
+            }
+        } catch (Exception e) {
+            System.err.println("[GameEngine] MoMoT DM request save failed: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -822,6 +893,8 @@ public class GameEngine {
 
     public void saveModel() {
         try {
+            // Ensure XMI always contains a non-null solution container to avoid downstream tooling issues.
+            ensureLevelHasNonNullSolution(currentLevel);
             File saveFile = new File("blocky_game/save.xmi");
             if (!saveFile.getParentFile().exists()) saveFile = new File("save.xmi");
             resource.setURI(URI.createFileURI(saveFile.getAbsolutePath()));
@@ -1286,6 +1359,7 @@ public class GameEngine {
                     case EMPTY: grid[y][x] = 1; break;
                     case START: grid[y][x] = 2; break;
                     case GOAL:  grid[y][x] = 3; break;
+                    case DMG:   grid[y][x] = 1; break; // treat as EMPTY; visual marker uses injected od
                     default:   grid[y][x] = 1; break;
                 }
             }
@@ -1311,6 +1385,18 @@ public class GameEngine {
         if (map == null) return null;
         for (Cell c : map.getCells()) {
             if (c.getType() == CellType.GOAL) return c;
+        }
+        return null;
+    }
+
+    /**
+     * Finds the Direct Manipulation Goal (DMG) cell in the map (if any).
+     * DMG is an intermediate target used for synthesis, distinct from the level's GOAL.
+     */
+    public Cell getDmgCell(GridMap map) {
+        if (map == null) return null;
+        for (Cell c : map.getCells()) {
+            if (c.getType() == CellType.DMG) return c;
         }
         return null;
     }

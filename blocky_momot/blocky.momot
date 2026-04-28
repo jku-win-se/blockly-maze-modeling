@@ -16,7 +16,9 @@ import blocky_momot.EnumParamPreprocessFitnessFunction
 import org.moeaframework.core.operator.OnePointCrossover
 import org.moeaframework.core.operator.TournamentSelection
 
-var input = "model/input/level5.xmi"
+// Allow overriding the input model when launching the generated runner.
+// Results paths must remain string literals (MoMoT grammar requirement).
+var input = System.getProperty("blocky.input", "model/input/level5.xmi")
 
 initialization = {
 	// Workaround for rare MOEAFramework sorting crashes on some JVMs when

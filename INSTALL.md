@@ -110,7 +110,13 @@ The app needs JavaFX at runtime. The repo includes a **trimmed** JavaFX SDK unde
    --module-path "${project_loc}/javafx-sdk-21.0.10/lib" --add-modules javafx.controls,javafx.web
    ```
    (`project_loc` is an Eclipse variable for the project directory, i.e. `blocky_game`.)
-4. **Apply** → **Run**.
+
+4. If you run **MoMoT** from inside the game (Direct Manipulation → auto-run), also add:
+   ```text
+   --add-opens java.base/java.util=ALL-UNNAMED
+   ```
+   This is required because MoMoT/MOEA uses reflection into `java.util` internals on Java 17+.
+5. **Apply** → **Run**.
 
 The Blockly Maze window should open. Use the level bar for levels 1–10 or **Model** to load/save XMI (`load.xmi` / `save.xmi`).
 
