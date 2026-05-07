@@ -99,6 +99,7 @@ public final class MomotRunService {
             sb.append("\nCaused by: ").append(root.getClass().getName());
             if (root.getMessage() != null) sb.append(": ").append(root.getMessage());
         }
+        appendJdkModuleAccessHint(sb, root);
         sb.append("\n");
         java.io.StringWriter sw = new java.io.StringWriter();
         java.io.PrintWriter pw = new java.io.PrintWriter(sw);
@@ -106,6 +107,28 @@ public final class MomotRunService {
         pw.flush();
         sb.append(sw);
         return sb.toString();
+    }
+
+    private static void appendJdkModuleAccessHint(StringBuilder sb, Throwable root) {
+        if (sb == null || root == null) return;
+        String cn = root.getClass().getName();
+        String msg = root.getMessage();
+        if (cn == null) cn = "";
+        if (msg == null) msg = "";
+
+        // JDK 16+ strongly encapsulates JDK internals; MOEAFramework instrumentation may require opens.
+        if (cn.contains("InaccessibleObjectException")
+                && msg.contains("java.util.AbstractList.modCount")
+                && msg.contains("java.base")
+                && msg.contains("opens java.util")) {
+            sb.append("\n\n")
+              .append("---- JVM module access fix ----\n")
+              .append("Your JVM blocks reflective access needed by MOEAFramework instrumentation.\n")
+              .append("Add this VM argument to your Eclipse run configuration:\n")
+              .append("  --add-opens=java.base/java.util=ALL-UNNAMED\n")
+              .append("If you still see similar errors, also try:\n")
+              .append("  --add-opens=java.base/java.lang=ALL-UNNAMED\n");
+        }
     }
 
     public static final class RunSpec {
@@ -138,6 +161,15 @@ public final class MomotRunService {
         return new RunSpec(input, out);
     }
 
+    /**
+     * Synchronous MoMoT run (no background thread).
+     *
+     * @return the final moved output directory, or {@code null} if unavailable
+     */
+    public static String runSync(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
+        return runInternal(spec, logLine, onOutputDirReady);
+    }
+
     public static void runAsync(RunSpec spec, Consumer<String> logLine, Runnable onDone) {
         runAsync(spec, logLine, onDone, null);
     }
@@ -149,143 +181,7 @@ public final class MomotRunService {
     public static void runAsync(RunSpec spec, Consumer<String> logLine, Runnable onDone, Consumer<String> onOutputDirReady) {
         Thread t = new Thread(() -> {
             try {
-                if (logLine != null) logLine.accept("[MoMoT] Starting…");
-
-                // NOTE:
-                // `blocky_momot/src-gen/blocky.java` is generated, so we must NOT rely on custom edits there.
-                // We instead set the generated runner's static `input` field via reflection and call its APIs.
-
-                // The generated runner's static initializer reads its default model file
-                // "model/input/level5.xmi" relative to the current working directory.
-                // Ensure this file exists to prevent ExceptionInInitializerError.
-                try {
-                    Path staged = Path.of("model", "input", "level5.xmi").normalize();
-                    Files.createDirectories(staged.getParent());
-                    Path src = Path.of(spec.inputXmi).toAbsolutePath().normalize();
-                    if (Files.exists(src)) {
-                        Files.copy(src, staged, StandardCopyOption.REPLACE_EXISTING);
-                        if (logLine != null) logLine.accept("[MoMoT] Staged input for generated runner: " + staged.toString());
-                    } else {
-                        if (logLine != null) logLine.accept("[MoMoT] Warning: input XMI not found to stage: " + src);
-                    }
-                } catch (Exception e) {
-                    if (logLine != null) logLine.accept("[MoMoT] Warning: failed to stage model/input/level5.xmi: " + e.getMessage());
-                }
-
-                // Clean any previous outputs so each run starts fresh.
-                // The runner may write to `output/` (cwd) or `blocky_momot/output/` depending on launch context.
-                deleteDirectoryRecursive(Path.of("output"));
-                deleteDirectoryRecursive(Path.of("blocky_momot", "output"));
-                deleteDirectoryRecursive(Path.of("..", "output").normalize());
-                deleteDirectoryRecursive(Path.of("..", "blocky_momot", "output").normalize());
-
-                // Ensure the generated runner is available on the runtime classpath.
-                // This typically requires running from Eclipse with the MoMoT target platform active (PDE).
-                final Class<?> runnerClass;
-                try {
-                    ClassLoader cl = Thread.currentThread().getContextClassLoader();
-                    if (cl == null) cl = MomotRunService.class.getClassLoader();
-                    // Allow initialization now that the expected default input exists.
-                    runnerClass = Class.forName("blocky", true, cl);
-                } catch (ClassNotFoundException cnf) {
-                    if (logLine != null) {
-                        logLine.accept("[MoMoT] Cannot start: generated runner class 'blocky' not found on classpath.");
-                        logLine.accept("[MoMoT] This usually happens when running blocky_game via Maven (no MoMoT/PDE bundles).");
-                        logLine.accept("[MoMoT] Run blocky_game from Eclipse with the modeling target platform active,");
-                        logLine.accept("[MoMoT] and ensure project 'blocky_momot' is built so 'blocky' exists in bin/");
-                    }
-                    return;
-                }
-
-                // Capture stdout/stderr from the in-process runner so we can surface progress in the UI.
-                PrintStream oldOut = System.out;
-                PrintStream oldErr = System.err;
-                ByteArrayOutputStream buf = new ByteArrayOutputStream();
-                PrintStream teeOut = new PrintStream(new LineForwardingOutputStream(logLine, buf), true, StandardCharsets.UTF_8);
-                PrintStream teeErr = new PrintStream(new LineForwardingOutputStream((s) -> {
-                    if (logLine != null) logLine.accept("[stderr] " + s);
-                }, buf), true, StandardCharsets.UTF_8);
-                System.setOut(teeOut);
-                System.setErr(teeErr);
-                String phase = "init";
-                try {
-                    // Call initialization() explicitly (register packages, baseline distance cache, etc.).
-                    phase = "initialization";
-                    try {
-                        runnerClass.getMethod("initialization").invoke(null);
-                    } catch (Exception ignored) {
-                    }
-
-                    // Compute solution length dynamically: BlockyProgramMetrics.inferSolutionLength(input) * 2
-                    phase = "infer_solution_length";
-                    int solLen = 10;
-                    try {
-                        Class<?> metrics = Class.forName("blocky_momot.BlockyProgramMetrics");
-                        String absInput = new File(spec.inputXmi).getAbsoluteFile().getPath();
-                        Object v = metrics.getMethod("inferSolutionLength", String.class).invoke(null, absInput);
-                        if (v instanceof Number) solLen = Math.max(1, ((Number) v).intValue() * 2);
-                    } catch (Exception ignored) {
-                    }
-
-                    phase = "perform_search";
-                    Object inst = runnerClass.getDeclaredConstructor().newInstance();
-                    String absInput = new File(spec.inputXmi).getAbsoluteFile().getPath();
-                    runnerClass.getMethod("performSearch", String.class, int.class).invoke(inst, absInput, solLen);
-                } finally {
-                    System.setOut(oldOut);
-                    System.setErr(oldErr);
-                }
-
-                // The generated runner writes to `blocky_momot/output` (relative to its working directory).
-                // The generated runner typically writes to `output/` relative to the current working directory.
-                // We move that folder into a unique `blocky_momot/output_*` directory so the UI can show multiple runs.
-                String movePhase = "move_outputs";
-                try {
-                    Path produced = null;
-                    Path[] candidates = new Path[] {
-                            Path.of("output"),
-                            Path.of("blocky_momot", "output"),
-                            Path.of("..", "output").normalize(),
-                            Path.of("..", "blocky_momot", "output").normalize()
-                    };
-                    for (Path c : candidates) {
-                        try {
-                            if (c != null && Files.exists(c) && Files.isDirectory(c)) {
-                                produced = c;
-                                break;
-                            }
-                        } catch (Exception ignored) {
-                        }
-                    }
-                    Path target = Path.of(spec.outputBase).normalize();
-                    if (produced != null && Files.exists(produced)) {
-                        if (Files.exists(target)) {
-                            // avoid failures; keep existing target and pick a suffix
-                            target = Path.of(spec.outputBase + "_2").normalize();
-                        }
-                        Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
-                        Files.move(produced, target, StandardCopyOption.REPLACE_EXISTING);
-                        if (logLine != null) logLine.accept("[MoMoT] Moved outputs: " + produced + " -> " + target);
-                        try {
-                            if (onOutputDirReady != null) onOutputDirReady.accept(target.toString());
-                        } catch (Exception ignored) {
-                        }
-                    } else {
-                        if (logLine != null) logLine.accept("[MoMoT] No output directory found to move (expected 'output/' or 'blocky_momot/output').");
-                    }
-                } catch (Exception e) {
-                    if (logLine != null) logLine.accept("[MoMoT] Output move failed: " + e.getMessage());
-                }
-
-                if (logLine != null) {
-                    String out = buf.toString(StandardCharsets.UTF_8);
-                    // Also emit the full captured output once (useful for copy/paste), but keep it bounded.
-                    if (out != null && out.length() > 0) {
-                        String tail = out.length() > 20000 ? out.substring(out.length() - 20000) : out;
-                        logLine.accept(tail);
-                    }
-                    logLine.accept("[MoMoT] Finished.");
-                }
+                runInternal(spec, logLine, onOutputDirReady);
             } catch (Throwable t2) {
                 if (logLine != null) {
                     String details = throwableToString(t2);
@@ -299,6 +195,223 @@ public final class MomotRunService {
         }, "MomotRunService");
         t.setDaemon(true);
         t.start();
+    }
+
+    private static String runInternal(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
+        if (logLine != null) logLine.accept("[MoMoT] Starting…");
+
+        // NOTE:
+        // `blocky_momot/src-gen/blocky.java` is generated, so we must NOT rely on custom edits there.
+        // We instead set the generated runner's static `input` field via reflection and call its APIs.
+
+        // The generated runner reads its default input model path from a system property.
+        // Set it *before* loading the class so its static initializer uses the right value,
+        // regardless of the current working directory (blocky_game vs blocky_momot).
+        try {
+            String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
+            System.setProperty("blocky.input", absInput);
+            if (logLine != null) logLine.accept("[MoMoT] Set system property blocky.input = " + absInput);
+        } catch (Exception e) {
+            if (logLine != null) logLine.accept("[MoMoT] Warning: failed to set blocky.input: " + e.getMessage());
+        }
+
+        if (logLine != null) {
+            logLine.accept("[MoMoT] Properties: blocky.populationSize=" + System.getProperty("blocky.populationSize")
+                    + " blocky.maxEvaluations=" + System.getProperty("blocky.maxEvaluations")
+                    + " blocky.nrRuns=" + System.getProperty("blocky.nrRuns")
+                    + " blocky.solutionLengthFactor=" + System.getProperty("blocky.solutionLengthFactor"));
+        }
+
+        // Clean any previous outputs so each run starts fresh.
+        // The runner may write to `output/` (cwd) or `blocky_momot/output/` depending on launch context.
+        deleteDirectoryRecursive(Path.of("output"));
+        deleteDirectoryRecursive(Path.of("blocky_momot", "output"));
+        deleteDirectoryRecursive(Path.of("..", "output").normalize());
+        deleteDirectoryRecursive(Path.of("..", "blocky_momot", "output").normalize());
+
+        // Ensure the generated runner is available on the runtime classpath.
+        // This typically requires running from Eclipse with the MoMoT target platform active (PDE).
+                final Class<?> runnerClass;
+        try {
+            ClassLoader cl = Thread.currentThread().getContextClassLoader();
+            if (cl == null) cl = MomotRunService.class.getClassLoader();
+            // Initialize the runner after setting blocky.input.
+                    // Prefer the non-generated copy so regeneration won't break custom behavior.
+                    runnerClass = Class.forName("blocky", true, cl);
+        } catch (ClassNotFoundException cnf) {
+            if (logLine != null) {
+                        logLine.accept("[MoMoT] Cannot start: runner class 'blocky_custom' not found on classpath.");
+                logLine.accept("[MoMoT] This usually happens when running blocky_game via Maven (no MoMoT/PDE bundles).");
+                logLine.accept("[MoMoT] Run blocky_game from Eclipse with the modeling target platform active,");
+                        logLine.accept("[MoMoT] and ensure project 'blocky_momot' is built so 'blocky_custom' exists in bin/");
+            }
+            return null;
+        }
+
+        // Capture stdout/stderr from the in-process runner so we can surface progress in the UI.
+        PrintStream oldOut = System.out;
+        PrintStream oldErr = System.err;
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        PrintStream teeOut = new PrintStream(new LineForwardingOutputStream(logLine, buf), true, StandardCharsets.UTF_8);
+        PrintStream teeErr = new PrintStream(new LineForwardingOutputStream((s) -> {
+            if (logLine != null) logLine.accept("[stderr] " + s);
+        }, buf), true, StandardCharsets.UTF_8);
+        System.setOut(teeOut);
+        System.setErr(teeErr);
+        try {
+                    // Call initialization() explicitly (register packages, baseline distance cache, etc.).
+            try {
+                        // blocky_custom.initialization(String absInputModelPath)
+                        String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
+                        try {
+                            runnerClass.getMethod("initialization", String.class).invoke(null, absInput);
+                        } catch (NoSuchMethodException ns) {
+                            // Fallback for older generated runner signature
+                            runnerClass.getMethod("initialization").invoke(null);
+                        }
+            } catch (Exception ignored) {
+            }
+
+            // Compute solution length dynamically: BlockyProgramMetrics.inferSolutionLength(input) * factor
+            int solLen = 10;
+            try {
+                Class<?> metrics = Class.forName("blocky_momot.BlockyProgramMetrics");
+                String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
+                Object v = metrics.getMethod("inferSolutionLength", String.class).invoke(null, absInput);
+                int factor = 2;
+                try {
+                    factor = Integer.parseInt(System.getProperty("blocky.solutionLengthFactor", "2"));
+                } catch (Exception ignored) {
+                }
+                if (factor < 1) factor = 1;
+                if (v instanceof Number) solLen = Math.max(1, ((Number) v).intValue() * factor);
+            } catch (Exception ignored) {
+            }
+
+                    Object inst = runnerClass.getDeclaredConstructor().newInstance();
+                    applyExperimentOverrides(inst, logLine);
+                    String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
+                    runnerClass.getMethod("performSearch", String.class, int.class).invoke(inst, absInput, solLen);
+        } catch (Throwable t) {
+            if (logLine != null) logLine.accept("[MoMoT] Failed:\n" + throwableToString(t));
+            return null;
+        } finally {
+            System.setOut(oldOut);
+            System.setErr(oldErr);
+        }
+
+        // The generated runner typically writes to `output/` relative to the current working directory.
+        // We move that folder into a unique `blocky_momot/output_*` directory so the UI can show multiple runs.
+        String outputDir = null;
+        try {
+            Path produced = null;
+            Path[] candidates = new Path[] {
+                    Path.of("output"),
+                    Path.of("blocky_momot", "output"),
+                    Path.of("..", "output").normalize(),
+                    Path.of("..", "blocky_momot", "output").normalize()
+            };
+            for (Path c : candidates) {
+                try {
+                    if (c != null && Files.exists(c) && Files.isDirectory(c)) {
+                        produced = c;
+                        break;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            Path target = Path.of(spec.outputBase).normalize();
+            if (produced != null && Files.exists(produced)) {
+                if (Files.exists(target)) {
+                    // avoid failures; keep existing target and pick a suffix
+                    target = Path.of(spec.outputBase + "_2").normalize();
+                }
+                Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
+                Files.move(produced, target, StandardCopyOption.REPLACE_EXISTING);
+                outputDir = target.toString();
+                if (logLine != null) logLine.accept("[MoMoT] Moved outputs: " + produced + " -> " + target);
+                try {
+                    if (onOutputDirReady != null) onOutputDirReady.accept(outputDir);
+                } catch (Exception ignored) {
+                }
+            } else {
+                if (logLine != null) logLine.accept("[MoMoT] No output directory found to move (expected 'output/' or 'blocky_momot/output').");
+            }
+        } catch (Exception e) {
+            if (logLine != null) logLine.accept("[MoMoT] Output move failed: " + e.getMessage());
+        }
+
+        if (logLine != null) {
+            String out = buf.toString(StandardCharsets.UTF_8);
+            if (out != null && !out.isEmpty()) {
+                String tail = out.length() > 20000 ? out.substring(out.length() - 20000) : out;
+                logLine.accept(tail);
+            }
+            logLine.accept("[MoMoT] Finished.");
+        }
+        return outputDir;
+    }
+
+    private static void applyExperimentOverrides(Object runnerInstance, Consumer<String> logLine) {
+        if (runnerInstance == null) return;
+        try {
+            int pop = parseIntOrDefault(System.getProperty("blocky.populationSize"), -1);
+            int evals = parseIntOrDefault(System.getProperty("blocky.maxEvaluations"), -1);
+            int runs = parseIntOrDefault(System.getProperty("blocky.nrRuns"), -1);
+
+            // Best-effort: override fields if present (covers older compiled runners that use fixed finals).
+            if (pop > 0) setIntFieldIfExists(runnerInstance, "populationSize", pop);
+            if (evals > 0) setIntFieldIfExists(runnerInstance, "maxEvaluations", evals);
+            if (runs > 0) setIntFieldIfExists(runnerInstance, "nrRuns", runs);
+
+            if (logLine != null) {
+                logLine.accept("[MoMoT] Applied overrides to runner instance (best-effort).");
+            }
+        } catch (Exception e) {
+            if (logLine != null) logLine.accept("[MoMoT] Warning: could not apply overrides: " + e.getMessage());
+        }
+    }
+
+    private static int parseIntOrDefault(String s, int def) {
+        if (s == null) return def;
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (Exception e) {
+            return def;
+        }
+    }
+
+    private static void setIntFieldIfExists(Object obj, String fieldName, int value) {
+        Class<?> c = obj.getClass();
+        while (c != null) {
+            try {
+                java.lang.reflect.Field f = c.getDeclaredField(fieldName);
+                f.setAccessible(true);
+                f.setInt(obj, value);
+                return;
+            } catch (NoSuchFieldException ns) {
+                c = c.getSuperclass();
+            } catch (Exception e) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Resolves an input XMI path robustly across different launch working directories.
+     * If {@code path} is relative and does not exist, tries a few common parent prefixes.
+     */
+    private static File resolveExistingFile(String path) {
+        if (path == null || path.isBlank()) return new File("model/1.xmi");
+        File f = new File(path);
+        if (f.isAbsolute()) return f;
+        if (f.exists()) return f;
+        // common when launching from blocky_game vs workspace root
+        File f1 = new File("..", path);
+        if (f1.exists()) return f1;
+        File f2 = new File("..", ".." + File.separator + path);
+        if (f2.exists()) return f2;
+        return f;
     }
 
     private static String firstExisting(String... paths) {

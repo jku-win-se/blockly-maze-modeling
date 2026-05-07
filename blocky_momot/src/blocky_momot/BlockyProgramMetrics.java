@@ -41,8 +41,8 @@ public final class BlockyProgramMetrics {
         Level level = game.getLevels().get(0);
         int existing = countStatements(level.getSolution());
         int maxBlocks = level.getMaxBlocks();
-        if (maxBlocks < 0) {
-            maxBlocks = 0;
+        if (maxBlocks <= 0) {
+            maxBlocks = 5;
         }
         return Math.max(1, existing + maxBlocks);
     }
@@ -53,6 +53,22 @@ public final class BlockyProgramMetrics {
         }
         Level level = game.getLevels().get(0);
         return level == null ? 0 : countStatements(level.getSolution());
+    }
+
+    public static int countLoops(Game game) {
+        if (game == null || game.getLevels().isEmpty()) {
+            return 0;
+        }
+        Level level = game.getLevels().get(0);
+        return level == null ? 0 : countLoops(level.getSolution());
+    }
+
+    public static int countConditionals(Game game) {
+        if (game == null || game.getLevels().isEmpty()) {
+            return 0;
+        }
+        Level level = game.getLevels().get(0);
+        return level == null ? 0 : countConditionals(level.getSolution());
     }
 
     public static int countStatements(Body body) {
@@ -71,6 +87,48 @@ public final class BlockyProgramMetrics {
                     count += countStatements(((IfStmt) s).getThenBody());
                     count += countStatements(((IfStmt) s).getElseBody());
                 }
+            }
+            c = c.getNext();
+        }
+        return count;
+    }
+
+    public static int countLoops(Body body) {
+        if (body == null) {
+            return 0;
+        }
+        int count = 0;
+        Container c = body.getFirstContainer();
+        while (c != null) {
+            Statement s = c.getStatement();
+            if (s instanceof Loop) {
+                count += 1;
+                count += countLoops(((Loop) s).getBody());
+            } else if (s instanceof IfStmt) {
+                // still visit nested bodies for loops
+                count += countLoops(((IfStmt) s).getThenBody());
+                count += countLoops(((IfStmt) s).getElseBody());
+            }
+            c = c.getNext();
+        }
+        return count;
+    }
+
+    public static int countConditionals(Body body) {
+        if (body == null) {
+            return 0;
+        }
+        int count = 0;
+        Container c = body.getFirstContainer();
+        while (c != null) {
+            Statement s = c.getStatement();
+            if (s instanceof IfStmt) {
+                count += 1;
+                count += countConditionals(((IfStmt) s).getThenBody());
+                count += countConditionals(((IfStmt) s).getElseBody());
+            } else if (s instanceof Loop) {
+                // still visit nested bodies for conditionals
+                count += countConditionals(((Loop) s).getBody());
             }
             c = c.getNext();
         }

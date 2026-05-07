@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 
 import blocky.*;
 import blocky.BlockyPackage;
@@ -58,6 +59,10 @@ public class GameEngine {
     // so we can compare it with the newly predicted path after edits.
     private int[][] debugPastPrefixPath = new int[0][0];
     private String debugImmediateFeedbackNote;
+
+    // Map EMF Statement instances (identity) to Blockly block ids from the WebView workspace XML.
+    // This enables Maze-style highlighting of the currently executing block while debugging.
+    private final IdentityHashMap<Statement, String> stmtToBlocklyId = new IdentityHashMap<>();
 
     private Cell findCellByXY(int x, int y) {
         if (currentLevel == null || currentLevel.getMap() == null || currentLevel.getMap().getCells() == null) return null;
@@ -150,10 +155,20 @@ public class GameEngine {
         trace.getStates().add(initialState);
 
         // Capture DM baseline path for MoMoT result comparison (best-effort).
-        // We use the teleported state as the start situation for both baseline and MoMoT results.
-        dmStartX = x;
-        dmStartY = y;
-        dmStartDir = dir;
+        // IMPORTANT: compare from the REAL level start, not from the DM-teleported state.
+        // Otherwise the "common prefix" degenerates to a single point (the teleported DMG cell),
+        // and Pegman cannot be repositioned to a meaningful last-common cell after loading a MoMoT model.
+        Cell startCell = getStartCell(currentLevel.getMap());
+        if (startCell != null) {
+            dmStartX = startCell.getX();
+            dmStartY = startCell.getY();
+        } else {
+            dmStartX = x;
+            dmStartY = y;
+        }
+        dmStartDir = (currentLevel != null && currentLevel.eIsSet(BlockyPackage.Literals.LEVEL__START_ORIENTATION))
+                ? currentLevel.getStartOrientation()
+                : dir;
         try {
             blocky_game.DebuggingService.DebugTraceResult base =
                     blocky_game.DebuggingService.computeTraceFromState(currentLevel, dmStartX, dmStartY, dmStartDir);
@@ -369,6 +384,7 @@ public class GameEngine {
 
         currentLevel.getTraces().clear(); // Clear old traces—they reference old solution blocks
         currentLevel.setSolution(null);
+        stmtToBlocklyId.clear();
         if (blockData == null || blockData.isEmpty()) {
             System.out.println("[GameEngine] Program cleared.");
             return;
@@ -406,6 +422,12 @@ public class GameEngine {
 
     private Statement createStatementFromData(Map<String, Object> data) {
         String type = (String) data.get("type");
+        String blockId = null;
+        try {
+            Object idObj = data.get("id");
+            blockId = idObj != null ? String.valueOf(idObj) : null;
+        } catch (Exception ignored) {
+        }
         Statement stmt = null;
 
         if ("maze_moveForward".equals(type) || "move_forward".equals(type)) {
@@ -448,6 +470,9 @@ public class GameEngine {
             stmt = i;
         }
 
+        if (stmt != null && blockId != null && !blockId.isEmpty()) {
+            stmtToBlocklyId.put(stmt, blockId);
+        }
         return stmt;
     }
 
@@ -648,12 +673,21 @@ public class GameEngine {
         next.setPrevious(prev);
         trace.getStates().add(next);
 
+        if (stmt == null) {
+            System.out.print("[GameEngine] Step " + next.getStep() + ": (empty) -> ");
+            System.out.println("No-op");
+            return next;
+        }
+
         String typeName = stmt.getClass().getSimpleName().replace("Impl", "");
         System.out.print("[GameEngine] Step " + next.getStep() + ": " + typeName + " -> ");
 
         if (stmt instanceof AtomicStatement) {
             AtomicStatement a = (AtomicStatement) stmt;
-            switch (a.getKind()) {
+            // Align with MoMoT headless simulator defaults: missing kind behaves as TURN_LEFT.
+            AtomicStatementKind kind = a.getKind();
+            if (kind == null) kind = AtomicStatementKind.TURN_LEFT;
+            switch (kind) {
             case MOVE_FORWARD: {
                 Cell target = getAdjacent(next.getPosition(), next.getOrientation());
                 if (target == null || target.getType() == CellType.WALL) {
@@ -727,9 +761,17 @@ public class GameEngine {
 
         String typeName = stmt != null ? stmt.getClass().getSimpleName().replace("Impl", "") : "null";
 
+        if (stmt == null) {
+            if (logs != null) logs.add("Step " + next.getStep() + ": (empty) -> no-op");
+            return next;
+        }
+
         if (stmt instanceof AtomicStatement) {
             AtomicStatement a = (AtomicStatement) stmt;
-            switch (a.getKind()) {
+            // Align with MoMoT headless simulator defaults: missing kind behaves as TURN_LEFT.
+            AtomicStatementKind kind = a.getKind();
+            if (kind == null) kind = AtomicStatementKind.TURN_LEFT;
+            switch (kind) {
             case MOVE_FORWARD: {
                 Cell target = getAdjacent(next.getPosition(), next.getOrientation());
                 if (target == null || target.getType() == CellType.WALL) {
@@ -1103,11 +1145,60 @@ public class GameEngine {
         debugDirtySolution = false;
         debugSessionActive = true;
 
+        // Special-case: after loading a MoMoT solution, the UI teleports pegman to the last common cell
+        // between baseline and solution paths. In that case, starting execution from statement #1 would
+        // incorrectly re-run already-executed prefix commands and can fail to reach the goal.
+        //
+        // Fix: build the trace from the REAL comparison start (dmStartX/Y/Dir) and jump debugIndex
+        // to the last state that reaches the last-common cell. This preserves correct "next block".
+        int desiredIndex = 0;
+        int traceStartX = startX;
+        int traceStartY = startY;
+        Direction traceStartDir = debugStartDir;
+        try {
+            if (hasDirectManipulationComparison() && dmCommonLen > 0 && dmBaselinePath != null && dmBaselinePath.length >= dmCommonLen) {
+                int[] commonPt = dmBaselinePath[dmCommonLen - 1];
+                if (commonPt != null && commonPt.length >= 2 && commonPt[0] == startX && commonPt[1] == startY) {
+                    traceStartX = dmStartX;
+                    traceStartY = dmStartY;
+                    traceStartDir = dmStartDir != null ? dmStartDir : debugStartDir;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
         blocky_game.DebuggingService.DebugTraceResult result =
-                blocky_game.DebuggingService.computeTraceFromState(currentLevel, startX, startY, debugStartDir);
+                blocky_game.DebuggingService.computeTraceFromState(currentLevel, traceStartX, traceStartY, traceStartDir);
         debugTrace = result.trace;
         debugLogLines = result.logLines;
-        debugIndex = 0;
+
+        try {
+            if (debugTrace != null && debugTrace.getStates() != null) {
+                // If we computed the trace from a different start than the UI's desired (q,s),
+                // jump the index to the state that reaches the UI cell.
+                if (traceStartX != startX || traceStartY != startY) {
+                    desiredIndex = findLastStateIndexAtOrBefore(debugTrace, startX, startY);
+                    System.out.println("[GameEngine] debugStart aligned: traceStart=(" + traceStartX + "," + traceStartY + ") -> ui=("
+                            + startX + "," + startY + ") mappedIndex=" + desiredIndex);
+                    if (desiredIndex <= 0) {
+                        // If the requested alignment cell is not on the new trace, do NOT snap back to the start.
+                        // Fall back to a trace starting from the requested cell so stepping remains usable.
+                        blocky_game.DebuggingService.DebugTraceResult fallback =
+                                blocky_game.DebuggingService.computeTraceFromState(currentLevel, startX, startY, debugStartDir);
+                        debugTrace = fallback.trace;
+                        debugLogLines = fallback.logLines;
+                        desiredIndex = 0;
+                        debugImmediateFeedbackNote = "Debugger: alignment cell (" + startX + "," + startY
+                                + ") not found on recomputed trace; starting from that cell.";
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            desiredIndex = 0;
+        }
+
+        debugIndex = Math.max(0, Math.min(desiredIndex, (debugTrace != null && debugTrace.getStates() != null) ? debugTrace.getStates().size() - 1 : 0));
+        syncCurrentStateSnapshotFromTraceIndex();
         debugPastPrefixPath = new int[0][0];
         debugImmediateFeedbackNote = null;
 
@@ -1361,8 +1452,45 @@ public class GameEngine {
     }
 
     private String debugFrameJson() {
+        // Always return a full frame shape so the WebView doesn't interpret missing fields as 0,0.
+        // This situation can happen transiently during level/model injection (e.g. MoMoT in-place load)
+        // when debug controls are clicked while trace/state is not yet initialized.
         if (currentLevel == null || debugTrace == null || debugTrace.getStates() == null) {
-            return "{\"index\":0,\"total\":0,\"q\":0,\"s\":0,\"t\":0,\"prefix\":[],\"pastPrefix\":[],\"newPreview\":[],\"common\":0}";
+            int q = debugCurrentX;
+            int r = debugCurrentY;
+            int t = blocky_game.DebuggingService.directionToT(debugCurrentDir);
+            try {
+                if (currentLevel != null && currentLevel.getMap() != null) {
+                    Cell start = getStartCell(currentLevel.getMap());
+                    if (start != null) {
+                        q = start.getX();
+                        r = start.getY();
+                    }
+                    Direction dir = (currentLevel != null && currentLevel.eIsSet(BlockyPackage.Literals.LEVEL__START_ORIENTATION))
+                            ? currentLevel.getStartOrientation()
+                            : null;
+                    if (dir != null) {
+                        t = blocky_game.DebuggingService.directionToT(dir);
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+            return "{\"index\":0"
+                    + ",\"total\":0"
+                    + ",\"q\":" + q
+                    + ",\"s\":" + r
+                    + ",\"t\":" + t
+                    + ",\"prefix\":[]"
+                    + ",\"pastPrefix\":[]"
+                    + ",\"newPreview\":[]"
+                    + ",\"common\":0"
+                    + ",\"paused\":true"
+                    + ",\"dirty\":false"
+                    + ",\"blockId\":\"\""
+                    + ",\"result\":\"RUNNING\""
+                    + ",\"logLine\":\"\""
+                    + ",\"note\":\"\""
+                    + "}";
         }
         List<GameState> states = debugTrace.getStates();
         int total = states.size();
@@ -1418,6 +1546,43 @@ public class GameEngine {
         }
         logLine = escapeJsonString(logLine);
 
+        // Provide a prefix of log lines up to the current index so the UI can render
+        // a complete execution history even when we start debugging from an aligned mid-trace index.
+        String logPrefix = "[]";
+        try {
+            if (debugLogLines != null && !debugLogLines.isEmpty()) {
+                int upto = Math.max(0, Math.min(safeIndex, debugLogLines.size() - 1));
+                StringBuilder lp = new StringBuilder();
+                lp.append("[");
+                for (int i = 0; i <= upto; i++) {
+                    if (i > 0) lp.append(",");
+                    lp.append("\"").append(escapeJsonString(debugLogLines.get(i))).append("\"");
+                }
+                lp.append("]");
+                logPrefix = lp.toString();
+            }
+        } catch (Exception ignored) {
+            logPrefix = "[]";
+        }
+
+        String blockId = "";
+        try {
+            // Highlight the NEXT statement to be executed (Blockly Maze semantics),
+            // while pegman position is the CURRENT state.
+            Statement exec = null;
+            if (states != null && safeIndex < total - 1) {
+                GameState nextState = states.get(Math.min(safeIndex + 1, total - 1));
+                exec = nextState != null ? nextState.getExecutingStatement() : null;
+            } else {
+                exec = (s != null) ? s.getExecutingStatement() : null;
+            }
+            String mapped = (exec != null) ? stmtToBlocklyId.get(exec) : null;
+            blockId = mapped != null ? mapped : "";
+        } catch (Exception ignored) {
+            blockId = "";
+        }
+        blockId = escapeJsonString(blockId);
+
         // notes are one-shot: return once, then clear so the UI won't append duplicates
         String note = debugImmediateFeedbackNote != null ? debugImmediateFeedbackNote : "";
         if (note != null && !note.isEmpty()) {
@@ -1436,8 +1601,10 @@ public class GameEngine {
                 + ",\"common\":" + commonLen
                 + ",\"paused\":" + debugPaused
                 + ",\"dirty\":" + debugDirtySolution
+                + ",\"blockId\":\"" + blockId + "\""
                 + ",\"result\":\"" + result + "\""
                 + ",\"logLine\":\"" + logLine + "\""
+                + ",\"logPrefix\":" + logPrefix
                 + ",\"note\":\"" + note + "\""
                 + "}";
     }
@@ -1507,26 +1674,43 @@ public class GameEngine {
     private void appendStatementXml(Container c, Container overrideNext, StringBuilder sb) {
         if (c == null) return;
         Statement stmt = c.getStatement();
-        if (stmt == null) return;
         Container next = overrideNext != null ? overrideNext : c.getNext();
+        if (stmt == null) {
+            // Empty container: skip but preserve the rest of the chain.
+            if (next != null) {
+                appendStatementXml(next, null, sb);
+            }
+            return;
+        }
 
         if (stmt instanceof AtomicStatement) {
             AtomicStatement a = (AtomicStatement) stmt;
-            if (a.getKind() == AtomicStatementKind.MOVE_FORWARD) {
+            // Keep Blockly export consistent with MoMoT's BlockySimulator defaults:
+            // missing kind behaves as TURN_LEFT.
+            AtomicStatementKind kind = a.getKind();
+            if (kind == null) {
+                kind = AtomicStatementKind.TURN_LEFT;
+            }
+            if (kind == AtomicStatementKind.MOVE_FORWARD) {
                 sb.append("<block type=\"maze_moveForward\">");
-            } else if (a.getKind() == AtomicStatementKind.TURN_LEFT) {
+            } else if (kind == AtomicStatementKind.TURN_LEFT) {
                 sb.append("<block type=\"maze_turn\"><field name=\"DIR\">turnLeft</field>");
-            } else if (a.getKind() == AtomicStatementKind.TURN_RIGHT) {
+            } else if (kind == AtomicStatementKind.TURN_RIGHT) {
                 sb.append("<block type=\"maze_turn\"><field name=\"DIR\">turnRight</field>");
             }
-            if (a.getKind() == AtomicStatementKind.MOVE_FORWARD || a.getKind() == AtomicStatementKind.TURN_LEFT
-                    || a.getKind() == AtomicStatementKind.TURN_RIGHT) {
+            if (kind == AtomicStatementKind.MOVE_FORWARD || kind == AtomicStatementKind.TURN_LEFT
+                    || kind == AtomicStatementKind.TURN_RIGHT) {
                 if (next != null) {
                     sb.append("<next>");
                     appendStatementXml(next, null, sb);
                     sb.append("</next>");
                 }
                 sb.append("</block>");
+            } else {
+                // Unknown/unsupported atomic kind: skip this statement but keep the chain.
+                if (next != null) {
+                    appendStatementXml(next, null, sb);
+                }
             }
         } else if (stmt instanceof Loop) {
             Loop r = (Loop) stmt;
@@ -1543,7 +1727,13 @@ public class GameEngine {
             }
         } else if (stmt instanceof IfStmt) {
             IfStmt i = (IfStmt) stmt;
-            String dirField = conditionToBlocklyDir(i.getCondition());
+            // Keep Blockly export consistent with MoMoT's BlockySimulator defaults:
+            // missing condition behaves as CHECK_FORWARD.
+            ConditionKind ck = i.getCondition();
+            if (ck == null) {
+                ck = ConditionKind.CHECK_FORWARD;
+            }
+            String dirField = conditionToBlocklyDir(ck);
             // Blockly Maze's if-else block expects an ELSE statement input to exist.
             // Treat an empty else-body as "no else" to keep the XML loadable.
             boolean hasElse = i.getElseBody() != null && i.getElseBody().getFirstContainer() != null;

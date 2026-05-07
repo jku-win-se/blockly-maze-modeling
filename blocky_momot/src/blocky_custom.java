@@ -44,13 +44,21 @@ import org.moeaframework.core.operator.OnePointCrossover;
 import org.moeaframework.core.operator.TournamentSelection;
 import org.moeaframework.util.progress.ProgressListener;
 
+/**
+ * Non-generated copy of {@code src-gen/blocky.java}.
+ *
+ * Key differences vs the generated runner:
+ * - No static initializer that attempts to load the input file (prevents init crashes).
+ * - populationSize/maxEvaluations/nrRuns are read at runtime from system properties:
+ *   - blocky.populationSize (default 50)
+ *   - blocky.maxEvaluations (default 2000)
+ *   - blocky.nrRuns (default 10)
+ *
+ * This file is safe to edit; regeneration will not overwrite it.
+ */
 @SuppressWarnings("all")
-public class blocky {
-  protected static String input = System.getProperty("blocky.input", "model/input/game.xmi");
-
-  protected static final String INITIAL_MODEL = blocky.input;
-
-  protected static final int SOLUTION_LENGTH = (BlockyProgramMetrics.inferSolutionLength(blocky.input) * 2);
+public class blocky_custom {
+  protected static String input = System.getProperty("blocky.input", "model/1.xmi");
 
   protected final String[] modules = new String[] { "../blocky_model/transformations/statement_insertions_henshin_text.henshin" };
 
@@ -59,225 +67,99 @@ public class blocky {
   protected final IEGraphMultiDimensionalFitnessFunction fitnessFunction = new EnumParamPreprocessFitnessFunction();
 
   protected final String _parameterValueKey_0 = "HenshinDSL.CreateThenInsertContainerThenPopulate.k";
-
   protected final String _parameterValueKey_1 = "HenshinDSL.CreateThenInsertContainerThenPopulate.cnd";
-
   protected final String _parameterValueKey_2 = "HenshinDSL::CreateThenInsertContainerThenPopulate::k";
-
   protected final String _parameterValueKey_3 = "HenshinDSL::CreateThenInsertContainerThenPopulate::cnd";
-
   protected final String _parameterValueKey_4 = "CreateThenInsertContainerThenPopulate::k";
-
   protected final String _parameterValueKey_5 = "CreateThenInsertContainerThenPopulate::cnd";
-
   protected final String _parameterValueKey_6 = "HenshinDSL.CreateThenInsertContainerThenPopulate::k";
-
   protected final String _parameterValueKey_7 = "HenshinDSL.CreateThenInsertContainerThenPopulate::cnd";
-
   protected final String _parameterValueKey_8 = "HenshinDSL.PopulateAnyEmptyContainer.k";
-
   protected final String _parameterValueKey_9 = "HenshinDSL.PopulateAnyEmptyContainer.cnd";
-
   protected final String _parameterValueKey_10 = "HenshinDSL.PopulateEmptyContainerWithAtomic.k";
-
   protected final String _parameterValueKey_11 = "HenshinDSL.PopulateEmptyContainerWithIf.cnd";
-
   protected final String _parameterValueKey_12 = "CreateThenInsertContainerThenPopulate.k";
-
   protected final String _parameterValueKey_13 = "CreateThenInsertContainerThenPopulate.cnd";
-
   protected final String _parameterValueKey_14 = "PopulateAnyEmptyContainer.k";
-
   protected final String _parameterValueKey_15 = "PopulateAnyEmptyContainer.cnd";
-
   protected final String _parameterValueKey_16 = "PopulateEmptyContainerWithAtomic.k";
-
   protected final String _parameterValueKey_17 = "PopulateEmptyContainerWithIf.cnd";
-
   protected final String _parameterValueKey_18 = "statement_insertions_henshin_text::CreateThenInsertContainerThenPopulate::k";
-
   protected final String _parameterValueKey_19 = "statement_insertions_henshin_text::CreateThenInsertContainerThenPopulate::cnd";
-
   protected final String _parameterValueKey_20 = "statement_insertions_henshin_text::HenshinDSL::CreateThenInsertContainerThenPopulate::k";
-
   protected final String _parameterValueKey_21 = "statement_insertions_henshin_text::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd";
-
   protected final String _parameterValueKey_22 = "statement_insertions_henshin_text::PopulateAnyEmptyContainer::k";
-
   protected final String _parameterValueKey_23 = "statement_insertions_henshin_text::PopulateAnyEmptyContainer::cnd";
-
   protected final String _parameterValueKey_24 = "statement_insertions_henshin_text::PopulateEmptyContainerWithAtomic::k";
-
   protected final String _parameterValueKey_25 = "statement_insertions_henshin_text::PopulateEmptyContainerWithIf::cnd";
-
   protected final String _parameterValueKey_26 = "statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer::k";
-
   protected final String _parameterValueKey_27 = "statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer::cnd";
-
   protected final String _parameterValueKey_28 = "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithAtomic::k";
-
   protected final String _parameterValueKey_29 = "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithIf::cnd";
 
   protected final ITransformationRepairer solutionRepairer = new TransformationPlaceholderRepairer();
 
-  protected final int populationSize = 50;
-
-  protected final int maxEvaluations = 2000;
-
-  protected final int nrRuns = 10;
-
   protected String baseName;
 
-  protected IParameterValue<?> _createParameterValue_0() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
+  protected int getPopulationSize() {
+    try {
+      int v = Integer.parseInt(System.getProperty("blocky.populationSize", "50"));
+      return v > 0 ? v : 50;
+    } catch (Exception ignored) {
+      return 50;
+    }
   }
 
-  protected IParameterValue<?> _createParameterValue_1() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
+  protected int getMaxEvaluations() {
+    try {
+      int v = Integer.parseInt(System.getProperty("blocky.maxEvaluations", "2000"));
+      return v > 0 ? v : 2000;
+    } catch (Exception ignored) {
+      return 2000;
+    }
   }
 
-  protected IParameterValue<?> _createParameterValue_2() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
+  protected int getNrRuns() {
+    try {
+      int v = Integer.parseInt(System.getProperty("blocky.nrRuns", "10"));
+      return v > 0 ? v : 10;
+    } catch (Exception ignored) {
+      return 10;
+    }
   }
 
-  protected IParameterValue<?> _createParameterValue_3() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
+  protected IParameterValue<?> _createParameterValue_0() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_1() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_2() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_3() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_4() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_5() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_6() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_7() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_8() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_9() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_10() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_11() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_12() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_13() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_14() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_15() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_16() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_17() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_18() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_19() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_20() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_21() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_22() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_23() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_24() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_25() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_26() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_27() { return new RandomConditionKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_28() { return new RandomAtomicKindLiteralValue(); }
+  protected IParameterValue<?> _createParameterValue_29() { return new RandomConditionKindLiteralValue(); }
 
-  protected IParameterValue<?> _createParameterValue_4() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_5() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_6() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_7() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_8() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_9() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_10() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_11() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_12() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_13() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_14() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_15() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_16() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_17() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_18() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_19() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_20() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_21() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_22() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_23() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_24() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_25() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_26() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_27() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_28() {
-    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
-    return _randomAtomicKindLiteralValue;
-  }
-
-  protected IParameterValue<?> _createParameterValue_29() {
-    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
-    return _randomConditionKindLiteralValue;
-  }
-
+  // Objective helpers + objective creation methods are identical to the generated runner.
   protected double _createObjectiveHelper_0(final TransformationSolution solution, final EGraph graph, final EObject root) {
     double _xtrycatchfinallyexpression = (double) 0;
     try {
@@ -431,6 +313,180 @@ public class blocky {
     };
   }
 
+  protected double _createObjectiveHelper_3(final TransformationSolution solution, final EGraph graph, final EObject root) {
+    double _xtrycatchfinallyexpression = (double) 0;
+    try {
+      double _xblockexpression = (double) 0;
+      {
+        final Game game = ((Game) root);
+        Level _xifexpression = null;
+        boolean _isEmpty = game.getLevels().isEmpty();
+        if (_isEmpty) {
+          _xifexpression = null;
+        } else {
+          _xifexpression = game.getLevels().get(0);
+        }
+        final Level level = _xifexpression;
+        double _xifexpression_1 = (double) 0;
+        boolean _equals = Objects.equals(level, null);
+        if (_equals) {
+          _xifexpression_1 = 100000.0;
+        } else {
+          int _distanceToGoalOrPenalty = BlockySimulator.distanceToGoalOrPenalty(level);
+          _xifexpression_1 = ((double) _distanceToGoalOrPenalty);
+        }
+        final double v = _xifexpression_1;
+        double _xifexpression_2 = (double) 0;
+        boolean _isFinite = Double.isFinite(v);
+        if (_isFinite) {
+          _xifexpression_2 = v;
+        } else {
+          _xifexpression_2 = 1000000000.0;
+        }
+        _xblockexpression = _xifexpression_2;
+      }
+      _xtrycatchfinallyexpression = _xblockexpression;
+    } catch (final Throwable _t) {
+      if (_t instanceof Throwable) {
+        _xtrycatchfinallyexpression = 1000000000.0;
+      } else {
+        throw Exceptions.sneakyThrow(_t);
+      }
+    }
+    return _xtrycatchfinallyexpression;
+  }
+
+  protected IFitnessDimension<TransformationSolution> _createObjective_3(final TransformationSearchOrchestration orchestration) {
+    return new AbstractEGraphFitnessDimension("DistanceToGoal", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
+       @Override
+       protected double internalEvaluate(TransformationSolution solution) {
+          EGraph graph = solution.execute();
+          EObject root = MomotUtil.getRoot(graph);
+          return _createObjectiveHelper_3(solution, graph, root);
+       }
+    };
+  }
+
+  protected double _createObjectiveHelper_4(final TransformationSolution solution, final EGraph graph, final EObject root) {
+    double _xtrycatchfinallyexpression = (double) 0;
+    try {
+      double _xblockexpression = (double) 0;
+      {
+        final Game game = ((Game) root);
+        Level _xifexpression = null;
+        boolean _isEmpty = game.getLevels().isEmpty();
+        if (_isEmpty) {
+          _xifexpression = null;
+        } else {
+          _xifexpression = game.getLevels().get(0);
+        }
+        final Level level = _xifexpression;
+        boolean _equals = Objects.equals(level, null);
+        if (_equals) {
+          return 1000.0;
+        }
+        final int loops = BlockyProgramMetrics.countLoops(game);
+        final int conds = BlockyProgramMetrics.countConditionals(game);
+        final boolean violates = (((!level.isAllowLoops()) && (loops > 0)) || ((!level.isAllowConditionals()) && (conds > 0)));
+        double _xifexpression_1 = (double) 0;
+        if (violates) {
+          _xifexpression_1 = 1000.0;
+        } else {
+          _xifexpression_1 = 0.0;
+        }
+        final double v = _xifexpression_1;
+        double _xifexpression_2 = (double) 0;
+        boolean _isFinite = Double.isFinite(v);
+        if (_isFinite) {
+          _xifexpression_2 = v;
+        } else {
+          _xifexpression_2 = 1000.0;
+        }
+        _xblockexpression = _xifexpression_2;
+      }
+      _xtrycatchfinallyexpression = _xblockexpression;
+    } catch (final Throwable _t) {
+      if (_t instanceof Throwable) {
+        _xtrycatchfinallyexpression = 1000.0;
+      } else {
+        throw Exceptions.sneakyThrow(_t);
+      }
+    }
+    return _xtrycatchfinallyexpression;
+  }
+
+  protected IFitnessDimension<TransformationSolution> _createObjective_4(final TransformationSearchOrchestration orchestration) {
+    return new AbstractEGraphFitnessDimension("AllowControlFlowPenalty", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
+       @Override
+       protected double internalEvaluate(TransformationSolution solution) {
+          EGraph graph = solution.execute();
+          EObject root = MomotUtil.getRoot(graph);
+          return _createObjectiveHelper_4(solution, graph, root);
+       }
+    };
+  }
+
+  protected double _createObjectiveHelper_5(final TransformationSolution solution, final EGraph graph, final EObject root) {
+    double _xtrycatchfinallyexpression = (double) 0;
+    try {
+      double _xblockexpression = (double) 0;
+      {
+        final Game game = ((Game) root);
+        Level _xifexpression = null;
+        boolean _isEmpty = game.getLevels().isEmpty();
+        if (_isEmpty) {
+          _xifexpression = null;
+        } else {
+          _xifexpression = game.getLevels().get(0);
+        }
+        final Level level = _xifexpression;
+        boolean _equals = Objects.equals(level, null);
+        if (_equals) {
+          return 1000.0;
+        }
+        final int maxBlocks = level.getMaxBlocks();
+        if ((maxBlocks <= 0)) {
+          return 0.0;
+        }
+        final int blocks = BlockyProgramMetrics.countStatements(game);
+        double _xifexpression_1 = (double) 0;
+        if ((blocks <= maxBlocks)) {
+          _xifexpression_1 = 0.0;
+        } else {
+          _xifexpression_1 = ((double) (blocks - maxBlocks));
+        }
+        final double v = _xifexpression_1;
+        double _xifexpression_2 = (double) 0;
+        boolean _isFinite = Double.isFinite(v);
+        if (_isFinite) {
+          _xifexpression_2 = v;
+        } else {
+          _xifexpression_2 = 1000.0;
+        }
+        _xblockexpression = _xifexpression_2;
+      }
+      _xtrycatchfinallyexpression = _xblockexpression;
+    } catch (final Throwable _t) {
+      if (_t instanceof Throwable) {
+        _xtrycatchfinallyexpression = 1000.0;
+      } else {
+        throw Exceptions.sneakyThrow(_t);
+      }
+    }
+    return _xtrycatchfinallyexpression;
+  }
+
+  protected IFitnessDimension<TransformationSolution> _createObjective_5(final TransformationSearchOrchestration orchestration) {
+    return new AbstractEGraphFitnessDimension("MaxBlocksPenalty", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
+       @Override
+       protected double internalEvaluate(TransformationSolution solution) {
+          EGraph graph = solution.execute();
+          EObject root = MomotUtil.getRoot(graph);
+          return _createObjectiveHelper_5(solution, graph, root);
+       }
+    };
+  }
+
   protected ModuleManager createModuleManager() {
     ModuleManager manager = new ModuleManager();
     for(String module : modules) {
@@ -489,10 +545,7 @@ public class blocky {
     return _createNSGAII;
   }
 
-  protected ProgressListener _createListener_0() {
-    SeedRuntimePrintListener _seedRuntimePrintListener = new SeedRuntimePrintListener();
-    return _seedRuntimePrintListener;
-  }
+  protected ProgressListener _createListener_0() { return new SeedRuntimePrintListener(); }
 
   protected EGraph createInputGraph(final String initialGraph, final ModuleManager moduleManager) {
     EGraph graph = moduleManager.loadGraph(initialGraph);
@@ -525,17 +578,17 @@ public class blocky {
     orchestration.setProblemGraph(graph);
     orchestration.setSolutionLength(solutionLength);
     orchestration.setFitnessFunction(createFitnessFunction(orchestration));
-    
-    EvolutionaryAlgorithmFactory<TransformationSolution> moea = orchestration.createEvolutionaryAlgorithmFactory(populationSize);
+
+    EvolutionaryAlgorithmFactory<TransformationSolution> moea = orchestration.createEvolutionaryAlgorithmFactory(getPopulationSize());
     LocalSearchAlgorithmFactory<TransformationSolution> local = orchestration.createLocalSearchAlgorithmFactory();
     orchestration.addAlgorithm("NSGA_II", _createRegisteredAlgorithm_0(orchestration, moea, local));
-    
+
     return orchestration;
   }
 
   protected SearchExperiment<TransformationSolution> createExperiment(final TransformationSearchOrchestration orchestration) {
-    SearchExperiment<TransformationSolution> experiment = new SearchExperiment<TransformationSolution>(orchestration, maxEvaluations);
-    experiment.setNumberOfRuns(nrRuns);
+    SearchExperiment<TransformationSolution> experiment = new SearchExperiment<TransformationSolution>(orchestration, getMaxEvaluations());
+    experiment.setNumberOfRuns(getNrRuns());
     experiment.addProgressListener(_createListener_0());
     return experiment;
   }
@@ -553,7 +606,7 @@ public class blocky {
     IPopulationWriter<TransformationSolution> populationWriter = experiment.getSearchOrchestration().createPopulationWriter();
     TransformationResultManager resultManager = new TransformationResultManager(experiment);
     Population population;
-    population = 
+    population =
     	TransformationResultManager.createApproximationSet(experiment, (String[])null);
     System.out.println("- Save objectives of all algorithms to 'output/objectives.pf'");
     TransformationResultManager.saveObjectives(
@@ -566,8 +619,8 @@ public class blocky {
     System.out.println(TransformationResultManager.printObjectives(
     	population
     ));
-    
-    population = 
+
+    population =
     	TransformationResultManager.createApproximationSet(experiment, (String[])null);
     System.out.println("- Save solutions of all algorithms to 'output/solutions.txt'");
     TransformationResultManager.savePopulation(
@@ -584,8 +637,8 @@ public class blocky {
     		TransformationSolution.class),
     	solutionWriter
     );
-    
-    population = 
+
+    population =
     	TransformationResultManager.createApproximationSet(experiment, (String[])null);
     System.out.println("- Save models of all algorithms to 'output/models/'");
     TransformationResultManager.saveModels(
@@ -593,15 +646,15 @@ public class blocky {
     	baseName,
     	population
     );
-    
+
     return resultManager;
   }
 
-  public void printSearchInfo(final TransformationSearchOrchestration orchestration) {
+  public void printSearchInfo(final TransformationSearchOrchestration orchestration, final String inputModelPath) {
     System.out.println("-------------------------------------------------------");
     System.out.println("Search");
     System.out.println("-------------------------------------------------------");
-    System.out.println("InputModel:      " + INITIAL_MODEL);
+    System.out.println("InputModel:      " + inputModelPath);
     System.out.println("Objectives:      " + orchestration.getFitnessFunction().getObjectiveNames());
     System.out.println("NrObjectives:    " + orchestration.getNumberOfObjectives());
     System.out.println("Constraints:     " + orchestration.getFitnessFunction().getConstraintNames());
@@ -609,17 +662,23 @@ public class blocky {
     System.out.println("Transformations: " + Arrays.toString(modules));
     System.out.println("Units:           " + orchestration.getModuleManager().getUnits());
     System.out.println("SolutionLength:  " + orchestration.getSolutionLength());
-    System.out.println("PopulationSize:  " + populationSize);
-    System.out.println("Iterations:      " + maxEvaluations / populationSize);
-    System.out.println("MaxEvaluations:  " + maxEvaluations);
-    System.out.println("AlgorithmRuns:   " + nrRuns);
+    int pop = getPopulationSize();
+    int evals = getMaxEvaluations();
+    int runs = getNrRuns();
+    System.out.println("SysProps:        blocky.populationSize=" + System.getProperty("blocky.populationSize")
+        + " blocky.maxEvaluations=" + System.getProperty("blocky.maxEvaluations")
+        + " blocky.nrRuns=" + System.getProperty("blocky.nrRuns"));
+    System.out.println("PopulationSize:  " + pop);
+    System.out.println("Iterations:      " + (evals / Math.max(1, pop)));
+    System.out.println("MaxEvaluations:  " + evals);
+    System.out.println("AlgorithmRuns:   " + runs);
     System.out.println("---------------------------");
   }
 
   public void performSearch(final String initialGraph, final int solutionLength) {
     TransformationSearchOrchestration orchestration = createOrchestration(initialGraph, solutionLength);
     deriveBaseName(orchestration);
-    printSearchInfo(orchestration);
+    printSearchInfo(orchestration, initialGraph);
     SearchExperiment<TransformationSolution> experiment = createExperiment(orchestration);
     experiment.run();
     System.out.println("-------------------------------------------------------");
@@ -628,18 +687,28 @@ public class blocky {
     handleResults(experiment);
   }
 
-  public static void initialization() {
+  public static void initialization(final String absInputModelPath) {
     System.setProperty("java.util.Arrays.useLegacyMergeSort", "true");
     final BlockyPackage pkg = BlockyPackage.eINSTANCE;
     EPackage.Registry.INSTANCE.put(pkg.getNsURI(), pkg);
     EPackage.Registry.INSTANCE.put(pkg.getName(), pkg);
     pkg.eClass();
-    BlockyProgramDistance.initializeBaseline(blocky.input);
+    BlockyProgramDistance.initializeBaseline(absInputModelPath);
   }
 
   public static void main(final String... args) {
-    initialization();
-    blocky search = new blocky();
-    search.performSearch(INITIAL_MODEL, SOLUTION_LENGTH);
+    String in = (args != null && args.length > 0 && args[0] != null && !args[0].isBlank())
+            ? args[0]
+            : System.getProperty("blocky.input", input);
+
+    String abs = new File(in).getAbsoluteFile().getPath();
+    System.setProperty("blocky.input", abs);
+    input = abs;
+
+    initialization(abs);
+    int solLen = Math.max(1, BlockyProgramMetrics.inferSolutionLength(abs) * 2);
+    blocky_custom search = new blocky_custom();
+    search.performSearch(abs, solLen);
   }
 }
+

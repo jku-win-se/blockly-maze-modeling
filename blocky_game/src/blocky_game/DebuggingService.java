@@ -1,6 +1,7 @@
 package blocky_game;
 
 import blocky.AtomicStatement;
+import blocky.AtomicStatementKind;
 import blocky.BlockyFactory;
 import blocky.Body;
 import blocky.Cell;
@@ -246,6 +247,8 @@ public final class DebuggingService {
     }
 
     private static SensorDirection conditionKindToSensor(ConditionKind ck) {
+        // Align with MoMoT headless simulator defaults: missing condition behaves as CHECK_FORWARD.
+        if (ck == null) ck = ConditionKind.CHECK_FORWARD;
         if (ck == ConditionKind.CHECK_LEFT) return SensorDirection.LEFT;
         if (ck == ConditionKind.CHECK_RIGHT) return SensorDirection.RIGHT;
         return SensorDirection.AHEAD;
@@ -281,9 +284,19 @@ public final class DebuggingService {
         next.setPrevious(prev);
         trace.getStates().add(next);
 
+        if (stmt == null) {
+            if (logLines != null) {
+                logLines.add("Step " + next.getStep() + ": (empty)");
+            }
+            return next; // empty container -> no-op
+        }
+
         if (stmt instanceof AtomicStatement) {
             AtomicStatement a = (AtomicStatement) stmt;
-            switch (a.getKind()) {
+            // Align with MoMoT headless simulator defaults: missing kind behaves as TURN_LEFT.
+            AtomicStatementKind kind = a.getKind();
+            if (kind == null) kind = AtomicStatementKind.TURN_LEFT;
+            switch (kind) {
             case MOVE_FORWARD: {
                 Cell target = getAdjacent(next.getPosition(), next.getOrientation());
                 if (target == null || target.getType() == CellType.WALL) {
@@ -293,7 +306,7 @@ public final class DebuggingService {
                     }
                 } else {
                     next.setPosition(target);
-                    if (target.getType() == CellType.GOAL) {
+                    if (isGoalLike(target)) {
                         next.setStatus(GameStatus.WON);
                         if (logLines != null) {
                             logLines.add("Step " + next.getStep() + ": MoveForward -> (" + target.getX() + "," + target.getY() + ") GOAL");
@@ -332,7 +345,7 @@ public final class DebuggingService {
                 logLines.add("Step " + next.getStep() + ": Loop");
             }
             int maxSteps = map.getWidth() * map.getHeight() * 2;
-            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != CellType.GOAL) {
+            while (loop.getStatus() == GameStatus.RUNNING && !isGoalLike(loop.getPosition())) {
                 if (loop.getStep() > maxSteps) {
                     loop.setStatus(GameStatus.CRASHED);
                     break;
@@ -361,6 +374,13 @@ public final class DebuggingService {
         }
 
         return next;
+    }
+
+    private static boolean isGoalLike(Cell c) {
+        if (c == null) return false;
+        // In Direct Manipulation workflows, the DMG marker should behave like a goal for stepping/tracing,
+        // since the WebView's visual goal (window.od) points to DMG.
+        return c.getType() == CellType.GOAL || c.getType() == CellType.DMG;
     }
 
     private static int safeX(Cell c) {

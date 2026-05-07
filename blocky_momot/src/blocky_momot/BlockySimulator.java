@@ -1,5 +1,10 @@
 package blocky_momot;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.IdentityHashMap;
+import java.util.Map;
+
 import blocky.AtomicStatement;
 import blocky.AtomicStatementKind;
 import blocky.BlockyFactory;
@@ -30,6 +35,119 @@ public final class BlockySimulator {
     private BlockySimulator() {}
 
     /**
+     * By default, MoMoT evaluation is permissive and executes whatever program exists in the model,
+     * even if it violates UI constraints like maxBlocks/allowed control-flow.
+     *
+     * Enable strict constraint enforcement via:
+     *   -Dblocky.sim.enforceConstraints=true
+     */
+    private static final boolean ENFORCE_CONSTRAINTS =
+            Boolean.parseBoolean(System.getProperty("blocky.sim.enforceConstraints", "false"));
+
+    /**
+     * The Blocky UI enforces constraints like max blocks / allowed control-flow.
+     * For MOMoT fitness we must apply the same rules; otherwise we may mark an
+     * illegal program as "WON" even though it can't be executed in-game.
+     */
+    private static boolean violatesLevelConstraints(Level level, Body solution) {
+        if (level == null || solution == null) {
+            return false;
+        }
+
+        int maxBlocks = level.getMaxBlocks();
+        int blocks = countStatements(solution);
+        if (maxBlocks > 0 && blocks > maxBlocks) {
+            return true;
+        }
+
+        if (!level.isAllowLoops() && containsLoop(solution)) {
+            return true;
+        }
+
+        if (!level.isAllowConditionals() && containsIf(solution)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static int countStatements(Body body) {
+        if (body == null) {
+            return 0;
+        }
+        return countStatements(body.getFirstContainer());
+    }
+
+    private static int countStatements(Container c) {
+        int count = 0;
+        Container cur = c;
+        while (cur != null) {
+            Statement s = cur.getStatement();
+            if (s != null) {
+                count++;
+                if (s instanceof Loop) {
+                    count += countStatements(((Loop) s).getBody());
+                } else if (s instanceof IfStmt) {
+                    IfStmt i = (IfStmt) s;
+                    count += countStatements(i.getThenBody());
+                    count += countStatements(i.getElseBody());
+                }
+            }
+            cur = cur.getNext();
+        }
+        return count;
+    }
+
+    private static boolean containsLoop(Body body) {
+        if (body == null) {
+            return false;
+        }
+        return containsLoop(body.getFirstContainer());
+    }
+
+    private static boolean containsLoop(Container c) {
+        Container cur = c;
+        while (cur != null) {
+            Statement s = cur.getStatement();
+            if (s instanceof Loop) {
+                return true;
+            }
+            if (s instanceof IfStmt) {
+                IfStmt i = (IfStmt) s;
+                if (containsLoop(i.getThenBody()) || containsLoop(i.getElseBody())) {
+                    return true;
+                }
+            }
+            cur = cur.getNext();
+        }
+        return false;
+    }
+
+    private static boolean containsIf(Body body) {
+        if (body == null) {
+            return false;
+        }
+        return containsIf(body.getFirstContainer());
+    }
+
+    private static boolean containsIf(Container c) {
+        Container cur = c;
+        while (cur != null) {
+            Statement s = cur.getStatement();
+            if (s instanceof IfStmt) {
+                return true;
+            }
+            if (s instanceof Loop) {
+                if (containsIf(((Loop) s).getBody())) {
+                    return true;
+                }
+            }
+            cur = cur.getNext();
+        }
+        return false;
+    }
+
+    /**
      * Run the level's solution on the level's map and return the status of the
      * last game state (WON if goal reached, CRASHED on wall or loop limit, RUNNING if incomplete).
      *
@@ -43,6 +161,9 @@ public final class BlockySimulator {
         Body solution = level.getSolution();
         if (solution == null) {
             return GameStatus.RUNNING; // no program: never wins
+        }
+        if (ENFORCE_CONSTRAINTS && violatesLevelConstraints(level, solution)) {
+            return GameStatus.CRASHED;
         }
 
         GridMap map = level.getMap();
@@ -96,6 +217,9 @@ public final class BlockySimulator {
         if (solution == null) {
             return penalty;
         }
+        if (ENFORCE_CONSTRAINTS && violatesLevelConstraints(level, solution)) {
+            return penalty;
+        }
 
         GridMap map = level.getMap();
         Cell startCell = null;
@@ -122,6 +246,206 @@ public final class BlockySimulator {
         final CellType winCellType = determineWinCellType(level);
         GameState last = executeBodyLite(solution, state, level, winCellType);
         return (last != null && last.getStatus() == GameStatus.WON) ? last.getStep() : penalty;
+    }
+
+    /**
+     * Executes the level's solution and returns the minimum BFS distance-to-goal encountered along
+     * Pegman's path.
+     *
+     * We first compute a distance field by doing a multi-source BFS from all goal cells:
+     * - If the map contains any {@code DMG} cell(s), DMG is treated as the goal.
+     * - Otherwise {@code GOAL} is treated as the goal.
+     *
+     * While executing the program, we track the minimum distance value of any visited cell.
+     * If Pegman reaches the goal, this value becomes 0.
+     *
+     * If the level is invalid, no goal cells exist, or the start cell is not connected to any goal,
+     * returns {@code penalty}.
+     */
+    public static int distanceToGoalOrPenalty(Level level) {
+        return distanceToGoalOrPenalty(level, 100000);
+    }
+
+    /**
+     * Same as {@link #distanceToGoalOrPenalty(Level)} but with a custom penalty value.
+     */
+    public static int distanceToGoalOrPenalty(Level level, int penalty) {
+        if (level == null || level.getMap() == null) {
+            return penalty;
+        }
+        Body solution = level.getSolution();
+        if (solution == null) {
+            return penalty;
+        }
+        if (ENFORCE_CONSTRAINTS && violatesLevelConstraints(level, solution)) {
+            return penalty;
+        }
+
+        GridMap map = level.getMap();
+        Cell startCell = null;
+        for (Cell c : map.getCells()) {
+            if (c.getType() == CellType.START) {
+                startCell = c;
+                break;
+            }
+        }
+        if (startCell == null) {
+            startCell = map.getCells().isEmpty() ? null : map.getCells().get(0);
+        }
+        if (startCell == null) {
+            return penalty;
+        }
+
+        final CellType winCellType = determineWinCellType(level);
+        Map<Cell, Integer> distanceField = computeDistanceField(map, winCellType);
+        if (distanceField.isEmpty()) {
+            return penalty;
+        }
+
+        Direction startDir = determineStartOrientation(level, startCell);
+        GameState state = BlockyFactory.eINSTANCE.createGameState();
+        state.setStep(0);
+        state.setPosition(startCell);
+        state.setOrientation(startDir);
+        state.setStatus(GameStatus.RUNNING);
+
+        ExecResult r = executeBodyLiteWithMinDistance(solution, state, level, winCellType, distanceField);
+        if (r == null) {
+            return penalty;
+        }
+        if (r.minDistance == Integer.MAX_VALUE) {
+            return penalty;
+        }
+        return r.minDistance;
+    }
+
+    private static Map<Cell, Integer> computeDistanceField(GridMap map, CellType goalType) {
+        Map<Cell, Integer> dist = new IdentityHashMap<>();
+        if (map == null || goalType == null) {
+            return dist;
+        }
+
+        Deque<Cell> q = new ArrayDeque<>();
+        for (Cell c : map.getCells()) {
+            if (c != null && c.getType() == goalType) {
+                dist.put(c, 0);
+                q.addLast(c);
+            }
+        }
+        if (q.isEmpty()) {
+            return dist;
+        }
+
+        while (!q.isEmpty()) {
+            Cell cur = q.removeFirst();
+            int d = dist.get(cur);
+            Cell[] neigh = new Cell[] { cur.getTop(), cur.getRight(), cur.getBottom(), cur.getLeft() };
+            for (Cell n : neigh) {
+                if (n == null) continue;
+                if (n.getType() == CellType.WALL) continue;
+                if (dist.containsKey(n)) continue;
+                dist.put(n, d + 1);
+                q.addLast(n);
+            }
+        }
+        return dist;
+    }
+
+    private static final class ExecResult {
+        final GameState last;
+        final int minDistance;
+
+        ExecResult(GameState last, int minDistance) {
+            this.last = last;
+            this.minDistance = minDistance;
+        }
+    }
+
+    private static ExecResult executeBodyLiteWithMinDistance(
+            Body body,
+            GameState state,
+            Level level,
+            CellType winCellType,
+            Map<Cell, Integer> distanceField) {
+        if (body == null) return new ExecResult(state, minDistanceAt(state, distanceField, Integer.MAX_VALUE));
+        return executeContainerChainLiteWithMinDistance(body.getFirstContainer(), state, level, winCellType, distanceField, Integer.MAX_VALUE);
+    }
+
+    private static ExecResult executeContainerChainLiteWithMinDistance(
+            Container first,
+            GameState state,
+            Level level,
+            CellType winCellType,
+            Map<Cell, Integer> distanceField,
+            int currentMin) {
+        Container current = first;
+        GameState last = state;
+        int min = minDistanceAt(last, distanceField, currentMin);
+        while (current != null && last.getStatus() == GameStatus.RUNNING && min != 0) {
+            Statement stmt = current.getStatement();
+            ExecResult r = executeSingleLiteWithMinDistance(stmt, last, level, winCellType, distanceField, min);
+            last = r.last;
+            min = r.minDistance;
+            current = current.getNext();
+        }
+        return new ExecResult(last, min);
+    }
+
+    private static ExecResult executeSingleLiteWithMinDistance(
+            Statement stmt,
+            GameState prev,
+            Level level,
+            CellType winCellType,
+            Map<Cell, Integer> distanceField,
+            int currentMin) {
+        GameState next = executeSingleLite(stmt, prev, level, winCellType);
+        int min = minDistanceAt(next, distanceField, currentMin);
+        if (min == 0 || next.getStatus() != GameStatus.RUNNING || stmt == null) {
+            return new ExecResult(next, min);
+        }
+
+        if (stmt instanceof Loop) {
+            Loop r = (Loop) stmt;
+            GameState loop = next;
+            int loopMin = min;
+            GridMap map = level.getMap();
+            int maxSteps = map.getWidth() * map.getHeight() * 2;
+            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != winCellType && loopMin != 0) {
+                if (loop.getStep() > maxSteps) {
+                    loop.setStatus(GameStatus.CRASHED);
+                    break;
+                }
+                int previousStep = loop.getStep();
+                ExecResult inner = executeBodyLiteWithMinDistance(r.getBody(), loop, level, winCellType, distanceField);
+                loop = inner.last;
+                loopMin = inner.minDistance;
+                if (loop.getStep() == previousStep) {
+                    loop.setStatus(GameStatus.CRASHED);
+                    break;
+                }
+            }
+            return new ExecResult(loop, loopMin);
+        }
+
+        if (stmt instanceof IfStmt) {
+            IfStmt i = (IfStmt) stmt;
+            boolean cond = checkCondition(next, i.getCondition());
+            Body branch = cond ? i.getThenBody() : i.getElseBody();
+            if (branch != null) {
+                ExecResult inner = executeBodyLiteWithMinDistance(branch, next, level, winCellType, distanceField);
+                return new ExecResult(inner.last, inner.minDistance);
+            }
+        }
+
+        return new ExecResult(next, min);
+    }
+
+    private static int minDistanceAt(GameState state, Map<Cell, Integer> distanceField, int currentMin) {
+        if (state == null) return currentMin;
+        Cell pos = state.getPosition();
+        Integer d = pos == null ? null : distanceField.get(pos);
+        if (d == null) return currentMin;
+        return Math.min(currentMin, d.intValue());
     }
 
     private static CellType determineWinCellType(Level level) {
