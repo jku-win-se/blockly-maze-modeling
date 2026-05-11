@@ -41,6 +41,11 @@ public class GameEngine {
     private int[][] dmBaselinePath = new int[0][0];
     private int[][] dmSolutionPath = new int[0][0];
     private int dmCommonLen;
+    // For MoMoT loads: the last common cell and its state index on the solution trace.
+    private int dmAlignedX;
+    private int dmAlignedY;
+    private int dmAlignedStateIndex;
+    private boolean dmAlignedValid;
 
     // --- Debugger session state (Java-driven stepping) ---
     private ExecutionTrace debugTrace;
@@ -179,6 +184,7 @@ public class GameEngine {
         // Reset previous solution diff (will be computed when a MoMoT solution is loaded).
         dmSolutionPath = new int[0][0];
         dmCommonLen = 0;
+        dmAlignedValid = false;
 
         // If a debug session is active, recompute trace from the new snapshot when paused/next step.
         if (debugSessionActive) {
@@ -292,6 +298,10 @@ public class GameEngine {
         // Clear any previously-synced start orientation so syncLevelMeta will set it fresh.
         currentLevel.eUnset(BlockyPackage.Literals.LEVEL__START_ORIENTATION);
 
+        // Preserve markers that the WebView doesn't know about or swaps during DM.
+        Cell oldDmg = getDmgCell(currentLevel.getMap());
+        Cell oldGoal = getGoalCell(currentLevel.getMap());
+
         GridMap map = BlockyFactory.eINSTANCE.createGridMap();
         map.setWidth(width);
         map.setHeight(height);
@@ -324,6 +334,22 @@ public class GameEngine {
 
                 grid[x][y] = cell;
                 map.getCells().add(cell);
+            }
+        }
+
+        // Restore DMG and original GOAL markers if they were swapped for the WebView.
+        if (oldDmg != null) {
+            Cell newDmgCell = findCellByXY(oldDmg.getX(), oldDmg.getY());
+            // In DM mode, the WebView sees DMG as value 3 (GOAL).
+            if (newDmgCell != null && newDmgCell.getType() == CellType.GOAL) {
+                newDmgCell.setType(CellType.DMG);
+            }
+        }
+        if (oldGoal != null) {
+            Cell newGoalCell = findCellByXY(oldGoal.getX(), oldGoal.getY());
+            // In DM mode, the WebView sees the original GOAL as value 1 (EMPTY).
+            if (newGoalCell != null && newGoalCell.getType() == CellType.EMPTY) {
+                newGoalCell.setType(CellType.GOAL);
             }
         }
 
@@ -539,6 +565,15 @@ public class GameEngine {
         List<String> logs = new ArrayList<>();
         System.out.println("\n[GameEngine] Starting simulation...");
         logs.add("Simulation start");
+
+        // Keep Blockly export consistent with MoMoT's BlockySimulator defaults:
+        boolean enforceConstraints = Boolean.parseBoolean(System.getProperty("blocky.sim.enforceConstraints", "false"));
+                if (enforceConstraints && SimUtils.violatesLevelConstraints(currentLevel, currentLevel.getSolution())) {
+            System.out.println("[GameEngine] CRASH: Level constraints violated!");
+            logs.add("Result: CRASH (Constraints violated)");
+            return logs;
+        }
+
         currentLevel.getTraces().clear();
         ExecutionTrace trace = BlockyFactory.eINSTANCE.createExecutionTrace();
         currentLevel.getTraces().add(trace);
@@ -555,17 +590,19 @@ public class GameEngine {
             startNode = currentLevel.getMap().getCells().get(0);
 
         initialState.setPosition(startNode);
-        Direction startDir = determineStartOrientation(startNode);
+        Direction startDir = SimUtils.determineStartOrientation(currentLevel, startNode);
         initialState.setOrientation(startDir);
         currentLevel.setStartOrientation(startDir);
         initialState.setStatus(GameStatus.RUNNING);
         trace.getStates().add(initialState);
 
+        final CellType winCellType = SimUtils.determineWinCellType(currentLevel);
+
         System.out.println(
                 "[GameEngine] Initial State: Pos=" + getPosStr(startNode) + ", Dir=" + initialState.getOrientation());
         logs.add("Start: " + getPosStr(startNode) + " dir=" + initialState.getOrientation());
 
-        executeBodyWithLogs(currentLevel.getSolution(), initialState, trace, logs);
+        executeBodyWithLogs(currentLevel.getSolution(), initialState, trace, logs, winCellType);
         saveModel();
         System.out.println("[GameEngine] Simulation finished. Model (with execution trace) saved.\n");
         GameState last = trace.getStates().isEmpty() ? null : trace.getStates().get(trace.getStates().size() - 1);
@@ -583,73 +620,45 @@ public class GameEngine {
         return "(" + c.getX() + "," + c.getY() + ")";
     }
 
-    /**
-     * Determine a sensible starting orientation based on the map layout.
-     * If an explicit start orientation is already stored on the level, that wins.
-     * Otherwise, we look for a non-wall neighbour around the START cell and face it.
-     */
-    private Direction determineStartOrientation(Cell start) {
-        // EMF default for startOrientation is NORTH; treat it as "unset" unless explicitly set.
-        if (currentLevel != null && currentLevel.eIsSet(BlockyPackage.Literals.LEVEL__START_ORIENTATION)) {
-            return currentLevel.getStartOrientation();
-        }
-        if (start == null) {
-            return Direction.NORTH;
-        }
-
-        // Prefer any non-wall neighbour in a fixed order: NORTH, EAST, SOUTH, WEST.
-        if (start.getTop() != null && start.getTop().getType() != CellType.WALL) {
-            return Direction.NORTH;
-        }
-        if (start.getRight() != null && start.getRight().getType() != CellType.WALL) {
-            return Direction.EAST;
-        }
-        if (start.getBottom() != null && start.getBottom().getType() != CellType.WALL) {
-            return Direction.SOUTH;
-        }
-        if (start.getLeft() != null && start.getLeft().getType() != CellType.WALL) {
-            return Direction.WEST;
-        }
-
-        // Fallback: keep a deterministic default.
-        return Direction.NORTH;
-    }
-
-    private GameState executeBody(Body body, GameState state, ExecutionTrace trace) {
+    private GameState executeBody(Body body, GameState state, ExecutionTrace trace, CellType winCellType) {
         if (body == null) {
             return state;
         }
-        return executeContainerChain(body.getFirstContainer(), state, trace);
+        return executeContainerChain(body.getFirstContainer(), state, trace, winCellType);
     }
 
-    private GameState executeBodyWithLogs(Body body, GameState state, ExecutionTrace trace, List<String> logs) {
+    private GameState executeBodyWithLogs(Body body, GameState state, ExecutionTrace trace, List<String> logs, CellType winCellType) {
         if (body == null) {
             return state;
         }
-        return executeContainerChainWithLogs(body.getFirstContainer(), state, trace, logs);
+        return executeContainerChainWithLogs(body.getFirstContainer(), state, trace, logs, winCellType);
     }
 
-    private GameState executeContainerChain(Container first, GameState state, ExecutionTrace trace) {
+    private GameState executeContainerChain(Container first, GameState state, ExecutionTrace trace, CellType winCellType) {
         Container current = first;
         GameState last = state;
         while (current != null && last.getStatus() == GameStatus.RUNNING) {
-            last = executeSingle(current.getStatement(), last, trace);
+            last = executeSingle(current.getStatement(), last, trace, winCellType);
             current = current.getNext();
         }
         return last;
     }
 
-    private GameState executeContainerChainWithLogs(Container first, GameState state, ExecutionTrace trace, List<String> logs) {
+    private GameState executeContainerChainWithLogs(Container first, GameState state, ExecutionTrace trace, List<String> logs, CellType winCellType) {
         Container current = first;
         GameState last = state;
         while (current != null && last.getStatus() == GameStatus.RUNNING) {
-            last = executeSingleWithLogs(current.getStatement(), last, trace, logs);
+            last = executeSingleWithLogs(current.getStatement(), last, trace, logs, winCellType);
             current = current.getNext();
         }
         return last;
     }
 
     private static SensorDirection conditionKindToSensor(ConditionKind ck) {
+        // Align with MoMoT headless simulator defaults: missing condition behaves as CHECK_FORWARD.
+        if (ck == null) {
+            ck = ConditionKind.CHECK_FORWARD;
+        }
         if (ck == ConditionKind.CHECK_LEFT) {
             return SensorDirection.LEFT;
         }
@@ -663,7 +672,7 @@ public class GameEngine {
         return checkSensor(state, conditionKindToSensor(ck));
     }
 
-    private GameState executeSingle(Statement stmt, GameState prev, ExecutionTrace trace) {
+    private GameState executeSingle(Statement stmt, GameState prev, ExecutionTrace trace, CellType winCellType) {
         GameState next = BlockyFactory.eINSTANCE.createGameState();
         next.setStep(prev.getStep() + 1);
         next.setOrientation(prev.getOrientation());
@@ -696,7 +705,7 @@ public class GameEngine {
                 } else {
                     next.setPosition(target);
                     System.out.println("Moved to " + getPosStr(target));
-                    if (target.getType() == CellType.GOAL) {
+                    if (target.getType() == winCellType) {
                         next.setStatus(GameStatus.WON);
                         System.out.println("[GameEngine] SUCCESS: Goal reached!");
                     }
@@ -720,14 +729,14 @@ public class GameEngine {
             GameState loop = next;
             GridMap map = currentLevel.getMap();
             int maxSteps = map.getWidth() * map.getHeight() * 2;
-            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != CellType.GOAL) {
+            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != winCellType) {
                 if (loop.getStep() > maxSteps) {
                     loop.setStatus(GameStatus.CRASHED);
                     System.out.println("[GameEngine] Infinite loop detected! (exceeded " + maxSteps + " steps)");
                     break;
                 }
                 int previousStep = loop.getStep();
-                loop = executeBody(r.getBody(), loop, trace);
+                loop = executeBody(r.getBody(), loop, trace, winCellType);
                 if (loop.getStep() == previousStep) {
                     loop.setStatus(GameStatus.CRASHED);
                     System.out.println("[GameEngine] Empty loop body or zero progress in loop! Crashing.");
@@ -740,16 +749,16 @@ public class GameEngine {
             boolean cond = checkCondition(next, i.getCondition());
             System.out.println("If (" + conditionKindToSensor(i.getCondition()) + ") is " + cond);
             if (cond) {
-                return executeBody(i.getThenBody(), next, trace);
+                return executeBody(i.getThenBody(), next, trace, winCellType);
             }
             if (i.getElseBody() != null) {
-                return executeBody(i.getElseBody(), next, trace);
+                return executeBody(i.getElseBody(), next, trace, winCellType);
             }
         }
         return next;
     }
 
-    private GameState executeSingleWithLogs(Statement stmt, GameState prev, ExecutionTrace trace, List<String> logs) {
+    private GameState executeSingleWithLogs(Statement stmt, GameState prev, ExecutionTrace trace, List<String> logs, CellType winCellType) {
         GameState next = BlockyFactory.eINSTANCE.createGameState();
         next.setStep(prev.getStep() + 1);
         next.setOrientation(prev.getOrientation());
@@ -779,7 +788,7 @@ public class GameEngine {
                     if (logs != null) logs.add("Step " + next.getStep() + ": MoveForward -> CRASH at " + getPosStr(next.getPosition()));
                 } else {
                     next.setPosition(target);
-                    if (target.getType() == CellType.GOAL) {
+                    if (target.getType() == winCellType) {
                         next.setStatus(GameStatus.WON);
                         if (logs != null) logs.add("Step " + next.getStep() + ": MoveForward -> " + getPosStr(target) + " GOAL");
                     } else {
@@ -810,14 +819,14 @@ public class GameEngine {
             GameState loop = next;
             GridMap map = currentLevel.getMap();
             int maxSteps = map.getWidth() * map.getHeight() * 2;
-            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != CellType.GOAL) {
+            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != winCellType) {
                 if (loop.getStep() > maxSteps) {
                     loop.setStatus(GameStatus.CRASHED);
                     if (logs != null) logs.add("Result: INFINITE_LOOP (bound " + maxSteps + " exceeded)");
                     break;
                 }
                 int previousStep = loop.getStep();
-                loop = executeBodyWithLogs(r.getBody(), loop, trace, logs);
+                loop = executeBodyWithLogs(r.getBody(), loop, trace, logs, winCellType);
                 if (loop.getStep() == previousStep) {
                     loop.setStatus(GameStatus.CRASHED);
                     if (logs != null) logs.add("Result: CRASH (empty loop body / no progress)");
@@ -833,10 +842,10 @@ public class GameEngine {
                 logs.add("Step " + next.getStep() + ": If " + conditionKindToSensor(i.getCondition()) + " -> " + cond + " (" + branch + ")");
             }
             if (cond) {
-                return executeBodyWithLogs(i.getThenBody(), next, trace, logs);
+                return executeBodyWithLogs(i.getThenBody(), next, trace, logs, winCellType);
             }
             if (i.getElseBody() != null) {
-                return executeBodyWithLogs(i.getElseBody(), next, trace, logs);
+                return executeBodyWithLogs(i.getElseBody(), next, trace, logs, winCellType);
             }
         } else {
             if (logs != null) logs.add("Step " + next.getStep() + ": " + typeName);
@@ -924,7 +933,7 @@ public class GameEngine {
                 dir = currentLevel.getStartOrientation();
             } else if (currentLevel != null && currentLevel.getMap() != null) {
                 Cell startCell = getStartCell(currentLevel.getMap());
-                dir = determineStartOrientation(startCell);
+                dir = SimUtils.determineStartOrientation(currentLevel, startCell);
             }
             if (dir == null) {
                 switch (startDirCode) {
@@ -1065,7 +1074,7 @@ public class GameEngine {
                 && !this.currentLevel.eIsSet(BlockyPackage.Literals.LEVEL__START_ORIENTATION)
                 && this.currentLevel.getMap() != null) {
             Cell startCell = getStartCell(this.currentLevel.getMap());
-            Direction derived = determineStartOrientation(startCell);
+            Direction derived = SimUtils.determineStartOrientation(this.currentLevel, startCell);
             this.currentLevel.setStartOrientation(derived);
         }
         try {
@@ -1086,9 +1095,20 @@ public class GameEngine {
                         blocky_game.DebuggingService.computeTraceFromState(loadedLevel, dmStartX, dmStartY, dmStartDir);
                 dmSolutionPath = compressTracePositions(sol.trace, sol.trace != null && sol.trace.getStates() != null ? sol.trace.getStates().size() - 1 : 0);
                 dmCommonLen = longestCommonPrefixLenByXY(dmBaselinePath, dmSolutionPath);
+                dmAlignedValid = false;
+                if (dmCommonLen > 0 && dmBaselinePath.length >= dmCommonLen) {
+                    int[] pt = dmBaselinePath[dmCommonLen - 1];
+                    if (pt != null && pt.length >= 2) {
+                        dmAlignedX = pt[0];
+                        dmAlignedY = pt[1];
+                        dmAlignedStateIndex = findLastRunningStateIndexAtOrBefore(sol.trace, dmAlignedX, dmAlignedY);
+                        dmAlignedValid = dmAlignedStateIndex > 0;
+                    }
+                }
             } catch (Exception e) {
                 dmSolutionPath = new int[0][0];
                 dmCommonLen = 0;
+                dmAlignedValid = false;
             } finally {
                 dmCompareArmed = false;
             }
@@ -1156,13 +1176,11 @@ public class GameEngine {
         int traceStartY = startY;
         Direction traceStartDir = debugStartDir;
         try {
-            if (hasDirectManipulationComparison() && dmCommonLen > 0 && dmBaselinePath != null && dmBaselinePath.length >= dmCommonLen) {
-                int[] commonPt = dmBaselinePath[dmCommonLen - 1];
-                if (commonPt != null && commonPt.length >= 2 && commonPt[0] == startX && commonPt[1] == startY) {
-                    traceStartX = dmStartX;
-                    traceStartY = dmStartY;
-                    traceStartDir = dmStartDir != null ? dmStartDir : debugStartDir;
-                }
+            if (hasDirectManipulationComparison() && dmAlignedValid && startX == dmAlignedX && startY == dmAlignedY) {
+                traceStartX = dmStartX;
+                traceStartY = dmStartY;
+                traceStartDir = dmStartDir != null ? dmStartDir : debugStartDir;
+                desiredIndex = dmAlignedStateIndex;
             }
         } catch (Exception ignored) {
         }
@@ -1177,9 +1195,18 @@ public class GameEngine {
                 // If we computed the trace from a different start than the UI's desired (q,s),
                 // jump the index to the state that reaches the UI cell.
                 if (traceStartX != startX || traceStartY != startY) {
-                    desiredIndex = findLastStateIndexAtOrBefore(debugTrace, startX, startY);
+                    if (desiredIndex <= 0) {
+                        desiredIndex = findLastRunningStateIndexAtOrBefore(debugTrace, startX, startY);
+                    }
+                    // Sanity-check: ensure the chosen index actually matches the requested cell.
+                    int actualX = -1, actualY = -1;
+                    try {
+                        GameState as = debugTrace.getStates().get(Math.max(0, Math.min(desiredIndex, debugTrace.getStates().size() - 1)));
+                        Cell ap = as != null ? as.getPosition() : null;
+                        if (ap != null) { actualX = ap.getX(); actualY = ap.getY(); }
+                    } catch (Exception ignored2) {}
                     System.out.println("[GameEngine] debugStart aligned: traceStart=(" + traceStartX + "," + traceStartY + ") -> ui=("
-                            + startX + "," + startY + ") mappedIndex=" + desiredIndex);
+                            + startX + "," + startY + ") mappedIndex=" + desiredIndex + " actual=(" + actualX + "," + actualY + ")");
                     if (desiredIndex <= 0) {
                         // If the requested alignment cell is not on the new trace, do NOT snap back to the start.
                         // Fall back to a trace starting from the requested cell so stepping remains usable.
@@ -1399,6 +1426,26 @@ public class GameEngine {
     }
 
     /**
+     * Finds the last state index that is at (x,y) and still RUNNING.
+     * This is preferred for "continue from here" alignment so we don't align onto a CRASH/WON terminal frame.
+     */
+    private static int findLastRunningStateIndexAtOrBefore(ExecutionTrace trace, int x, int y) {
+        if (trace == null || trace.getStates() == null) return 0;
+        int best = 0;
+        List<GameState> states = trace.getStates();
+        for (int i = 0; i < states.size(); i++) {
+            GameState s = states.get(i);
+            if (s == null) continue;
+            Cell pos = s.getPosition();
+            if (pos == null) continue;
+            if (pos.getX() == x && pos.getY() == y && s.getStatus() == GameStatus.RUNNING) {
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    /**
      * Compresses a trace into unique (x,y) points up to {@code uptoIndexInclusive}.
      * Turn-only steps are collapsed since they keep the same cell position.
      */
@@ -1549,6 +1596,7 @@ public class GameEngine {
         // Provide a prefix of log lines up to the current index so the UI can render
         // a complete execution history even when we start debugging from an aligned mid-trace index.
         String logPrefix = "[]";
+        String logFromAlign = "[]";
         try {
             if (debugLogLines != null && !debugLogLines.isEmpty()) {
                 int upto = Math.max(0, Math.min(safeIndex, debugLogLines.size() - 1));
@@ -1560,9 +1608,22 @@ public class GameEngine {
                 }
                 lp.append("]");
                 logPrefix = lp.toString();
+
+                // If we have a MoMoT/DM alignment point, also provide a slice from that alignment index.
+                if (dmAlignedValid && dmAlignedStateIndex >= 0 && dmAlignedStateIndex <= upto) {
+                    StringBuilder la = new StringBuilder();
+                    la.append("[");
+                    for (int i = dmAlignedStateIndex; i <= upto; i++) {
+                        if (i > dmAlignedStateIndex) la.append(",");
+                        la.append("\"").append(escapeJsonString(debugLogLines.get(i))).append("\"");
+                    }
+                    la.append("]");
+                    logFromAlign = la.toString();
+                }
             }
         } catch (Exception ignored) {
             logPrefix = "[]";
+            logFromAlign = "[]";
         }
 
         String blockId = "";
@@ -1605,6 +1666,7 @@ public class GameEngine {
                 + ",\"result\":\"" + result + "\""
                 + ",\"logLine\":\"" + logLine + "\""
                 + ",\"logPrefix\":" + logPrefix
+                + ",\"logFromAlign\":" + logFromAlign
                 + ",\"note\":\"" + note + "\""
                 + "}";
     }
@@ -1783,6 +1845,12 @@ public class GameEngine {
         int w = map.getWidth();
         int h = map.getHeight();
         int[][] grid = new int[h][w];
+
+        // Determine which cell type behaves as the "goal" (value 3) in the WebView.
+        // We must align this with BlockySimulator/SimUtils.determineWinCellType.
+        Cell dmgCell = getDmgCell(map);
+        boolean hasDmg = dmgCell != null;
+
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
                 grid[y][x] = 0; // default WALL
@@ -1796,9 +1864,16 @@ public class GameEngine {
                     case WALL:  grid[y][x] = 0; break;
                     case EMPTY: grid[y][x] = 1; break;
                     case START: grid[y][x] = 2; break;
-                    case GOAL:  grid[y][x] = 3; break;
-                    case DMG:   grid[y][x] = 1; break; // treat as EMPTY; visual marker uses injected od
-                    default:   grid[y][x] = 1; break;
+                    case GOAL:
+                        // If a DMG marker exists, the real goal behaves as an empty cell for the WebView's game engine,
+                        // as Maze only supports a single goal (which we prioritize as DMG).
+                        grid[y][x] = hasDmg ? 1 : 3;
+                        break;
+                    case DMG:
+                        // DMG marker always behaves as the goal if present.
+                        grid[y][x] = 3;
+                        break;
+                    default:    grid[y][x] = 1; break;
                 }
             }
         }

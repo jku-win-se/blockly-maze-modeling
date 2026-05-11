@@ -18,7 +18,6 @@ import blocky.Level;
 import blocky.Loop;
 import blocky.SensorDirection;
 import blocky.Statement;
-//import blocky.util.LinearProgramBridge;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,6 +59,7 @@ public final class DebuggingService {
         }
 
         GridMap map = level.getMap();
+        final CellType winCellType = SimUtils.determineWinCellType(level);
         Cell startCell = getCellAt(map, startX, startY);
         if (startCell == null) {
             // Graceful fallback: use any non-wall cell if the UI passed inconsistent coordinates.
@@ -83,9 +83,20 @@ public final class DebuggingService {
         trace.getStates().add(initialState);
         logLines.add("Start: (" + startCell.getX() + "," + startCell.getY() + ") dir=" + startDir);
 
+        boolean enforceConstraints = Boolean.parseBoolean(System.getProperty("blocky.sim.enforceConstraints", "false"));
+        if (enforceConstraints && SimUtils.violatesLevelConstraints(level, level.getSolution())) {
+            initialState.setStatus(GameStatus.CRASHED);
+            logLines.add("Result: CRASH (Constraints violated)");
+            return new DebugTraceResult(trace, extractStatePositions(trace), logLines);
+        }
+
         Body solution = level.getSolution();
         if (solution != null) {
-            executeBody(solution, initialState, trace, map, logLines);
+            // Blockly Maze semantics: the visible top-level "maze_forever" repeats the whole program
+            // until the goal is reached (or we hit a step bound). Our model intentionally does NOT
+            // include that UI scaffold, so for debugging/stepping we emulate it here by repeatedly
+            // executing the full container chain.
+            executeProgramUntilGoal(solution.getFirstContainer(), initialState, trace, map, logLines, winCellType);
         }
 
         return new DebugTraceResult(trace, extractStatePositions(trace), logLines);
@@ -258,23 +269,62 @@ public final class DebuggingService {
         return checkSensor(state, conditionKindToSensor(ck));
     }
 
-    private static GameState executeBody(Body body, GameState state, ExecutionTrace trace, GridMap map, List<String> logLines) {
-        if (body == null) return state;
-        return executeContainerChain(body.getFirstContainer(), state, trace, map, logLines);
+    private static GameState executeProgramUntilGoal(
+            Container first,
+            GameState state,
+            ExecutionTrace trace,
+            GridMap map,
+            List<String> logLines,
+            CellType winCellType) {
+        if (first == null || state == null) return state;
+
+        // Same bound idea as the other simulators: proportional to map area.
+        int maxSteps = 0;
+        try {
+            maxSteps = map.getWidth() * map.getHeight() * 2;
+        } catch (Exception ignored) {
+            maxSteps = 128;
+        }
+        if (maxSteps <= 0) maxSteps = 128;
+
+        GameState last = state;
+        while (last.getStatus() == GameStatus.RUNNING && last.getPosition().getType() != winCellType) {
+            if (last.getStep() > maxSteps) {
+                last.setStatus(GameStatus.CRASHED);
+                if (logLines != null) {
+                    logLines.add("Result: INFINITE_LOOP (bound " + maxSteps + " exceeded)");
+                }
+                break;
+            }
+            last = executeContainerChain(first, last, trace, map, logLines, winCellType);
+        }
+        return last;
     }
 
-    private static GameState executeContainerChain(Container first, GameState state, ExecutionTrace trace, GridMap map, List<String> logLines) {
+    private static GameState executeContainerChain(
+            Container first,
+            GameState state,
+            ExecutionTrace trace,
+            GridMap map,
+            List<String> logLines,
+            CellType winCellType) {
         Container current = first;
         GameState last = state;
-        while (current != null && last.getStatus() == GameStatus.RUNNING) {
+        while (current != null && last.getStatus() == GameStatus.RUNNING && last.getPosition().getType() != winCellType) {
             Statement stmt = current.getStatement();
-            last = executeSingle(stmt, last, trace, map, logLines);
+            last = executeSingle(stmt, last, trace, map, logLines, winCellType);
             current = current.getNext();
         }
         return last;
     }
 
-    private static GameState executeSingle(Statement stmt, GameState prev, ExecutionTrace trace, GridMap map, List<String> logLines) {
+    private static GameState executeSingle(
+            Statement stmt,
+            GameState prev,
+            ExecutionTrace trace,
+            GridMap map,
+            List<String> logLines,
+            CellType winCellType) {
         GameState next = BlockyFactory.eINSTANCE.createGameState();
         next.setStep(prev.getStep() + 1);
         next.setOrientation(prev.getOrientation());
@@ -306,7 +356,7 @@ public final class DebuggingService {
                     }
                 } else {
                     next.setPosition(target);
-                    if (isGoalLike(target)) {
+                    if (target.getType() == winCellType) {
                         next.setStatus(GameStatus.WON);
                         if (logLines != null) {
                             logLines.add("Step " + next.getStep() + ": MoveForward -> (" + target.getX() + "," + target.getY() + ") GOAL");
@@ -345,13 +395,15 @@ public final class DebuggingService {
                 logLines.add("Step " + next.getStep() + ": Loop");
             }
             int maxSteps = map.getWidth() * map.getHeight() * 2;
-            while (loop.getStatus() == GameStatus.RUNNING && !isGoalLike(loop.getPosition())) {
+            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != winCellType) {
                 if (loop.getStep() > maxSteps) {
                     loop.setStatus(GameStatus.CRASHED);
                     break;
                 }
                 int previousStep = loop.getStep();
-                loop = executeBody(r.getBody(), loop, trace, map, logLines);
+                // Loop body is a real Loop in the model: execute it once per iteration.
+                Body b = r.getBody();
+                loop = executeContainerChain(b != null ? b.getFirstContainer() : null, loop, trace, map, logLines, winCellType);
                 if (loop.getStep() == previousStep) {
                     loop.setStatus(GameStatus.CRASHED);
                     break;
@@ -366,22 +418,18 @@ public final class DebuggingService {
                 logLines.add("Step " + next.getStep() + ": If " + conditionKindToSensor(i.getCondition()) + " -> " + cond + " (" + branch + ")");
             }
             if (cond) {
-                return executeBody(i.getThenBody(), next, trace, map, logLines);
+                Body b = i.getThenBody();
+                return executeContainerChain(b != null ? b.getFirstContainer() : null, next, trace, map, logLines, winCellType);
             }
             if (i.getElseBody() != null) {
-                return executeBody(i.getElseBody(), next, trace, map, logLines);
+                Body b = i.getElseBody();
+                return executeContainerChain(b != null ? b.getFirstContainer() : null, next, trace, map, logLines, winCellType);
             }
         }
 
         return next;
     }
 
-    private static boolean isGoalLike(Cell c) {
-        if (c == null) return false;
-        // In Direct Manipulation workflows, the DMG marker should behave like a goal for stepping/tracing,
-        // since the WebView's visual goal (window.od) points to DMG.
-        return c.getType() == CellType.GOAL || c.getType() == CellType.DMG;
-    }
 
     private static int safeX(Cell c) {
         return c != null ? c.getX() : 0;

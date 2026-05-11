@@ -1,6 +1,7 @@
 package blocky_game;
 
 import blocky.AtomicStatement;
+import blocky.AtomicStatementKind;
 import blocky.BlockyFactory;
 import blocky.BlockyPackage;
 import blocky.Body;
@@ -55,11 +56,12 @@ public final class ImmediateFeedbackService {
 
         GridMap map = level.getMap();
         Cell startCell = findStartCell(map);
+        final CellType winCellType = SimUtils.determineWinCellType(level);
         if (startCell == null) {
             int[][] pastPath = extractPathPoints(firstTrace(level));
             return new Paths(pastPath, new int[0][0]);
         }
-        Direction startDir = determineStartOrientation(level, startCell);
+        Direction startDir = SimUtils.determineStartOrientation(level, startCell);
         level.setStartOrientation(startDir);
 
         int[][] pastPath = extractPathPoints(firstTrace(level));
@@ -68,10 +70,11 @@ public final class ImmediateFeedbackService {
         }
 
         int[][] newPath;
-        if (level.getSolution() == null) {
+        boolean enforceConstraints = Boolean.parseBoolean(System.getProperty("blocky.sim.enforceConstraints", "false"));
+        if (level.getSolution() == null || (enforceConstraints && SimUtils.violatesLevelConstraints(level, level.getSolution()))) {
             newPath = new int[][] { new int[] { startCell.getX(), startCell.getY() } };
         } else {
-            ExecutionTrace newTrace = simulateExecutionTraceBody(level.getSolution(), map, startCell, startDir);
+            ExecutionTrace newTrace = simulateExecutionTraceBody(level.getSolution(), map, startCell, startDir, winCellType);
             newPath = extractPathPoints(newTrace);
             if (newPath.length == 0 && startCell != null) {
                 newPath = new int[][] { new int[] { startCell.getX(), startCell.getY() } };
@@ -259,21 +262,6 @@ public final class ImmediateFeedbackService {
         return map.getCells().get(0);
     }
 
-    private static Direction determineStartOrientation(Level level, Cell start) {
-        if (level != null && level.eIsSet(BlockyPackage.Literals.LEVEL__START_ORIENTATION)) {
-            return level.getStartOrientation();
-        }
-        if (start == null) return Direction.NORTH;
-
-        // Prefer any non-wall neighbour in a fixed order: NORTH, EAST, SOUTH, WEST.
-        if (start.getTop() != null && start.getTop().getType() != CellType.WALL) return Direction.NORTH;
-        if (start.getRight() != null && start.getRight().getType() != CellType.WALL) return Direction.EAST;
-        if (start.getBottom() != null && start.getBottom().getType() != CellType.WALL) return Direction.SOUTH;
-        if (start.getLeft() != null && start.getLeft().getType() != CellType.WALL) return Direction.WEST;
-
-        return Direction.NORTH;
-    }
-
     private static int[][] extractPathPoints(ExecutionTrace trace) {
         if (trace == null || trace.getStates() == null || trace.getStates().isEmpty()) return new int[0][0];
 
@@ -304,7 +292,7 @@ public final class ImmediateFeedbackService {
         return arr;
     }
 
-    private static ExecutionTrace simulateExecutionTraceBody(Body solution, GridMap map, Cell startCell, Direction startDir) {
+    private static ExecutionTrace simulateExecutionTraceBody(Body solution, GridMap map, Cell startCell, Direction startDir, CellType winCellType) {
         ExecutionTrace trace = BlockyFactory.eINSTANCE.createExecutionTrace();
         GameState initialState = BlockyFactory.eINSTANCE.createGameState();
         initialState.setStep(0);
@@ -315,11 +303,19 @@ public final class ImmediateFeedbackService {
 
         if (solution == null) return trace;
 
-        executeBody(solution, initialState, trace, map);
+        boolean enforceConstraints = Boolean.parseBoolean(System.getProperty("blocky.sim.enforceConstraints", "false"));
+        if (enforceConstraints) {
+            // Best-effort constraint check if we had the level, but here we only have solution.
+            // In computePaths, we HAVE the level. Let's move the check there.
+        }
+
+        executeBody(solution, initialState, trace, map, winCellType);
         return trace;
     }
 
     private static SensorDirection conditionKindToSensor(ConditionKind ck) {
+        // Align with MoMoT headless simulator defaults: missing condition behaves as CHECK_FORWARD.
+        if (ck == null) ck = ConditionKind.CHECK_FORWARD;
         if (ck == ConditionKind.CHECK_LEFT) return SensorDirection.LEFT;
         if (ck == ConditionKind.CHECK_RIGHT) return SensorDirection.RIGHT;
         return SensorDirection.AHEAD;
@@ -329,23 +325,23 @@ public final class ImmediateFeedbackService {
         return checkSensor(state, conditionKindToSensor(ck));
     }
 
-    private static GameState executeBody(Body body, GameState state, ExecutionTrace trace, GridMap map) {
+    private static GameState executeBody(Body body, GameState state, ExecutionTrace trace, GridMap map, CellType winCellType) {
         if (body == null) return state;
-        return executeContainerChain(body.getFirstContainer(), state, trace, map);
+        return executeContainerChain(body.getFirstContainer(), state, trace, map, winCellType);
     }
 
-    private static GameState executeContainerChain(Container first, GameState state, ExecutionTrace trace, GridMap map) {
+    private static GameState executeContainerChain(Container first, GameState state, ExecutionTrace trace, GridMap map, CellType winCellType) {
         Container current = first;
         GameState last = state;
         while (current != null && last.getStatus() == GameStatus.RUNNING) {
             Statement stmt = current.getStatement();
-            last = executeSingle(stmt, last, trace, map);
+            last = executeSingle(stmt, last, trace, map, winCellType);
             current = current.getNext();
         }
         return last;
     }
 
-    private static GameState executeSingle(Statement stmt, GameState prev, ExecutionTrace trace, GridMap map) {
+    private static GameState executeSingle(Statement stmt, GameState prev, ExecutionTrace trace, GridMap map, CellType winCellType) {
         GameState next = BlockyFactory.eINSTANCE.createGameState();
         next.setStep(prev.getStep() + 1);
         next.setOrientation(prev.getOrientation());
@@ -357,14 +353,17 @@ public final class ImmediateFeedbackService {
 
         if (stmt instanceof AtomicStatement) {
             AtomicStatement a = (AtomicStatement) stmt;
-            switch (a.getKind()) {
+            // Align with MoMoT headless simulator defaults: missing kind behaves as TURN_LEFT.
+            AtomicStatementKind kind = a.getKind();
+            if (kind == null) kind = AtomicStatementKind.TURN_LEFT;
+            switch (kind) {
             case MOVE_FORWARD: {
                 Cell target = getAdjacent(next.getPosition(), next.getOrientation());
                 if (target == null || target.getType() == CellType.WALL) {
                     next.setStatus(GameStatus.CRASHED);
                 } else {
                     next.setPosition(target);
-                    if (target.getType() == CellType.GOAL) {
+                    if (target.getType() == winCellType) {
                         next.setStatus(GameStatus.WON);
                     }
                 }
@@ -383,13 +382,13 @@ public final class ImmediateFeedbackService {
             Loop r = (Loop) stmt;
             GameState loop = next;
             int maxSteps = map.getWidth() * map.getHeight() * 2;
-            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != CellType.GOAL) {
+            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != winCellType) {
                 if (loop.getStep() > maxSteps) {
                     loop.setStatus(GameStatus.CRASHED);
                     break;
                 }
                 int previousStep = loop.getStep();
-                loop = executeBody(r.getBody(), loop, trace, map);
+                loop = executeBody(r.getBody(), loop, trace, map, winCellType);
                 if (loop.getStep() == previousStep) {
                     loop.setStatus(GameStatus.CRASHED);
                     break;
@@ -400,10 +399,10 @@ public final class ImmediateFeedbackService {
             IfStmt i = (IfStmt) stmt;
             boolean cond = checkCondition(next, i.getCondition());
             if (cond) {
-                return executeBody(i.getThenBody(), next, trace, map);
+                return executeBody(i.getThenBody(), next, trace, map, winCellType);
             }
             if (i.getElseBody() != null) {
-                return executeBody(i.getElseBody(), next, trace, map);
+                return executeBody(i.getElseBody(), next, trace, map, winCellType);
             }
         }
         return next;

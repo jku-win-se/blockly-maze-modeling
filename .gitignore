@@ -8,6 +8,7 @@ GITHUB_ORG_SETUP.md
 # Maven
 target/
 pom.xml.tag
+blocky_game/blocky_momot/
 
 # IntelliJ / other IDEs
 .idea/

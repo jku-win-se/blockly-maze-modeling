@@ -188,6 +188,7 @@ public class BlockyUI extends Application {
                 "  }\n" +
                 "  function sync(ws) {\n" +
                 "    var xml = getXml(ws);\n" +
+                "    try { if (xml && xml.indexOf('<block') < 0) xml = null; } catch(e0) {}\n" +
                 "    if (xml && xml !== lastXml) {\n" +
                 "      lastXml = xml;\n" +
                 "      log('Syncing XML: ' + xml.substring(0, 120));\n" +
@@ -1017,8 +1018,11 @@ public class BlockyUI extends Application {
                 + "            __dbgRenderFrame(fr); "
                 + "            try { "
                 + "              // If debugging starts from a mid-trace aligned index, render the full log prefix.\n"
-                + "              if (fr && fr.logPrefix && fr.logPrefix.length && window.__execLogAppend) { "
-                + "                window.__execLogAppend(fr.logPrefix); "
+                + "              if (fr && window.__execLogAppend) { "
+                + "                // If we just loaded a MoMoT model and aligned to a last-common cell,\n"
+                + "                // prefer showing the log starting from that alignment point.\n"
+                + "                var arr = (window.__dbgPreserveMomotAlignNote && fr.logFromAlign && fr.logFromAlign.length) ? fr.logFromAlign : fr.logPrefix; "
+                + "                if (arr && arr.length) window.__execLogAppend(arr); "
                 + "                if (typeof fr.index === 'number') window.__dbgLastLoggedIndex = fr.index; "
                 + "              } "
                 + "            } catch(eLP) {} "
@@ -1441,6 +1445,13 @@ public class BlockyUI extends Application {
 
         public void syncModel(String xml) {
             if (suppressSync) return;
+            if (xml == null) return;
+            // Guard: WebView can transiently produce an empty <xml/> snapshot during in-place injections
+            // or while Blockly is re-rendering. Ignore these so we don't wipe the Java-side solution.
+            if (xml.indexOf("<block") < 0) {
+                System.out.println("[JSBridge] Ignoring empty workspace XML snapshot.");
+                return;
+            }
             try {
                 System.out.println("[JSBridge] Syncing workspace XML:\n" + xml);
                 List<Map<String, Object>> data = parseBlocklyXml(xml);
@@ -1464,6 +1475,10 @@ public class BlockyUI extends Application {
          */
         public void syncModelForce(String xml) {
             try {
+                if (xml == null || xml.indexOf("<block") < 0) {
+                    System.out.println("[JSBridge] Force-sync ignored empty workspace XML snapshot.");
+                    return;
+                }
                 System.out.println("[JSBridge] Force-syncing workspace XML:\n" + xml);
                 List<Map<String, Object>> data = parseBlocklyXml(xml);
                 engine.rebuildProgram(data);
@@ -1840,8 +1855,27 @@ public class BlockyUI extends Application {
             if (n.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE
                     && "block".equalsIgnoreCase(n.getNodeName())) {
                 Map<String, Object> block = parseBlockElement((org.w3c.dom.Element) n);
-                if (block != null)
+                if (block == null) {
+                    continue;
+                }
+
+                // Blockly Maze always wraps the user's program in a single top-level "maze_forever"
+                // with a <statement name="DO"> body. That forever-loop is a UI scaffold and must NOT
+                // become part of the EMF solution model; otherwise we accidentally introduce an
+                // infinite loop into the model when round-tripping.
+                //
+                // So we unwrap it here and return its DO-body chain as the program.
+                Object typeObj = block.get("type");
+                String type = typeObj != null ? String.valueOf(typeObj) : "";
+                if ("maze_forever".equals(type)) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> body = (Map<String, Object>) block.get("body");
+                    if (body != null) {
+                        result.add(body);
+                    }
+                } else {
                     result.add(block);
+                }
             }
         }
         return result;

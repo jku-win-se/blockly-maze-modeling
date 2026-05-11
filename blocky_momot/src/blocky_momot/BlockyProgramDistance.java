@@ -27,11 +27,27 @@ import blocky.Statement;
 /**
  * "Closeness to input model" for the Blocky program subgraph (Level.solution).
  *
- * This implements a specialized graph/tree edit distance for the statement AST:
- * - Programs are ordered statement sequences (via Container.next) with nested bodies (Loop/If).
- * - Costs are node-based: insert/delete costs equal subtree size; replace costs 0/1 + children costs.
+ * This implements a tree edit distance counted in user-visible blocks. The blocks the
+ * end user sees in the editor are exactly the {@link Statement} subtypes:
+ * <ul>
+ *   <li>{@link AtomicStatement} (move forward / turn left / turn right),</li>
+ *   <li>{@link Loop} (repeat-until-goal), and</li>
+ *   <li>{@link IfStmt} (if / if-else).</li>
+ * </ul>
+ * {@link Container} and {@link Body} are EMF plumbing and never count towards the distance.
  *
- * This is more faithful to a graph edit distance notion than using transformation length alone.
+ * Each unit of distance corresponds to exactly one block edit:
+ * <ul>
+ *   <li>insert one block (insert cost = subtree size of the inserted block),</li>
+ *   <li>delete one block (delete cost = subtree size of the deleted block), or</li>
+ *   <li>relabel one block in place: {@link AtomicStatement} kind change costs 1, {@link IfStmt}
+ *       condition change costs 1; identical labels cost 0.</li>
+ * </ul>
+ * Same-class substitution recurses into bodies (Loop body; IfStmt then-body and else-body).
+ * Different-class substitution falls back to a full delete + insert, so swapping a leaf
+ * statement for a large {@code Loop}/{@code IfStmt} subtree is charged for every new block.
+ * Ordered sibling sequences are aligned with a standard sequence edit distance DP, so
+ * matching statements at corresponding positions cost 0 even when surrounded by inserts/deletes.
  *
  * See: https://en.wikipedia.org/wiki/Graph_edit_distance
  */
@@ -180,32 +196,28 @@ public final class BlockyProgramDistance {
         Integer cached = stmtDistCache.get(key);
         if (cached != null) return cached;
 
-        int cost = 0;
-        // Base node substitution (label) cost
-        if (a.getClass() != b.getClass()) {
-            cost += 1;
-        }
-
-        // Attribute / label refinement
-        if (a instanceof AtomicStatement && b instanceof AtomicStatement) {
-            if (((AtomicStatement) a).getKind() != ((AtomicStatement) b).getKind()) {
-                cost += 1;
+        int cost;
+        if (a.getClass() == b.getClass()) {
+            // Same kind of block: pay only the relabel cost (0 or 1) plus the recursive
+            // distance between corresponding child bodies.
+            cost = 0;
+            if (a instanceof AtomicStatement) {
+                if (((AtomicStatement) a).getKind() != ((AtomicStatement) b).getKind()) {
+                    cost += 1;
+                }
+            } else if (a instanceof Loop) {
+                cost += programDistance(((Loop) a).getBody(), ((Loop) b).getBody(), sizeCache, stmtDistCache);
+            } else if (a instanceof IfStmt) {
+                if (((IfStmt) a).getCondition() != ((IfStmt) b).getCondition()) {
+                    cost += 1;
+                }
+                cost += programDistance(((IfStmt) a).getThenBody(), ((IfStmt) b).getThenBody(), sizeCache, stmtDistCache);
+                cost += programDistance(((IfStmt) a).getElseBody(), ((IfStmt) b).getElseBody(), sizeCache, stmtDistCache);
             }
-        } else if (a instanceof IfStmt && b instanceof IfStmt) {
-            if (((IfStmt) a).getCondition() != ((IfStmt) b).getCondition()) {
-                cost += 1;
-            }
-        }
-
-        // Children distance (ordered sequences)
-        if (a instanceof Loop && b instanceof Loop) {
-            cost += programDistance(((Loop) a).getBody(), ((Loop) b).getBody(), sizeCache, stmtDistCache);
-        } else if (a instanceof IfStmt && b instanceof IfStmt) {
-            cost += programDistance(((IfStmt) a).getThenBody(), ((IfStmt) b).getThenBody(), sizeCache, stmtDistCache);
-            cost += programDistance(((IfStmt) a).getElseBody(), ((IfStmt) b).getElseBody(), sizeCache, stmtDistCache);
-        } else if (a instanceof Loop || a instanceof IfStmt || b instanceof Loop || b instanceof IfStmt) {
-            // Mismatched container types: deleting + inserting the whole subtree is often cheaper / more realistic.
-            cost = Math.min(cost, deleteCost(a, sizeCache) + insertCost(b, sizeCache));
+        } else {
+            // Different kind of block: there is no natural relabel-and-recurse, so charge the
+            // honest cost of deleting the old block (and its subtree) and inserting the new one.
+            cost = deleteCost(a, sizeCache) + insertCost(b, sizeCache);
         }
 
         stmtDistCache.put(key, cost);

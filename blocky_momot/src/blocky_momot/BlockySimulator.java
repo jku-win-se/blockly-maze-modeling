@@ -49,7 +49,7 @@ public final class BlockySimulator {
      * For MOMoT fitness we must apply the same rules; otherwise we may mark an
      * illegal program as "WON" even though it can't be executed in-game.
      */
-    private static boolean violatesLevelConstraints(Level level, Body solution) {
+    public static boolean violatesLevelConstraints(Level level, Body solution) {
         if (level == null || solution == null) {
             return false;
         }
@@ -448,7 +448,7 @@ public final class BlockySimulator {
         return Math.min(currentMin, d.intValue());
     }
 
-    private static CellType determineWinCellType(Level level) {
+    public static CellType determineWinCellType(Level level) {
         if (level == null || level.getMap() == null) return CellType.GOAL;
         for (Cell c : level.getMap().getCells()) {
             if (c != null && c.getType() == CellType.DMG) {
@@ -458,10 +458,11 @@ public final class BlockySimulator {
         return CellType.GOAL;
     }
 
-    private static Direction determineStartOrientation(Level level, Cell start) {
+    public static Direction determineStartOrientation(Level level, Cell start) {
         if (level != null && level.eIsSet(BlockyPackage.Literals.LEVEL__START_ORIENTATION)) {
             return level.getStartOrientation();
         }
+        if (start == null) return Direction.NORTH;
         if (start.getTop() != null && start.getTop().getType() != CellType.WALL) return Direction.NORTH;
         if (start.getRight() != null && start.getRight().getType() != CellType.WALL) return Direction.EAST;
         if (start.getBottom() != null && start.getBottom().getType() != CellType.WALL) return Direction.SOUTH;
