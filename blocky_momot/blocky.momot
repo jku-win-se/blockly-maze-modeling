@@ -10,6 +10,7 @@ import at.ac.tuwien.big.momot.^search.solution.repair.TransformationPlaceholderR
 import at.ac.tuwien.big.moea.^experiment.executor.listener.SeedRuntimePrintListener
 import at.ac.tuwien.big.momot.^search.algorithm.operator.mutation.TransformationPlaceholderMutation
 import at.ac.tuwien.big.momot.^search.algorithm.operator.mutation.TransformationParameterMutation
+import org.moeaframework.core.PRNG
 import blocky_momot.RandomAtomicKindLiteralValue
 import blocky_momot.RandomConditionKindLiteralValue
 import blocky_momot.EnumParamPreprocessFitnessFunction
@@ -33,6 +34,17 @@ initialization = {
 
 	// Cache the baseline program once, for closeness / edit-distance fitness.
 	BlockyProgramDistance.initializeBaseline(input)
+
+	// Annotate cells with distanceToGoal pre-computed values.
+	BlockySimulator.initialize(input)
+
+	val seedStr = System.getProperty("blocky.seed", "0")
+	try {
+		val seed = Long.parseLong(seedStr)
+		if (seed != 0L) {
+			PRNG.setSeed(seed)
+		}
+	} catch (Exception ignored) {}
 }
 
 search = {
@@ -51,7 +63,7 @@ search = {
 	// Worst case: delete all existing statements and create exactly maxBlocks statements.
 	solutionLength = BlockyProgramMetrics.inferSolutionLength(input) * 2
 	transformations = {
-		modules = [ "../blocky_model/transformations/statement_insertions_henshin_text.henshin" ]
+		modules = [ System.getProperty("blocky.henshin", "../blocky_model/transformations/statement_insertions_henshin_text.henshin") ]
 		ignoreUnits = [
 			// Keep only the high-level edit operator:
 			// - CreateThenInsertContainerThenPopulate
@@ -71,7 +83,49 @@ search = {
 			"statement_insertions_henshin_text::DeleteOnlyContainerFromBody",
 			"statement_insertions_henshin_text::DeleteHeadContainerWithNext",
 			"statement_insertions_henshin_text::DeleteBetweenContainerWithNext",
-			"statement_insertions_henshin_text::DeleteLastContainer"
+			"statement_insertions_henshin_text::DeleteLastContainer",
+
+			"statement_insertions_no_loops::InsertContainerIntoEmptyBody",
+			"statement_insertions_no_loops::InsertContainerBeforeBodyHead",
+			"statement_insertions_no_loops::InsertContainerBetweenNext",
+			"statement_insertions_no_loops::InsertContainerAfterLast",
+			"statement_insertions_no_loops::InsertContainerAnywhere",
+			"statement_insertions_no_loops::PopulateEmptyContainerWithAtomic",
+			"statement_insertions_no_loops::PopulateEmptyContainerWithLoop",
+			"statement_insertions_no_loops::PopulateEmptyContainerWithIf",
+			"statement_insertions_no_loops::PopulateAnyEmptyContainer",
+			"statement_insertions_no_loops::DeleteOnlyContainerFromBody",
+			"statement_insertions_no_loops::DeleteHeadContainerWithNext",
+			"statement_insertions_no_loops::DeleteBetweenContainerWithNext",
+			"statement_insertions_no_loops::DeleteLastContainer",
+
+			"statement_insertions_no_conds::InsertContainerIntoEmptyBody",
+			"statement_insertions_no_conds::InsertContainerBeforeBodyHead",
+			"statement_insertions_no_conds::InsertContainerBetweenNext",
+			"statement_insertions_no_conds::InsertContainerAfterLast",
+			"statement_insertions_no_conds::InsertContainerAnywhere",
+			"statement_insertions_no_conds::PopulateEmptyContainerWithAtomic",
+			"statement_insertions_no_conds::PopulateEmptyContainerWithLoop",
+			"statement_insertions_no_conds::PopulateEmptyContainerWithIf",
+			"statement_insertions_no_conds::PopulateAnyEmptyContainer",
+			"statement_insertions_no_conds::DeleteOnlyContainerFromBody",
+			"statement_insertions_no_conds::DeleteHeadContainerWithNext",
+			"statement_insertions_no_conds::DeleteBetweenContainerWithNext",
+			"statement_insertions_no_conds::DeleteLastContainer",
+
+			"statement_insertions_atomic_only::InsertContainerIntoEmptyBody",
+			"statement_insertions_atomic_only::InsertContainerBeforeBodyHead",
+			"statement_insertions_atomic_only::InsertContainerBetweenNext",
+			"statement_insertions_atomic_only::InsertContainerAfterLast",
+			"statement_insertions_atomic_only::InsertContainerAnywhere",
+			"statement_insertions_atomic_only::PopulateEmptyContainerWithAtomic",
+			"statement_insertions_atomic_only::PopulateEmptyContainerWithLoop",
+			"statement_insertions_atomic_only::PopulateEmptyContainerWithIf",
+			"statement_insertions_atomic_only::PopulateAnyEmptyContainer",
+			"statement_insertions_atomic_only::DeleteOnlyContainerFromBody",
+			"statement_insertions_atomic_only::DeleteHeadContainerWithNext",
+			"statement_insertions_atomic_only::DeleteBetweenContainerWithNext",
+			"statement_insertions_atomic_only::DeleteLastContainer"
 
 			// Fallbacks for runtimes that use unqualified unit IDs
 			, "InsertContainerIntoEmptyBody"
@@ -103,6 +157,48 @@ search = {
 			, "statement_insertions_henshin_text.DeleteBetweenContainerWithNext"
 			, "statement_insertions_henshin_text.DeleteLastContainer"
 
+			, "statement_insertions_no_loops.InsertContainerIntoEmptyBody"
+			, "statement_insertions_no_loops.InsertContainerBeforeBodyHead"
+			, "statement_insertions_no_loops.InsertContainerBetweenNext"
+			, "statement_insertions_no_loops.InsertContainerAfterLast"
+			, "statement_insertions_no_loops.InsertContainerAnywhere"
+			, "statement_insertions_no_loops.PopulateEmptyContainerWithAtomic"
+			, "statement_insertions_no_loops.PopulateEmptyContainerWithLoop"
+			, "statement_insertions_no_loops.PopulateEmptyContainerWithIf"
+			, "statement_insertions_no_loops.PopulateAnyEmptyContainer"
+			, "statement_insertions_no_loops.DeleteOnlyContainerFromBody"
+			, "statement_insertions_no_loops.DeleteHeadContainerWithNext"
+			, "statement_insertions_no_loops.DeleteBetweenContainerWithNext"
+			, "statement_insertions_no_loops.DeleteLastContainer"
+
+			, "statement_insertions_no_conds.InsertContainerIntoEmptyBody"
+			, "statement_insertions_no_conds.InsertContainerBeforeBodyHead"
+			, "statement_insertions_no_conds.InsertContainerBetweenNext"
+			, "statement_insertions_no_conds.InsertContainerAfterLast"
+			, "statement_insertions_no_conds.InsertContainerAnywhere"
+			, "statement_insertions_no_conds.PopulateEmptyContainerWithAtomic"
+			, "statement_insertions_no_conds.PopulateEmptyContainerWithLoop"
+			, "statement_insertions_no_conds.PopulateEmptyContainerWithIf"
+			, "statement_insertions_no_conds.PopulateAnyEmptyContainer"
+			, "statement_insertions_no_conds.DeleteOnlyContainerFromBody"
+			, "statement_insertions_no_conds.DeleteHeadContainerWithNext"
+			, "statement_insertions_no_conds.DeleteBetweenContainerWithNext"
+			, "statement_insertions_no_conds.DeleteLastContainer"
+
+			, "statement_insertions_atomic_only.InsertContainerIntoEmptyBody"
+			, "statement_insertions_atomic_only.InsertContainerBeforeBodyHead"
+			, "statement_insertions_atomic_only.InsertContainerBetweenNext"
+			, "statement_insertions_atomic_only.InsertContainerAfterLast"
+			, "statement_insertions_atomic_only.InsertContainerAnywhere"
+			, "statement_insertions_atomic_only.PopulateEmptyContainerWithAtomic"
+			, "statement_insertions_atomic_only.PopulateEmptyContainerWithLoop"
+			, "statement_insertions_atomic_only.PopulateEmptyContainerWithIf"
+			, "statement_insertions_atomic_only.PopulateAnyEmptyContainer"
+			, "statement_insertions_atomic_only.DeleteOnlyContainerFromBody"
+			, "statement_insertions_atomic_only.DeleteHeadContainerWithNext"
+			, "statement_insertions_atomic_only.DeleteBetweenContainerWithNext"
+			, "statement_insertions_atomic_only.DeleteLastContainer"
+
 			// Some runtimes qualify rules with an extra namespace segment
 			, "statement_insertions_henshin_text::HenshinDSL::InsertContainerIntoEmptyBody"
 			, "statement_insertions_henshin_text::HenshinDSL::InsertContainerBeforeBodyHead"
@@ -117,6 +213,48 @@ search = {
 			, "statement_insertions_henshin_text::HenshinDSL::DeleteHeadContainerWithNext"
 			, "statement_insertions_henshin_text::HenshinDSL::DeleteBetweenContainerWithNext"
 			, "statement_insertions_henshin_text::HenshinDSL::DeleteLastContainer"
+
+			, "statement_insertions_no_loops::HenshinDSL::InsertContainerIntoEmptyBody"
+			, "statement_insertions_no_loops::HenshinDSL::InsertContainerBeforeBodyHead"
+			, "statement_insertions_no_loops::HenshinDSL::InsertContainerBetweenNext"
+			, "statement_insertions_no_loops::HenshinDSL::InsertContainerAfterLast"
+			, "statement_insertions_no_loops::HenshinDSL::InsertContainerAnywhere"
+			, "statement_insertions_no_loops::HenshinDSL::PopulateEmptyContainerWithAtomic"
+			, "statement_insertions_no_loops::HenshinDSL::PopulateEmptyContainerWithLoop"
+			, "statement_insertions_no_loops::HenshinDSL::PopulateEmptyContainerWithIf"
+			, "statement_insertions_no_loops::HenshinDSL::PopulateAnyEmptyContainer"
+			, "statement_insertions_no_loops::HenshinDSL::DeleteOnlyContainerFromBody"
+			, "statement_insertions_no_loops::HenshinDSL::DeleteHeadContainerWithNext"
+			, "statement_insertions_no_loops::HenshinDSL::DeleteBetweenContainerWithNext"
+			, "statement_insertions_no_loops::HenshinDSL::DeleteLastContainer"
+
+			, "statement_insertions_no_conds::HenshinDSL::InsertContainerIntoEmptyBody"
+			, "statement_insertions_no_conds::HenshinDSL::InsertContainerBeforeBodyHead"
+			, "statement_insertions_no_conds::HenshinDSL::InsertContainerBetweenNext"
+			, "statement_insertions_no_conds::HenshinDSL::InsertContainerAfterLast"
+			, "statement_insertions_no_conds::HenshinDSL::InsertContainerAnywhere"
+			, "statement_insertions_no_conds::HenshinDSL::PopulateEmptyContainerWithAtomic"
+			, "statement_insertions_no_conds::HenshinDSL::PopulateEmptyContainerWithLoop"
+			, "statement_insertions_no_conds::HenshinDSL::PopulateEmptyContainerWithIf"
+			, "statement_insertions_no_conds::HenshinDSL::PopulateAnyEmptyContainer"
+			, "statement_insertions_no_conds::HenshinDSL::DeleteOnlyContainerFromBody"
+			, "statement_insertions_no_conds::HenshinDSL::DeleteHeadContainerWithNext"
+			, "statement_insertions_no_conds::HenshinDSL::DeleteBetweenContainerWithNext"
+			, "statement_insertions_no_conds::HenshinDSL::DeleteLastContainer"
+
+			, "statement_insertions_atomic_only::HenshinDSL::InsertContainerIntoEmptyBody"
+			, "statement_insertions_atomic_only::HenshinDSL::InsertContainerBeforeBodyHead"
+			, "statement_insertions_atomic_only::HenshinDSL::InsertContainerBetweenNext"
+			, "statement_insertions_atomic_only::HenshinDSL::InsertContainerAfterLast"
+			, "statement_insertions_atomic_only::HenshinDSL::InsertContainerAnywhere"
+			, "statement_insertions_atomic_only::HenshinDSL::PopulateEmptyContainerWithAtomic"
+			, "statement_insertions_atomic_only::HenshinDSL::PopulateEmptyContainerWithLoop"
+			, "statement_insertions_atomic_only::HenshinDSL::PopulateEmptyContainerWithIf"
+			, "statement_insertions_atomic_only::HenshinDSL::PopulateAnyEmptyContainer"
+			, "statement_insertions_atomic_only::HenshinDSL::DeleteOnlyContainerFromBody"
+			, "statement_insertions_atomic_only::HenshinDSL::DeleteHeadContainerWithNext"
+			, "statement_insertions_atomic_only::HenshinDSL::DeleteBetweenContainerWithNext"
+			, "statement_insertions_atomic_only::HenshinDSL::DeleteLastContainer"
 
 			// Actual compiled module/unit naming (compiled module is "HenshinDSL")
 			, "HenshinDSL::InsertContainerIntoEmptyBody"
@@ -158,6 +296,15 @@ search = {
 			"HenshinDSL.CreateThenInsertContainerThenPopulate.k" : new RandomAtomicKindLiteralValue
 			"HenshinDSL.CreateThenInsertContainerThenPopulate.cnd" : new RandomConditionKindLiteralValue
 
+			"statement_insertions_henshin_text.CreateThenInsertContainerThenPopulate.k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_henshin_text.CreateThenInsertContainerThenPopulate.cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_no_loops.CreateThenInsertContainerThenPopulate.k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_no_loops.CreateThenInsertContainerThenPopulate.cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_no_conds.CreateThenInsertContainerThenPopulate.k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_no_conds.CreateThenInsertContainerThenPopulate.cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_atomic_only.CreateThenInsertContainerThenPopulate.k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_atomic_only.CreateThenInsertContainerThenPopulate.cnd" : new RandomConditionKindLiteralValue
+
 			// Extra naming variants seen at runtime (Henshin API / MOMoT resolution)
 			"HenshinDSL::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
 			"HenshinDSL::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
@@ -186,6 +333,21 @@ search = {
 			"statement_insertions_henshin_text::HenshinDSL::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
 			"statement_insertions_henshin_text::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
 
+			"statement_insertions_no_loops::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_no_loops::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_no_loops::HenshinDSL::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_no_loops::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+
+			"statement_insertions_no_conds::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_no_conds::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_no_conds::HenshinDSL::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_no_conds::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+
+			"statement_insertions_atomic_only::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_atomic_only::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_atomic_only::HenshinDSL::CreateThenInsertContainerThenPopulate::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_atomic_only::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd" : new RandomConditionKindLiteralValue
+
 			// Legacy separator variants for low-level units
 			"statement_insertions_henshin_text::PopulateAnyEmptyContainer::k" : new RandomAtomicKindLiteralValue
 			"statement_insertions_henshin_text::PopulateAnyEmptyContainer::cnd" : new RandomConditionKindLiteralValue
@@ -195,6 +357,21 @@ search = {
 			"statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer::cnd" : new RandomConditionKindLiteralValue
 			"statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithAtomic::k" : new RandomAtomicKindLiteralValue
 			"statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithIf::cnd" : new RandomConditionKindLiteralValue
+
+			"statement_insertions_no_loops::PopulateAnyEmptyContainer::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_no_loops::PopulateAnyEmptyContainer::cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_no_loops::HenshinDSL::PopulateAnyEmptyContainer::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_no_loops::HenshinDSL::PopulateAnyEmptyContainer::cnd" : new RandomConditionKindLiteralValue
+
+			"statement_insertions_no_conds::PopulateAnyEmptyContainer::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_no_conds::PopulateAnyEmptyContainer::cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_no_conds::HenshinDSL::PopulateAnyEmptyContainer::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_no_conds::HenshinDSL::PopulateAnyEmptyContainer::cnd" : new RandomConditionKindLiteralValue
+
+			"statement_insertions_atomic_only::PopulateAnyEmptyContainer::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_atomic_only::PopulateAnyEmptyContainer::cnd" : new RandomConditionKindLiteralValue
+			"statement_insertions_atomic_only::HenshinDSL::PopulateAnyEmptyContainer::k" : new RandomAtomicKindLiteralValue
+			"statement_insertions_atomic_only::HenshinDSL::PopulateAnyEmptyContainer::cnd" : new RandomConditionKindLiteralValue
 		}
 	}
 	fitness = new EnumParamPreprocessFitnessFunction {
@@ -222,7 +399,24 @@ search = {
 				try {
 					val game = root as Game
 					val level = if (game.levels.isEmpty) null else game.levels.get(0)
-					val v = (if (level == null) 100000.0 else BlockySimulator.stepsToGoalOrPenalty(level) as double)
+					val v = if (level == null) 100000.0 else {
+						val d = BlockySimulator.distanceToGoalOrPenalty(level) as double
+						if (d > 0.0) {
+							1000.0 + d
+						} else {
+							BlockySimulator.stepsToGoalOrPenalty(level) as double
+						}
+					}
+					if (Double.isFinite(v)) v else 1000000.0
+				} catch (Throwable t) {
+					1000000.0
+				}
+			}
+			closestToGoal : minimize {
+				try {
+					val game = root as Game
+					val level = if (game.levels.isEmpty) null else game.levels.get(0)
+					val v = (if (level == null) 100000.0 else BlockySimulator.closestToGoalOrPenalty(level, 100000) as double)
 					if (Double.isFinite(v)) v else 1000000000.0
 				} catch (Throwable t) {
 					1000000000.0

@@ -39,6 +39,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.henshin.interpreter.EGraph;
 import org.eclipse.xtext.xbase.lib.Exceptions;
 import org.moeaframework.algorithm.NSGAII;
+import org.moeaframework.core.PRNG;
 import org.moeaframework.core.Population;
 import org.moeaframework.core.operator.OnePointCrossover;
 import org.moeaframework.core.operator.TournamentSelection;
@@ -52,9 +53,9 @@ public class blocky {
 
   protected static final int SOLUTION_LENGTH = (BlockyProgramMetrics.inferSolutionLength(blocky.input) * 2);
 
-  protected final String[] modules = new String[] { "../blocky_model/transformations/statement_insertions_henshin_text.henshin" };
+  protected final String[] modules = new String[] { System.getProperty("blocky.henshin", "../blocky_model/transformations/statement_insertions_henshin_text.henshin") };
 
-  protected final String[] unitsToRemove = new String[] { "statement_insertions_henshin_text::InsertContainerIntoEmptyBody", "statement_insertions_henshin_text::InsertContainerBeforeBodyHead", "statement_insertions_henshin_text::InsertContainerBetweenNext", "statement_insertions_henshin_text::InsertContainerAfterLast", "statement_insertions_henshin_text::InsertContainerAnywhere", "statement_insertions_henshin_text::PopulateEmptyContainerWithAtomic", "statement_insertions_henshin_text::PopulateEmptyContainerWithLoop", "statement_insertions_henshin_text::PopulateEmptyContainerWithIf", "statement_insertions_henshin_text::PopulateAnyEmptyContainer", "statement_insertions_henshin_text::DeleteOnlyContainerFromBody", "statement_insertions_henshin_text::DeleteHeadContainerWithNext", "statement_insertions_henshin_text::DeleteBetweenContainerWithNext", "statement_insertions_henshin_text::DeleteLastContainer", "InsertContainerIntoEmptyBody", "InsertContainerBeforeBodyHead", "InsertContainerBetweenNext", "InsertContainerAfterLast", "InsertContainerAnywhere", "PopulateEmptyContainerWithAtomic", "PopulateEmptyContainerWithLoop", "PopulateEmptyContainerWithIf", "PopulateAnyEmptyContainer", "DeleteOnlyContainerFromBody", "DeleteHeadContainerWithNext", "DeleteBetweenContainerWithNext", "DeleteLastContainer", "statement_insertions_henshin_text.InsertContainerIntoEmptyBody", "statement_insertions_henshin_text.InsertContainerBeforeBodyHead", "statement_insertions_henshin_text.InsertContainerBetweenNext", "statement_insertions_henshin_text.InsertContainerAfterLast", "statement_insertions_henshin_text.InsertContainerAnywhere", "statement_insertions_henshin_text.PopulateEmptyContainerWithAtomic", "statement_insertions_henshin_text.PopulateEmptyContainerWithLoop", "statement_insertions_henshin_text.PopulateEmptyContainerWithIf", "statement_insertions_henshin_text.PopulateAnyEmptyContainer", "statement_insertions_henshin_text.DeleteOnlyContainerFromBody", "statement_insertions_henshin_text.DeleteHeadContainerWithNext", "statement_insertions_henshin_text.DeleteBetweenContainerWithNext", "statement_insertions_henshin_text.DeleteLastContainer", "statement_insertions_henshin_text::HenshinDSL::InsertContainerIntoEmptyBody", "statement_insertions_henshin_text::HenshinDSL::InsertContainerBeforeBodyHead", "statement_insertions_henshin_text::HenshinDSL::InsertContainerBetweenNext", "statement_insertions_henshin_text::HenshinDSL::InsertContainerAfterLast", "statement_insertions_henshin_text::HenshinDSL::InsertContainerAnywhere", "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithAtomic", "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithLoop", "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithIf", "statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer", "statement_insertions_henshin_text::HenshinDSL::DeleteOnlyContainerFromBody", "statement_insertions_henshin_text::HenshinDSL::DeleteHeadContainerWithNext", "statement_insertions_henshin_text::HenshinDSL::DeleteBetweenContainerWithNext", "statement_insertions_henshin_text::HenshinDSL::DeleteLastContainer", "HenshinDSL::InsertContainerIntoEmptyBody", "HenshinDSL::InsertContainerBeforeBodyHead", "HenshinDSL::InsertContainerBetweenNext", "HenshinDSL::InsertContainerAfterLast", "HenshinDSL::InsertContainerAnywhere", "HenshinDSL::PopulateEmptyContainerWithAtomic", "HenshinDSL::PopulateEmptyContainerWithLoop", "HenshinDSL::PopulateEmptyContainerWithIf", "HenshinDSL::PopulateAnyEmptyContainer", "HenshinDSL::DeleteOnlyContainerFromBody", "HenshinDSL::DeleteHeadContainerWithNext", "HenshinDSL::DeleteBetweenContainerWithNext", "HenshinDSL::DeleteLastContainer", "HenshinDSL.InsertContainerIntoEmptyBody", "HenshinDSL.InsertContainerBeforeBodyHead", "HenshinDSL.InsertContainerBetweenNext", "HenshinDSL.InsertContainerAfterLast", "HenshinDSL.InsertContainerAnywhere", "HenshinDSL.PopulateEmptyContainerWithAtomic", "HenshinDSL.PopulateEmptyContainerWithLoop", "HenshinDSL.PopulateEmptyContainerWithIf", "HenshinDSL.PopulateAnyEmptyContainer", "HenshinDSL.DeleteOnlyContainerFromBody", "HenshinDSL.DeleteHeadContainerWithNext", "HenshinDSL.DeleteBetweenContainerWithNext", "HenshinDSL.DeleteLastContainer" };
+  protected final String[] unitsToRemove = new String[] { "statement_insertions_henshin_text::InsertContainerIntoEmptyBody", "statement_insertions_henshin_text::InsertContainerBeforeBodyHead", "statement_insertions_henshin_text::InsertContainerBetweenNext", "statement_insertions_henshin_text::InsertContainerAfterLast", "statement_insertions_henshin_text::InsertContainerAnywhere", "statement_insertions_henshin_text::PopulateEmptyContainerWithAtomic", "statement_insertions_henshin_text::PopulateEmptyContainerWithLoop", "statement_insertions_henshin_text::PopulateEmptyContainerWithIf", "statement_insertions_henshin_text::PopulateAnyEmptyContainer", "statement_insertions_henshin_text::DeleteOnlyContainerFromBody", "statement_insertions_henshin_text::DeleteHeadContainerWithNext", "statement_insertions_henshin_text::DeleteBetweenContainerWithNext", "statement_insertions_henshin_text::DeleteLastContainer", "statement_insertions_no_loops::InsertContainerIntoEmptyBody", "statement_insertions_no_loops::InsertContainerBeforeBodyHead", "statement_insertions_no_loops::InsertContainerBetweenNext", "statement_insertions_no_loops::InsertContainerAfterLast", "statement_insertions_no_loops::InsertContainerAnywhere", "statement_insertions_no_loops::PopulateEmptyContainerWithAtomic", "statement_insertions_no_loops::PopulateEmptyContainerWithLoop", "statement_insertions_no_loops::PopulateEmptyContainerWithIf", "statement_insertions_no_loops::PopulateAnyEmptyContainer", "statement_insertions_no_loops::DeleteOnlyContainerFromBody", "statement_insertions_no_loops::DeleteHeadContainerWithNext", "statement_insertions_no_loops::DeleteBetweenContainerWithNext", "statement_insertions_no_loops::DeleteLastContainer", "statement_insertions_no_conds::InsertContainerIntoEmptyBody", "statement_insertions_no_conds::InsertContainerBeforeBodyHead", "statement_insertions_no_conds::InsertContainerBetweenNext", "statement_insertions_no_conds::InsertContainerAfterLast", "statement_insertions_no_conds::InsertContainerAnywhere", "statement_insertions_no_conds::PopulateEmptyContainerWithAtomic", "statement_insertions_no_conds::PopulateEmptyContainerWithLoop", "statement_insertions_no_conds::PopulateEmptyContainerWithIf", "statement_insertions_no_conds::PopulateAnyEmptyContainer", "statement_insertions_no_conds::DeleteOnlyContainerFromBody", "statement_insertions_no_conds::DeleteHeadContainerWithNext", "statement_insertions_no_conds::DeleteBetweenContainerWithNext", "statement_insertions_no_conds::DeleteLastContainer", "statement_insertions_atomic_only::InsertContainerIntoEmptyBody", "statement_insertions_atomic_only::InsertContainerBeforeBodyHead", "statement_insertions_atomic_only::InsertContainerBetweenNext", "statement_insertions_atomic_only::InsertContainerAfterLast", "statement_insertions_atomic_only::InsertContainerAnywhere", "statement_insertions_atomic_only::PopulateEmptyContainerWithAtomic", "statement_insertions_atomic_only::PopulateEmptyContainerWithLoop", "statement_insertions_atomic_only::PopulateEmptyContainerWithIf", "statement_insertions_atomic_only::PopulateAnyEmptyContainer", "statement_insertions_atomic_only::DeleteOnlyContainerFromBody", "statement_insertions_atomic_only::DeleteHeadContainerWithNext", "statement_insertions_atomic_only::DeleteBetweenContainerWithNext", "statement_insertions_atomic_only::DeleteLastContainer", "InsertContainerIntoEmptyBody", "InsertContainerBeforeBodyHead", "InsertContainerBetweenNext", "InsertContainerAfterLast", "InsertContainerAnywhere", "PopulateEmptyContainerWithAtomic", "PopulateEmptyContainerWithLoop", "PopulateEmptyContainerWithIf", "PopulateAnyEmptyContainer", "DeleteOnlyContainerFromBody", "DeleteHeadContainerWithNext", "DeleteBetweenContainerWithNext", "DeleteLastContainer", "statement_insertions_henshin_text.InsertContainerIntoEmptyBody", "statement_insertions_henshin_text.InsertContainerBeforeBodyHead", "statement_insertions_henshin_text.InsertContainerBetweenNext", "statement_insertions_henshin_text.InsertContainerAfterLast", "statement_insertions_henshin_text.InsertContainerAnywhere", "statement_insertions_henshin_text.PopulateEmptyContainerWithAtomic", "statement_insertions_henshin_text.PopulateEmptyContainerWithLoop", "statement_insertions_henshin_text.PopulateEmptyContainerWithIf", "statement_insertions_henshin_text.PopulateAnyEmptyContainer", "statement_insertions_henshin_text.DeleteOnlyContainerFromBody", "statement_insertions_henshin_text.DeleteHeadContainerWithNext", "statement_insertions_henshin_text.DeleteBetweenContainerWithNext", "statement_insertions_henshin_text.DeleteLastContainer", "statement_insertions_no_loops.InsertContainerIntoEmptyBody", "statement_insertions_no_loops.InsertContainerBeforeBodyHead", "statement_insertions_no_loops.InsertContainerBetweenNext", "statement_insertions_no_loops.InsertContainerAfterLast", "statement_insertions_no_loops.InsertContainerAnywhere", "statement_insertions_no_loops.PopulateEmptyContainerWithAtomic", "statement_insertions_no_loops.PopulateEmptyContainerWithLoop", "statement_insertions_no_loops.PopulateEmptyContainerWithIf", "statement_insertions_no_loops.PopulateAnyEmptyContainer", "statement_insertions_no_loops.DeleteOnlyContainerFromBody", "statement_insertions_no_loops.DeleteHeadContainerWithNext", "statement_insertions_no_loops.DeleteBetweenContainerWithNext", "statement_insertions_no_loops.DeleteLastContainer", "statement_insertions_no_conds.InsertContainerIntoEmptyBody", "statement_insertions_no_conds.InsertContainerBeforeBodyHead", "statement_insertions_no_conds.InsertContainerBetweenNext", "statement_insertions_no_conds.InsertContainerAfterLast", "statement_insertions_no_conds.InsertContainerAnywhere", "statement_insertions_no_conds.PopulateEmptyContainerWithAtomic", "statement_insertions_no_conds.PopulateEmptyContainerWithLoop", "statement_insertions_no_conds.PopulateEmptyContainerWithIf", "statement_insertions_no_conds.PopulateAnyEmptyContainer", "statement_insertions_no_conds.DeleteOnlyContainerFromBody", "statement_insertions_no_conds.DeleteHeadContainerWithNext", "statement_insertions_no_conds.DeleteBetweenContainerWithNext", "statement_insertions_no_conds.DeleteLastContainer", "statement_insertions_atomic_only.InsertContainerIntoEmptyBody", "statement_insertions_atomic_only.InsertContainerBeforeBodyHead", "statement_insertions_atomic_only.InsertContainerBetweenNext", "statement_insertions_atomic_only.InsertContainerAfterLast", "statement_insertions_atomic_only.InsertContainerAnywhere", "statement_insertions_atomic_only.PopulateEmptyContainerWithAtomic", "statement_insertions_atomic_only.PopulateEmptyContainerWithLoop", "statement_insertions_atomic_only.PopulateEmptyContainerWithIf", "statement_insertions_atomic_only.PopulateAnyEmptyContainer", "statement_insertions_atomic_only.DeleteOnlyContainerFromBody", "statement_insertions_atomic_only.DeleteHeadContainerWithNext", "statement_insertions_atomic_only.DeleteBetweenContainerWithNext", "statement_insertions_atomic_only.DeleteLastContainer", "statement_insertions_henshin_text::HenshinDSL::InsertContainerIntoEmptyBody", "statement_insertions_henshin_text::HenshinDSL::InsertContainerBeforeBodyHead", "statement_insertions_henshin_text::HenshinDSL::InsertContainerBetweenNext", "statement_insertions_henshin_text::HenshinDSL::InsertContainerAfterLast", "statement_insertions_henshin_text::HenshinDSL::InsertContainerAnywhere", "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithAtomic", "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithLoop", "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithIf", "statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer", "statement_insertions_henshin_text::HenshinDSL::DeleteOnlyContainerFromBody", "statement_insertions_henshin_text::HenshinDSL::DeleteHeadContainerWithNext", "statement_insertions_henshin_text::HenshinDSL::DeleteBetweenContainerWithNext", "statement_insertions_henshin_text::HenshinDSL::DeleteLastContainer", "statement_insertions_no_loops::HenshinDSL::InsertContainerIntoEmptyBody", "statement_insertions_no_loops::HenshinDSL::InsertContainerBeforeBodyHead", "statement_insertions_no_loops::HenshinDSL::InsertContainerBetweenNext", "statement_insertions_no_loops::HenshinDSL::InsertContainerAfterLast", "statement_insertions_no_loops::HenshinDSL::InsertContainerAnywhere", "statement_insertions_no_loops::HenshinDSL::PopulateEmptyContainerWithAtomic", "statement_insertions_no_loops::HenshinDSL::PopulateEmptyContainerWithLoop", "statement_insertions_no_loops::HenshinDSL::PopulateEmptyContainerWithIf", "statement_insertions_no_loops::HenshinDSL::PopulateAnyEmptyContainer", "statement_insertions_no_loops::HenshinDSL::DeleteOnlyContainerFromBody", "statement_insertions_no_loops::HenshinDSL::DeleteHeadContainerWithNext", "statement_insertions_no_loops::HenshinDSL::DeleteBetweenContainerWithNext", "statement_insertions_no_loops::HenshinDSL::DeleteLastContainer", "statement_insertions_no_conds::HenshinDSL::InsertContainerIntoEmptyBody", "statement_insertions_no_conds::HenshinDSL::InsertContainerBeforeBodyHead", "statement_insertions_no_conds::HenshinDSL::InsertContainerBetweenNext", "statement_insertions_no_conds::HenshinDSL::InsertContainerAfterLast", "statement_insertions_no_conds::HenshinDSL::InsertContainerAnywhere", "statement_insertions_no_conds::HenshinDSL::PopulateEmptyContainerWithAtomic", "statement_insertions_no_conds::HenshinDSL::PopulateEmptyContainerWithLoop", "statement_insertions_no_conds::HenshinDSL::PopulateEmptyContainerWithIf", "statement_insertions_no_conds::HenshinDSL::PopulateAnyEmptyContainer", "statement_insertions_no_conds::HenshinDSL::DeleteOnlyContainerFromBody", "statement_insertions_no_conds::HenshinDSL::DeleteHeadContainerWithNext", "statement_insertions_no_conds::HenshinDSL::DeleteBetweenContainerWithNext", "statement_insertions_no_conds::HenshinDSL::DeleteLastContainer", "statement_insertions_atomic_only::HenshinDSL::InsertContainerIntoEmptyBody", "statement_insertions_atomic_only::HenshinDSL::InsertContainerBeforeBodyHead", "statement_insertions_atomic_only::HenshinDSL::InsertContainerBetweenNext", "statement_insertions_atomic_only::HenshinDSL::InsertContainerAfterLast", "statement_insertions_atomic_only::HenshinDSL::InsertContainerAnywhere", "statement_insertions_atomic_only::HenshinDSL::PopulateEmptyContainerWithAtomic", "statement_insertions_atomic_only::HenshinDSL::PopulateEmptyContainerWithLoop", "statement_insertions_atomic_only::HenshinDSL::PopulateEmptyContainerWithIf", "statement_insertions_atomic_only::HenshinDSL::PopulateAnyEmptyContainer", "statement_insertions_atomic_only::HenshinDSL::DeleteOnlyContainerFromBody", "statement_insertions_atomic_only::HenshinDSL::DeleteHeadContainerWithNext", "statement_insertions_atomic_only::HenshinDSL::DeleteBetweenContainerWithNext", "statement_insertions_atomic_only::HenshinDSL::DeleteLastContainer", "HenshinDSL::InsertContainerIntoEmptyBody", "HenshinDSL::InsertContainerBeforeBodyHead", "HenshinDSL::InsertContainerBetweenNext", "HenshinDSL::InsertContainerAfterLast", "HenshinDSL::InsertContainerAnywhere", "HenshinDSL::PopulateEmptyContainerWithAtomic", "HenshinDSL::PopulateEmptyContainerWithLoop", "HenshinDSL::PopulateEmptyContainerWithIf", "HenshinDSL::PopulateAnyEmptyContainer", "HenshinDSL::DeleteOnlyContainerFromBody", "HenshinDSL::DeleteHeadContainerWithNext", "HenshinDSL::DeleteBetweenContainerWithNext", "HenshinDSL::DeleteLastContainer", "HenshinDSL.InsertContainerIntoEmptyBody", "HenshinDSL.InsertContainerBeforeBodyHead", "HenshinDSL.InsertContainerBetweenNext", "HenshinDSL.InsertContainerAfterLast", "HenshinDSL.InsertContainerAnywhere", "HenshinDSL.PopulateEmptyContainerWithAtomic", "HenshinDSL.PopulateEmptyContainerWithLoop", "HenshinDSL.PopulateEmptyContainerWithIf", "HenshinDSL.PopulateAnyEmptyContainer", "HenshinDSL.DeleteOnlyContainerFromBody", "HenshinDSL.DeleteHeadContainerWithNext", "HenshinDSL.DeleteBetweenContainerWithNext", "HenshinDSL.DeleteLastContainer" };
 
   protected final IEGraphMultiDimensionalFitnessFunction fitnessFunction = new EnumParamPreprocessFitnessFunction();
 
@@ -62,61 +63,125 @@ public class blocky {
 
   protected final String _parameterValueKey_1 = "HenshinDSL.CreateThenInsertContainerThenPopulate.cnd";
 
-  protected final String _parameterValueKey_2 = "HenshinDSL::CreateThenInsertContainerThenPopulate::k";
+  protected final String _parameterValueKey_2 = "statement_insertions_henshin_text.CreateThenInsertContainerThenPopulate.k";
 
-  protected final String _parameterValueKey_3 = "HenshinDSL::CreateThenInsertContainerThenPopulate::cnd";
+  protected final String _parameterValueKey_3 = "statement_insertions_henshin_text.CreateThenInsertContainerThenPopulate.cnd";
 
-  protected final String _parameterValueKey_4 = "CreateThenInsertContainerThenPopulate::k";
+  protected final String _parameterValueKey_4 = "statement_insertions_no_loops.CreateThenInsertContainerThenPopulate.k";
 
-  protected final String _parameterValueKey_5 = "CreateThenInsertContainerThenPopulate::cnd";
+  protected final String _parameterValueKey_5 = "statement_insertions_no_loops.CreateThenInsertContainerThenPopulate.cnd";
 
-  protected final String _parameterValueKey_6 = "HenshinDSL.CreateThenInsertContainerThenPopulate::k";
+  protected final String _parameterValueKey_6 = "statement_insertions_no_conds.CreateThenInsertContainerThenPopulate.k";
 
-  protected final String _parameterValueKey_7 = "HenshinDSL.CreateThenInsertContainerThenPopulate::cnd";
+  protected final String _parameterValueKey_7 = "statement_insertions_no_conds.CreateThenInsertContainerThenPopulate.cnd";
 
-  protected final String _parameterValueKey_8 = "HenshinDSL.PopulateAnyEmptyContainer.k";
+  protected final String _parameterValueKey_8 = "statement_insertions_atomic_only.CreateThenInsertContainerThenPopulate.k";
 
-  protected final String _parameterValueKey_9 = "HenshinDSL.PopulateAnyEmptyContainer.cnd";
+  protected final String _parameterValueKey_9 = "statement_insertions_atomic_only.CreateThenInsertContainerThenPopulate.cnd";
 
-  protected final String _parameterValueKey_10 = "HenshinDSL.PopulateEmptyContainerWithAtomic.k";
+  protected final String _parameterValueKey_10 = "HenshinDSL::CreateThenInsertContainerThenPopulate::k";
 
-  protected final String _parameterValueKey_11 = "HenshinDSL.PopulateEmptyContainerWithIf.cnd";
+  protected final String _parameterValueKey_11 = "HenshinDSL::CreateThenInsertContainerThenPopulate::cnd";
 
-  protected final String _parameterValueKey_12 = "CreateThenInsertContainerThenPopulate.k";
+  protected final String _parameterValueKey_12 = "CreateThenInsertContainerThenPopulate::k";
 
-  protected final String _parameterValueKey_13 = "CreateThenInsertContainerThenPopulate.cnd";
+  protected final String _parameterValueKey_13 = "CreateThenInsertContainerThenPopulate::cnd";
 
-  protected final String _parameterValueKey_14 = "PopulateAnyEmptyContainer.k";
+  protected final String _parameterValueKey_14 = "HenshinDSL.CreateThenInsertContainerThenPopulate::k";
 
-  protected final String _parameterValueKey_15 = "PopulateAnyEmptyContainer.cnd";
+  protected final String _parameterValueKey_15 = "HenshinDSL.CreateThenInsertContainerThenPopulate::cnd";
 
-  protected final String _parameterValueKey_16 = "PopulateEmptyContainerWithAtomic.k";
+  protected final String _parameterValueKey_16 = "HenshinDSL.PopulateAnyEmptyContainer.k";
 
-  protected final String _parameterValueKey_17 = "PopulateEmptyContainerWithIf.cnd";
+  protected final String _parameterValueKey_17 = "HenshinDSL.PopulateAnyEmptyContainer.cnd";
 
-  protected final String _parameterValueKey_18 = "statement_insertions_henshin_text::CreateThenInsertContainerThenPopulate::k";
+  protected final String _parameterValueKey_18 = "HenshinDSL.PopulateEmptyContainerWithAtomic.k";
 
-  protected final String _parameterValueKey_19 = "statement_insertions_henshin_text::CreateThenInsertContainerThenPopulate::cnd";
+  protected final String _parameterValueKey_19 = "HenshinDSL.PopulateEmptyContainerWithIf.cnd";
 
-  protected final String _parameterValueKey_20 = "statement_insertions_henshin_text::HenshinDSL::CreateThenInsertContainerThenPopulate::k";
+  protected final String _parameterValueKey_20 = "CreateThenInsertContainerThenPopulate.k";
 
-  protected final String _parameterValueKey_21 = "statement_insertions_henshin_text::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd";
+  protected final String _parameterValueKey_21 = "CreateThenInsertContainerThenPopulate.cnd";
 
-  protected final String _parameterValueKey_22 = "statement_insertions_henshin_text::PopulateAnyEmptyContainer::k";
+  protected final String _parameterValueKey_22 = "PopulateAnyEmptyContainer.k";
 
-  protected final String _parameterValueKey_23 = "statement_insertions_henshin_text::PopulateAnyEmptyContainer::cnd";
+  protected final String _parameterValueKey_23 = "PopulateAnyEmptyContainer.cnd";
 
-  protected final String _parameterValueKey_24 = "statement_insertions_henshin_text::PopulateEmptyContainerWithAtomic::k";
+  protected final String _parameterValueKey_24 = "PopulateEmptyContainerWithAtomic.k";
 
-  protected final String _parameterValueKey_25 = "statement_insertions_henshin_text::PopulateEmptyContainerWithIf::cnd";
+  protected final String _parameterValueKey_25 = "PopulateEmptyContainerWithIf.cnd";
 
-  protected final String _parameterValueKey_26 = "statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer::k";
+  protected final String _parameterValueKey_26 = "statement_insertions_henshin_text::CreateThenInsertContainerThenPopulate::k";
 
-  protected final String _parameterValueKey_27 = "statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer::cnd";
+  protected final String _parameterValueKey_27 = "statement_insertions_henshin_text::CreateThenInsertContainerThenPopulate::cnd";
 
-  protected final String _parameterValueKey_28 = "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithAtomic::k";
+  protected final String _parameterValueKey_28 = "statement_insertions_henshin_text::HenshinDSL::CreateThenInsertContainerThenPopulate::k";
 
-  protected final String _parameterValueKey_29 = "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithIf::cnd";
+  protected final String _parameterValueKey_29 = "statement_insertions_henshin_text::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd";
+
+  protected final String _parameterValueKey_30 = "statement_insertions_no_loops::CreateThenInsertContainerThenPopulate::k";
+
+  protected final String _parameterValueKey_31 = "statement_insertions_no_loops::CreateThenInsertContainerThenPopulate::cnd";
+
+  protected final String _parameterValueKey_32 = "statement_insertions_no_loops::HenshinDSL::CreateThenInsertContainerThenPopulate::k";
+
+  protected final String _parameterValueKey_33 = "statement_insertions_no_loops::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd";
+
+  protected final String _parameterValueKey_34 = "statement_insertions_no_conds::CreateThenInsertContainerThenPopulate::k";
+
+  protected final String _parameterValueKey_35 = "statement_insertions_no_conds::CreateThenInsertContainerThenPopulate::cnd";
+
+  protected final String _parameterValueKey_36 = "statement_insertions_no_conds::HenshinDSL::CreateThenInsertContainerThenPopulate::k";
+
+  protected final String _parameterValueKey_37 = "statement_insertions_no_conds::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd";
+
+  protected final String _parameterValueKey_38 = "statement_insertions_atomic_only::CreateThenInsertContainerThenPopulate::k";
+
+  protected final String _parameterValueKey_39 = "statement_insertions_atomic_only::CreateThenInsertContainerThenPopulate::cnd";
+
+  protected final String _parameterValueKey_40 = "statement_insertions_atomic_only::HenshinDSL::CreateThenInsertContainerThenPopulate::k";
+
+  protected final String _parameterValueKey_41 = "statement_insertions_atomic_only::HenshinDSL::CreateThenInsertContainerThenPopulate::cnd";
+
+  protected final String _parameterValueKey_42 = "statement_insertions_henshin_text::PopulateAnyEmptyContainer::k";
+
+  protected final String _parameterValueKey_43 = "statement_insertions_henshin_text::PopulateAnyEmptyContainer::cnd";
+
+  protected final String _parameterValueKey_44 = "statement_insertions_henshin_text::PopulateEmptyContainerWithAtomic::k";
+
+  protected final String _parameterValueKey_45 = "statement_insertions_henshin_text::PopulateEmptyContainerWithIf::cnd";
+
+  protected final String _parameterValueKey_46 = "statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer::k";
+
+  protected final String _parameterValueKey_47 = "statement_insertions_henshin_text::HenshinDSL::PopulateAnyEmptyContainer::cnd";
+
+  protected final String _parameterValueKey_48 = "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithAtomic::k";
+
+  protected final String _parameterValueKey_49 = "statement_insertions_henshin_text::HenshinDSL::PopulateEmptyContainerWithIf::cnd";
+
+  protected final String _parameterValueKey_50 = "statement_insertions_no_loops::PopulateAnyEmptyContainer::k";
+
+  protected final String _parameterValueKey_51 = "statement_insertions_no_loops::PopulateAnyEmptyContainer::cnd";
+
+  protected final String _parameterValueKey_52 = "statement_insertions_no_loops::HenshinDSL::PopulateAnyEmptyContainer::k";
+
+  protected final String _parameterValueKey_53 = "statement_insertions_no_loops::HenshinDSL::PopulateAnyEmptyContainer::cnd";
+
+  protected final String _parameterValueKey_54 = "statement_insertions_no_conds::PopulateAnyEmptyContainer::k";
+
+  protected final String _parameterValueKey_55 = "statement_insertions_no_conds::PopulateAnyEmptyContainer::cnd";
+
+  protected final String _parameterValueKey_56 = "statement_insertions_no_conds::HenshinDSL::PopulateAnyEmptyContainer::k";
+
+  protected final String _parameterValueKey_57 = "statement_insertions_no_conds::HenshinDSL::PopulateAnyEmptyContainer::cnd";
+
+  protected final String _parameterValueKey_58 = "statement_insertions_atomic_only::PopulateAnyEmptyContainer::k";
+
+  protected final String _parameterValueKey_59 = "statement_insertions_atomic_only::PopulateAnyEmptyContainer::cnd";
+
+  protected final String _parameterValueKey_60 = "statement_insertions_atomic_only::HenshinDSL::PopulateAnyEmptyContainer::k";
+
+  protected final String _parameterValueKey_61 = "statement_insertions_atomic_only::HenshinDSL::PopulateAnyEmptyContainer::cnd";
 
   protected final ITransformationRepairer solutionRepairer = new TransformationPlaceholderRepairer();
 
@@ -278,6 +343,166 @@ public class blocky {
     return _randomConditionKindLiteralValue;
   }
 
+  protected IParameterValue<?> _createParameterValue_30() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_31() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_32() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_33() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_34() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_35() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_36() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_37() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_38() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_39() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_40() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_41() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_42() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_43() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_44() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_45() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_46() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_47() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_48() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_49() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_50() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_51() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_52() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_53() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_54() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_55() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_56() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_57() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_58() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_59() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_60() {
+    RandomAtomicKindLiteralValue _randomAtomicKindLiteralValue = new RandomAtomicKindLiteralValue();
+    return _randomAtomicKindLiteralValue;
+  }
+
+  protected IParameterValue<?> _createParameterValue_61() {
+    RandomConditionKindLiteralValue _randomConditionKindLiteralValue = new RandomConditionKindLiteralValue();
+    return _randomConditionKindLiteralValue;
+  }
+
   protected double _createObjectiveHelper_0(final TransformationSolution solution, final EGraph graph, final EObject root) {
     double _xtrycatchfinallyexpression = (double) 0;
     try {
@@ -396,8 +621,74 @@ public class blocky {
         if (_equals) {
           _xifexpression_1 = 100000.0;
         } else {
-          int _stepsToGoalOrPenalty = BlockySimulator.stepsToGoalOrPenalty(level);
-          _xifexpression_1 = ((double) _stepsToGoalOrPenalty);
+          double _xblockexpression_1 = (double) 0;
+          {
+            int _distanceToGoalOrPenalty = BlockySimulator.distanceToGoalOrPenalty(level);
+            final double d = ((double) _distanceToGoalOrPenalty);
+            double _xifexpression_2 = (double) 0;
+            if ((d > 0.0)) {
+              _xifexpression_2 = (1000.0 + d);
+            } else {
+              int _stepsToGoalOrPenalty = BlockySimulator.stepsToGoalOrPenalty(level);
+              _xifexpression_2 = ((double) _stepsToGoalOrPenalty);
+            }
+            _xblockexpression_1 = _xifexpression_2;
+          }
+          _xifexpression_1 = _xblockexpression_1;
+        }
+        final double v = _xifexpression_1;
+        double _xifexpression_2 = (double) 0;
+        boolean _isFinite = Double.isFinite(v);
+        if (_isFinite) {
+          _xifexpression_2 = v;
+        } else {
+          _xifexpression_2 = 1000000.0;
+        }
+        _xblockexpression = _xifexpression_2;
+      }
+      _xtrycatchfinallyexpression = _xblockexpression;
+    } catch (final Throwable _t) {
+      if (_t instanceof Throwable) {
+        _xtrycatchfinallyexpression = 1000000.0;
+      } else {
+        throw Exceptions.sneakyThrow(_t);
+      }
+    }
+    return _xtrycatchfinallyexpression;
+  }
+
+  protected IFitnessDimension<TransformationSolution> _createObjective_2(final TransformationSearchOrchestration orchestration) {
+    return new AbstractEGraphFitnessDimension("ShortestPath", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
+       @Override
+       protected double internalEvaluate(TransformationSolution solution) {
+          EGraph graph = solution.execute();
+          EObject root = MomotUtil.getRoot(graph);
+          return _createObjectiveHelper_2(solution, graph, root);
+       }
+    };
+  }
+
+  protected double _createObjectiveHelper_3(final TransformationSolution solution, final EGraph graph, final EObject root) {
+    double _xtrycatchfinallyexpression = (double) 0;
+    try {
+      double _xblockexpression = (double) 0;
+      {
+        final Game game = ((Game) root);
+        Level _xifexpression = null;
+        boolean _isEmpty = game.getLevels().isEmpty();
+        if (_isEmpty) {
+          _xifexpression = null;
+        } else {
+          _xifexpression = game.getLevels().get(0);
+        }
+        final Level level = _xifexpression;
+        double _xifexpression_1 = (double) 0;
+        boolean _equals = Objects.equals(level, null);
+        if (_equals) {
+          _xifexpression_1 = 100000.0;
+        } else {
+          int _closestToGoalOrPenalty = BlockySimulator.closestToGoalOrPenalty(level, 100000);
+          _xifexpression_1 = ((double) _closestToGoalOrPenalty);
         }
         final double v = _xifexpression_1;
         double _xifexpression_2 = (double) 0;
@@ -420,13 +711,13 @@ public class blocky {
     return _xtrycatchfinallyexpression;
   }
 
-  protected IFitnessDimension<TransformationSolution> _createObjective_2(final TransformationSearchOrchestration orchestration) {
-    return new AbstractEGraphFitnessDimension("ShortestPath", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
+  protected IFitnessDimension<TransformationSolution> _createObjective_3(final TransformationSearchOrchestration orchestration) {
+    return new AbstractEGraphFitnessDimension("closestToGoal", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
        @Override
        protected double internalEvaluate(TransformationSolution solution) {
           EGraph graph = solution.execute();
           EObject root = MomotUtil.getRoot(graph);
-          return _createObjectiveHelper_2(solution, graph, root);
+          return _createObjectiveHelper_3(solution, graph, root);
        }
     };
   }
@@ -467,6 +758,38 @@ public class blocky {
     manager.setParameterValue(_parameterValueKey_27, _createParameterValue_27());
     manager.setParameterValue(_parameterValueKey_28, _createParameterValue_28());
     manager.setParameterValue(_parameterValueKey_29, _createParameterValue_29());
+    manager.setParameterValue(_parameterValueKey_30, _createParameterValue_30());
+    manager.setParameterValue(_parameterValueKey_31, _createParameterValue_31());
+    manager.setParameterValue(_parameterValueKey_32, _createParameterValue_32());
+    manager.setParameterValue(_parameterValueKey_33, _createParameterValue_33());
+    manager.setParameterValue(_parameterValueKey_34, _createParameterValue_34());
+    manager.setParameterValue(_parameterValueKey_35, _createParameterValue_35());
+    manager.setParameterValue(_parameterValueKey_36, _createParameterValue_36());
+    manager.setParameterValue(_parameterValueKey_37, _createParameterValue_37());
+    manager.setParameterValue(_parameterValueKey_38, _createParameterValue_38());
+    manager.setParameterValue(_parameterValueKey_39, _createParameterValue_39());
+    manager.setParameterValue(_parameterValueKey_40, _createParameterValue_40());
+    manager.setParameterValue(_parameterValueKey_41, _createParameterValue_41());
+    manager.setParameterValue(_parameterValueKey_42, _createParameterValue_42());
+    manager.setParameterValue(_parameterValueKey_43, _createParameterValue_43());
+    manager.setParameterValue(_parameterValueKey_44, _createParameterValue_44());
+    manager.setParameterValue(_parameterValueKey_45, _createParameterValue_45());
+    manager.setParameterValue(_parameterValueKey_46, _createParameterValue_46());
+    manager.setParameterValue(_parameterValueKey_47, _createParameterValue_47());
+    manager.setParameterValue(_parameterValueKey_48, _createParameterValue_48());
+    manager.setParameterValue(_parameterValueKey_49, _createParameterValue_49());
+    manager.setParameterValue(_parameterValueKey_50, _createParameterValue_50());
+    manager.setParameterValue(_parameterValueKey_51, _createParameterValue_51());
+    manager.setParameterValue(_parameterValueKey_52, _createParameterValue_52());
+    manager.setParameterValue(_parameterValueKey_53, _createParameterValue_53());
+    manager.setParameterValue(_parameterValueKey_54, _createParameterValue_54());
+    manager.setParameterValue(_parameterValueKey_55, _createParameterValue_55());
+    manager.setParameterValue(_parameterValueKey_56, _createParameterValue_56());
+    manager.setParameterValue(_parameterValueKey_57, _createParameterValue_57());
+    manager.setParameterValue(_parameterValueKey_58, _createParameterValue_58());
+    manager.setParameterValue(_parameterValueKey_59, _createParameterValue_59());
+    manager.setParameterValue(_parameterValueKey_60, _createParameterValue_60());
+    manager.setParameterValue(_parameterValueKey_61, _createParameterValue_61());
     return manager;
   }
 
@@ -475,6 +798,7 @@ public class blocky {
     function.addObjective(_createObjective_0(orchestration));
     function.addObjective(_createObjective_1(orchestration));
     function.addObjective(_createObjective_2(orchestration));
+    function.addObjective(_createObjective_3(orchestration));
     function.setSolutionRepairer(solutionRepairer);
     return function;
   }
@@ -635,6 +959,19 @@ public class blocky {
     EPackage.Registry.INSTANCE.put(pkg.getName(), pkg);
     pkg.eClass();
     BlockyProgramDistance.initializeBaseline(blocky.input);
+    BlockySimulator.initialize(blocky.input);
+    final String seedStr = System.getProperty("blocky.seed", "0");
+    try {
+      final long seed = Long.parseLong(seedStr);
+      if ((seed != 0L)) {
+        PRNG.setSeed(seed);
+      }
+    } catch (final Throwable _t) {
+      if (_t instanceof Exception) {
+      } else {
+        throw Exceptions.sneakyThrow(_t);
+      }
+    }
   }
 
   public static void main(final String... args) {

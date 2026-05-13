@@ -341,13 +341,22 @@ public interface BlockyPackage extends EPackage {
 	int CELL__RIGHT = 6;
 
 	/**
+	 * The feature id for the '<em><b>Distance To Goal</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int CELL__DISTANCE_TO_GOAL = 7;
+
+	/**
 	 * The number of structural features of the '<em>Cell</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int CELL_FEATURE_COUNT = 7;
+	int CELL_FEATURE_COUNT = 8;
 
 	/**
 	 * The number of operations of the '<em>Cell</em>' class.
@@ -1103,6 +1112,17 @@ public interface BlockyPackage extends EPackage {
 	EReference getCell_Right();
 
 	/**
+	 * Returns the meta object for the attribute '{@link blocky.Cell#getDistanceToGoal <em>Distance To Goal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Distance To Goal</em>'.
+	 * @see blocky.Cell#getDistanceToGoal()
+	 * @see #getCell()
+	 * @generated
+	 */
+	EAttribute getCell_DistanceToGoal();
+
+	/**
 	 * Returns the meta object for class '{@link blocky.ExecutionTrace <em>Execution Trace</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1670,6 +1690,14 @@ public interface BlockyPackage extends EPackage {
 		 * @generated
 		 */
 		EReference CELL__RIGHT = eINSTANCE.getCell_Right();
+
+		/**
+		 * The meta object literal for the '<em><b>Distance To Goal</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute CELL__DISTANCE_TO_GOAL = eINSTANCE.getCell_DistanceToGoal();
 
 		/**
 		 * The meta object literal for the '{@link blocky.impl.ExecutionTraceImpl <em>Execution Trace</em>}' class.

@@ -192,4 +192,27 @@ public interface Cell extends EObject {
 	 */
 	void setRight(Cell value);
 
+	/**
+	 * Returns the value of the '<em><b>Distance To Goal</b></em>' attribute.
+	 * The default value is <code>"-1"</code>.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the value of the '<em>Distance To Goal</em>' attribute.
+	 * @see #setDistanceToGoal(int)
+	 * @see blocky.BlockyPackage#getCell_DistanceToGoal()
+	 * @model default="-1"
+	 * @generated
+	 */
+	int getDistanceToGoal();
+
+	/**
+	 * Sets the value of the '{@link blocky.Cell#getDistanceToGoal <em>Distance To Goal</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Distance To Goal</em>' attribute.
+	 * @see #getDistanceToGoal()
+	 * @generated
+	 */
+	void setDistanceToGoal(int value);
+
 } // Cell

@@ -4,6 +4,15 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.io.File;
+import java.io.IOException;
+
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 
 import blocky.AtomicStatement;
 import blocky.AtomicStatementKind;
@@ -145,6 +154,215 @@ public final class BlockySimulator {
             cur = cur.getNext();
         }
         return false;
+    }
+
+    /**
+     * Load the game model from the given path, annotate all cells in all levels with
+     * their distance to the goal, and save the model back to the same path.
+     * This is intended to be called during MOMoT initialization so that distance-to-goal
+     * values are pre-computed and stored in the model.
+     *
+     * @param gameXmiPath path to the game XMI file
+     */
+    public static void initialize(String gameXmiPath) {
+        // Ensure XMI is supported.
+        Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().putIfAbsent("xmi", new XMIResourceFactoryImpl());
+
+        // Register Blocky metamodel.
+        BlockyPackage pkg = BlockyPackage.eINSTANCE;
+        EPackage.Registry.INSTANCE.put(pkg.getNsURI(), pkg);
+        EPackage.Registry.INSTANCE.put(pkg.getName(), pkg);
+
+        ResourceSet rs = new ResourceSetImpl();
+        rs.getPackageRegistry().put(pkg.getNsURI(), pkg);
+        rs.getPackageRegistry().put(pkg.getName(), pkg);
+
+        URI uri;
+        File f = new File(gameXmiPath);
+        if (f.isAbsolute()) {
+            uri = URI.createFileURI(f.getAbsolutePath());
+        } else {
+            uri = URI.createFileURI(new File(System.getProperty("user.dir"), gameXmiPath).getAbsolutePath());
+        }
+
+        Resource r = rs.getResource(uri, true);
+        try {
+            r.load(null);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load game XMI for annotation: " + uri, e);
+        }
+
+        if (r.getContents().isEmpty() || !(r.getContents().get(0) instanceof blocky.Game)) {
+            return;
+        }
+
+        blocky.Game game = (blocky.Game) r.getContents().get(0);
+        for (Level level : game.getLevels()) {
+            annotateCells(level);
+        }
+
+        try {
+            r.save(null);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to save annotated game XMI: " + uri, e);
+        }
+    }
+
+    /**
+     * Computes the BFS distance-to-goal for every cell in the level's map and
+     * sets the 'distanceToGoal' attribute on each Cell object.
+     *
+     * @param level the level to annotate
+     */
+    public static void annotateCells(Level level) {
+        if (level == null || level.getMap() == null) {
+            return;
+        }
+        GridMap map = level.getMap();
+        CellType goalType = determineWinCellType(level);
+        Map<Cell, Integer> dist = computeDistanceField(map, goalType);
+
+        for (Cell c : map.getCells()) {
+            if (c == null) continue;
+            Integer d = dist.get(c);
+            c.setDistanceToGoal(d != null ? d : -1);
+        }
+    }
+
+    /**
+     * Executes the level's solution and returns the minimum 'distanceToGoal' value
+     * encountered on any visited cell. Uses the pre-annotated distance values.
+     *
+     * @param level the level to simulate
+     * @param penalty value to return if no goal is reachable or level is invalid
+     * @return minimum distance to goal encountered during simulation
+     */
+    public static int closestToGoalOrPenalty(Level level, int penalty) {
+        if (level == null || level.getMap() == null) {
+            return penalty;
+        }
+        Body solution = level.getSolution();
+        if (solution == null) {
+            return penalty;
+        }
+        if (ENFORCE_CONSTRAINTS && violatesLevelConstraints(level, solution)) {
+            return penalty;
+        }
+
+        GridMap map = level.getMap();
+        Cell startCell = null;
+        for (Cell c : map.getCells()) {
+            if (c.getType() == CellType.START) {
+                startCell = c;
+                break;
+            }
+        }
+        if (startCell == null) {
+            startCell = map.getCells().isEmpty() ? null : map.getCells().get(0);
+        }
+        if (startCell == null) {
+            return penalty;
+        }
+
+        Direction startDir = determineStartOrientation(level, startCell);
+        GameState state = BlockyFactory.eINSTANCE.createGameState();
+        state.setStep(0);
+        state.setPosition(startCell);
+        state.setOrientation(startDir);
+        state.setStatus(GameStatus.RUNNING);
+
+        final CellType winCellType = determineWinCellType(level);
+        ExecResult r = executeBodyLiteWithAnnotatedDistance(solution, state, level, winCellType);
+
+        if (r == null || r.minDistance == Integer.MAX_VALUE) {
+            return penalty;
+        }
+        return r.minDistance;
+    }
+
+    private static ExecResult executeBodyLiteWithAnnotatedDistance(
+            Body body,
+            GameState state,
+            Level level,
+            CellType winCellType) {
+        if (body == null) return new ExecResult(state, annotatedDistanceAt(state, Integer.MAX_VALUE));
+        return executeContainerChainLiteWithAnnotatedDistance(body.getFirstContainer(), state, level, winCellType, Integer.MAX_VALUE);
+    }
+
+    private static ExecResult executeContainerChainLiteWithAnnotatedDistance(
+            Container first,
+            GameState state,
+            Level level,
+            CellType winCellType,
+            int currentMin) {
+        Container current = first;
+        GameState last = state;
+        int min = annotatedDistanceAt(last, currentMin);
+        while (current != null && last.getStatus() == GameStatus.RUNNING && min != 0) {
+            Statement stmt = current.getStatement();
+            ExecResult r = executeSingleLiteWithAnnotatedDistance(stmt, last, level, winCellType, min);
+            last = r.last;
+            min = r.minDistance;
+            current = current.getNext();
+        }
+        return new ExecResult(last, min);
+    }
+
+    private static ExecResult executeSingleLiteWithAnnotatedDistance(
+            Statement stmt,
+            GameState prev,
+            Level level,
+            CellType winCellType,
+            int currentMin) {
+        GameState next = executeSingleLite(stmt, prev, level, winCellType);
+        int min = annotatedDistanceAt(next, currentMin);
+        if (min == 0 || next.getStatus() != GameStatus.RUNNING || stmt == null) {
+            return new ExecResult(next, min);
+        }
+
+        if (stmt instanceof Loop) {
+            Loop r = (Loop) stmt;
+            GameState loop = next;
+            int loopMin = min;
+            GridMap map = level.getMap();
+            int maxSteps = map.getWidth() * map.getHeight() * 2;
+            while (loop.getStatus() == GameStatus.RUNNING && loop.getPosition().getType() != winCellType && loopMin != 0) {
+                if (loop.getStep() > maxSteps) {
+                    loop.setStatus(GameStatus.CRASHED);
+                    break;
+                }
+                int previousStep = loop.getStep();
+                ExecResult inner = executeBodyLiteWithAnnotatedDistance(r.getBody(), loop, level, winCellType);
+                loop = inner.last;
+                loopMin = inner.minDistance;
+                if (loop.getStep() == previousStep) {
+                    loop.setStatus(GameStatus.CRASHED);
+                    break;
+                }
+            }
+            return new ExecResult(loop, loopMin);
+        }
+
+        if (stmt instanceof IfStmt) {
+            IfStmt i = (IfStmt) stmt;
+            boolean cond = checkCondition(next, i.getCondition());
+            Body branch = cond ? i.getThenBody() : i.getElseBody();
+            if (branch != null) {
+                ExecResult inner = executeBodyLiteWithAnnotatedDistance(branch, next, level, winCellType);
+                return new ExecResult(inner.last, inner.minDistance);
+            }
+        }
+
+        return new ExecResult(next, min);
+    }
+
+    private static int annotatedDistanceAt(GameState state, int currentMin) {
+        if (state == null) return currentMin;
+        Cell pos = state.getPosition();
+        if (pos == null) return currentMin;
+        int d = pos.getDistanceToGoal();
+        if (d < 0) return currentMin; // -1 means unreachable or unannotated
+        return Math.min(currentMin, d);
     }
 
     /**

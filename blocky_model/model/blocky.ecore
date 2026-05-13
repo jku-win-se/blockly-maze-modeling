@@ -36,6 +36,8 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="left" eType="#//Cell" eOpposite="#//Cell/right"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="right" eType="#//Cell"
         eOpposite="#//Cell/left"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="distanceToGoal" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        defaultValueLiteral="-1"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ExecutionTrace">
     <eStructuralFeatures xsi:type="ecore:EReference" name="states" upperBound="-1"

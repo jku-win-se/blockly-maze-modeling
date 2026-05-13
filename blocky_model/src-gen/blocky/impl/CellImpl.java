@@ -136,6 +136,26 @@ public class CellImpl extends MinimalEObjectImpl.Container implements Cell {
 	protected Cell right;
 
 	/**
+	 * The default value of the '{@link #getDistanceToGoal() <em>Distance To Goal</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getDistanceToGoal()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final int DISTANCE_TO_GOAL_EDEFAULT = -1;
+
+	/**
+	 * The cached value of the '{@link #getDistanceToGoal() <em>Distance To Goal</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getDistanceToGoal()
+	 * @generated
+	 * @ordered
+	 */
+	protected int distanceToGoal = DISTANCE_TO_GOAL_EDEFAULT;
+
+	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
@@ -495,6 +515,30 @@ public class CellImpl extends MinimalEObjectImpl.Container implements Cell {
 	 * @generated
 	 */
 	@Override
+	public int getDistanceToGoal() {
+		return distanceToGoal;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setDistanceToGoal(int newDistanceToGoal) {
+		int oldDistanceToGoal = distanceToGoal;
+		distanceToGoal = newDistanceToGoal;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.CELL__DISTANCE_TO_GOAL,
+					oldDistanceToGoal, distanceToGoal));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseAdd(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 		case BlockyPackage.CELL__TOP:
@@ -567,6 +611,8 @@ public class CellImpl extends MinimalEObjectImpl.Container implements Cell {
 			if (resolve)
 				return getRight();
 			return basicGetRight();
+		case BlockyPackage.CELL__DISTANCE_TO_GOAL:
+			return getDistanceToGoal();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -599,6 +645,9 @@ public class CellImpl extends MinimalEObjectImpl.Container implements Cell {
 			return;
 		case BlockyPackage.CELL__RIGHT:
 			setRight((Cell) newValue);
+			return;
+		case BlockyPackage.CELL__DISTANCE_TO_GOAL:
+			setDistanceToGoal((Integer) newValue);
 			return;
 		}
 		super.eSet(featureID, newValue);
@@ -633,6 +682,9 @@ public class CellImpl extends MinimalEObjectImpl.Container implements Cell {
 		case BlockyPackage.CELL__RIGHT:
 			setRight((Cell) null);
 			return;
+		case BlockyPackage.CELL__DISTANCE_TO_GOAL:
+			setDistanceToGoal(DISTANCE_TO_GOAL_EDEFAULT);
+			return;
 		}
 		super.eUnset(featureID);
 	}
@@ -659,6 +711,8 @@ public class CellImpl extends MinimalEObjectImpl.Container implements Cell {
 			return left != null;
 		case BlockyPackage.CELL__RIGHT:
 			return right != null;
+		case BlockyPackage.CELL__DISTANCE_TO_GOAL:
+			return distanceToGoal != DISTANCE_TO_GOAL_EDEFAULT;
 		}
 		return super.eIsSet(featureID);
 	}
@@ -680,6 +734,8 @@ public class CellImpl extends MinimalEObjectImpl.Container implements Cell {
 		result.append(y);
 		result.append(", type: ");
 		result.append(type);
+		result.append(", distanceToGoal: ");
+		result.append(distanceToGoal);
 		result.append(')');
 		return result.toString();
 	}

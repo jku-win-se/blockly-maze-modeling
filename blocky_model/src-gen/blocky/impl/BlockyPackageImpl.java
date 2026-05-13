@@ -483,6 +483,16 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
+	public EAttribute getCell_DistanceToGoal() {
+		return (EAttribute) cellEClass.getEStructuralFeatures().get(7);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getExecutionTrace() {
 		return executionTraceEClass;
 	}
@@ -855,6 +865,7 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		createEReference(cellEClass, CELL__BOTTOM);
 		createEReference(cellEClass, CELL__LEFT);
 		createEReference(cellEClass, CELL__RIGHT);
+		createEAttribute(cellEClass, CELL__DISTANCE_TO_GOAL);
 
 		executionTraceEClass = createEClass(EXECUTION_TRACE);
 		createEReference(executionTraceEClass, EXECUTION_TRACE__STATES);
@@ -992,6 +1003,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		initEReference(getCell_Right(), this.getCell(), this.getCell_Left(), "right", null, 0, 1, Cell.class,
 				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE,
 				IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getCell_DistanceToGoal(), ecorePackage.getEInt(), "distanceToGoal", "-1", 0, 1, Cell.class,
+				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(executionTraceEClass, ExecutionTrace.class, "ExecutionTrace", !IS_ABSTRACT, !IS_INTERFACE,
 				IS_GENERATED_INSTANCE_CLASS);

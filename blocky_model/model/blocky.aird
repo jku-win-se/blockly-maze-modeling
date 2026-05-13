@@ -9,6 +9,7 @@
     <semanticResources>../transformations/statement_insertions_henshin_text.henshin</semanticResources>
     <semanticResources>../transformations/statement_insertions_henshin_text_uri.henshin</semanticResources>
     <semanticResources>../transformations/statement_insertions_henshin_text_uri.henshin_diagram</semanticResources>
+    <semanticResources>../transformations/statement_insertions_no_loops.henshin</semanticResources>
     <ownedViews xmi:type="viewpoint:DView" uid="_LofPkBY7EfGl49XMvVBWdQ">
       <viewpoint xmi:type="description:Viewpoint" href="platform:/plugin/org.eclipse.emf.ecoretools.design/description/ecore.odesign#//@ownedViewpoints[name='Design']"/>
       <ownedRepresentationDescriptors xmi:type="viewpoint:DRepresentationDescriptor" uid="_LsQVQBY7EfGl49XMvVBWdQ" name="blocky" repPath="#_Lqy8sBY7EfGl49XMvVBWdQ" changeId="1777278851026">

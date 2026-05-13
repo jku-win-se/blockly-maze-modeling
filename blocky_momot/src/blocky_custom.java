@@ -40,6 +40,7 @@ import org.eclipse.emf.henshin.interpreter.EGraph;
 import org.eclipse.xtext.xbase.lib.Exceptions;
 import org.moeaframework.algorithm.NSGAII;
 import org.moeaframework.core.Population;
+import org.moeaframework.core.PRNG;
 import org.moeaframework.core.operator.OnePointCrossover;
 import org.moeaframework.core.operator.TournamentSelection;
 import org.moeaframework.util.progress.ProgressListener;
@@ -487,6 +488,41 @@ public class blocky_custom {
     };
   }
 
+  protected double _createObjectiveHelper_6(final TransformationSolution solution, final EGraph graph, final EObject root) {
+    double _xtrycatchfinallyexpression = (double) 0;
+    try {
+      double _xblockexpression = (double) 0;
+      {
+        final Game game = ((Game) root);
+        Level _xifexpression = null;
+        if (game.getLevels().isEmpty()) {
+          _xifexpression = null;
+        } else {
+          _xifexpression = game.getLevels().get(0);
+        }
+        final Level level = _xifexpression;
+        double v = (level == null) ? 100000.0 : (double) BlockySimulator.closestToGoalOrPenalty(level, 100000);
+        if (!Double.isFinite(v)) v = 1000000000.0;
+        _xblockexpression = v;
+      }
+      _xtrycatchfinallyexpression = _xblockexpression;
+    } catch (final Throwable _t) {
+      _xtrycatchfinallyexpression = 1000000000.0;
+    }
+    return _xtrycatchfinallyexpression;
+  }
+
+  protected IFitnessDimension<TransformationSolution> _createObjective_6(final TransformationSearchOrchestration orchestration) {
+    return new AbstractEGraphFitnessDimension("closestToGoal", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
+       @Override
+       protected double internalEvaluate(TransformationSolution solution) {
+          EGraph graph = solution.execute();
+          EObject root = MomotUtil.getRoot(graph);
+          return _createObjectiveHelper_6(solution, graph, root);
+       }
+    };
+  }
+
   protected ModuleManager createModuleManager() {
     ModuleManager manager = new ModuleManager();
     for(String module : modules) {
@@ -531,6 +567,7 @@ public class blocky_custom {
     function.addObjective(_createObjective_0(orchestration));
     function.addObjective(_createObjective_1(orchestration));
     function.addObjective(_createObjective_2(orchestration));
+    function.addObjective(_createObjective_6(orchestration));
     function.setSolutionRepairer(solutionRepairer);
     return function;
   }
@@ -667,11 +704,13 @@ public class blocky_custom {
     int runs = getNrRuns();
     System.out.println("SysProps:        blocky.populationSize=" + System.getProperty("blocky.populationSize")
         + " blocky.maxEvaluations=" + System.getProperty("blocky.maxEvaluations")
-        + " blocky.nrRuns=" + System.getProperty("blocky.nrRuns"));
+        + " blocky.nrRuns=" + System.getProperty("blocky.nrRuns")
+        + " blocky.seed=" + System.getProperty("blocky.seed"));
     System.out.println("PopulationSize:  " + pop);
     System.out.println("Iterations:      " + (evals / Math.max(1, pop)));
     System.out.println("MaxEvaluations:  " + evals);
     System.out.println("AlgorithmRuns:   " + runs);
+    System.out.println("Seed:            " + System.getProperty("blocky.seed", "0 (auto)"));
     System.out.println("---------------------------");
   }
 
@@ -694,6 +733,16 @@ public class blocky_custom {
     EPackage.Registry.INSTANCE.put(pkg.getName(), pkg);
     pkg.eClass();
     BlockyProgramDistance.initializeBaseline(absInputModelPath);
+    BlockySimulator.initialize(absInputModelPath);
+
+    final String seedStr = System.getProperty("blocky.seed", "0");
+    try {
+      final long seed = Long.parseLong(seedStr);
+      if (seed != 0L) {
+        PRNG.setSeed(seed);
+      }
+    } catch (Exception ignored) {
+    }
   }
 
   public static void main(final String... args) {

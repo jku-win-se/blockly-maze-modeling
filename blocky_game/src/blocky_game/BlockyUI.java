@@ -10,10 +10,16 @@ import javafx.geometry.Pos;
 import javafx.util.Duration;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import netscape.javascript.JSObject;
 
 import blocky.Cell;
@@ -22,6 +28,7 @@ import blocky.Level;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +98,7 @@ public class BlockyUI extends Application {
             // Setup the bridge
             webEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
                 if (newState == Worker.State.SUCCEEDED) {
+                    System.out.println("[BlockyUI] WebView page load SUCCEEDED: " + webEngine.getLocation());
                     jsBridge = new JSBridge();
                     JSObject window = (JSObject) webEngine.executeScript("window");
                     window.setMember("javaBridge", jsBridge);
@@ -125,14 +133,25 @@ public class BlockyUI extends Application {
                             // Keep suppressSync until WebView confirms injection completed.
                         }
                     }
-                    // Nav "Model" pill: delay so h1 exists
-                    PauseTransition navDelay = new PauseTransition(Duration.millis(800));
-                    navDelay.setOnFinished(e2 -> injectLevelNavModelElement(webEngine));
-                    navDelay.play();
                 }
             });
 
-            StackPane root = new StackPane(webView, snapshotButton);
+            // Menu Bar
+            MenuBar menuBar = new MenuBar();
+            Menu fileMenu = new Menu("File");
+            MenuItem loadItem = new MenuItem("Load XMI...");
+            loadItem.setOnAction(e -> loadModelImpl());
+            MenuItem saveItem = new MenuItem("Save XMI...");
+            saveItem.setOnAction(e -> saveModelImpl());
+            MenuItem exitItem = new MenuItem("Exit");
+            exitItem.setOnAction(e -> Platform.exit());
+            fileMenu.getItems().addAll(loadItem, saveItem, exitItem);
+            menuBar.getMenus().add(fileMenu);
+
+            StackPane content = new StackPane(webView, snapshotButton);
+            BorderPane root = new BorderPane();
+            root.setTop(menuBar);
+            root.setCenter(content);
             Scene scene = new Scene(root, 1200, 800);
 
             primaryStage.setTitle("Blockly Games : Maze (Web Sync to XMI)");
@@ -268,12 +287,11 @@ public class BlockyUI extends Application {
                 "                var lvl = (typeof window.K !== 'undefined') ? window.K : 1;\n" +
                 "                var mxb = (typeof window.Od !== 'undefined' && isFinite(window.Od)) ? window.Od : -1;\n" +
                 "                var tb = document.getElementById('toolbox'); var tbHtml = tb ? tb.innerHTML : '';\n" +
-                "                var sd = (typeof window.__stableStartT === 'number') ? window.__stableStartT : ((typeof window.T !== 'undefined') ? window.T : 1);\n" +
-                "                var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: sd, allowLoops: tbHtml.indexOf('maze_forever') !== -1, allowConditionals: tbHtml.indexOf('maze_if') !== -1 });\n" +
-                "                bridge.syncLevelMeta(meta);\n" +
-                "              } catch(e) { log('syncLevelMeta: ' + e); }\n" +
-                "              try { if (bridge.saveModelNow) bridge.saveModelNow(); } catch(e) { log('saveModelNow: ' + e); }\n" +
-                "              try {\n" +
+"                var sd = (typeof window.__stableStartT === 'number') ? window.__stableStartT : ((typeof window.T !== 'undefined') ? window.T : 1);\n" +
+"                var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: sd, allowLoops: tbHtml.indexOf('maze_forever') !== -1, allowConditionals: tbHtml.indexOf('maze_if') !== -1 });\n" +
+"                bridge.syncLevelMeta(meta);\n" +
+"              } catch(e) { log('syncLevelMeta: ' + e); }\n" +
+"              try {\n" +
                 "                var gen = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0;\n" +
                 "                if (bridge.runSimulationWithGen) bridge.runSimulationWithGen(gen);\n" +
                 "                else bridge.runSimulation();\n" +
@@ -388,6 +406,7 @@ public class BlockyUI extends Application {
                 + "          if (!el) return; "
                 + "          if (el.id === 'levelModel' || (el.classList && el.classList.contains('level_number'))) { "
                 + "            var label = (el.textContent && el.textContent.trim()) ? el.textContent.trim() : 'level'; "
+                + "            if (label.toLowerCase() === 'save' || label.toLowerCase() === 'load') return; "
                 + "            window.__lvlLoadingShow('Loading ' + label + '…'); "
                 + "          } "
                 + "        } catch(e2) {} "
@@ -608,8 +627,39 @@ public class BlockyUI extends Application {
                 + "          b.style.margin = '0'; b.style.padding = '4px 8px'; b.style.fontSize = '12px'; "
                 + "          b.style.borderRadius = '4px'; b.style.border = '1px solid rgba(255,255,255,0.25)'; "
                 + "          b.style.background = 'rgba(255,255,255,0.10)'; b.style.color = '#fff'; "
+                + "          b.style.cursor = 'pointer'; "
                 + "          return b; "
                 + "        } "
+                + "        function mkInput(id, val, tip, width) { "
+                + "          var i = document.createElement('input'); i.id = id; i.value = val; i.title = tip; "
+                + "          i.style.width = width || '40px'; i.style.fontSize = '11px'; i.style.padding = '2px 4px'; "
+                + "          i.style.background = 'rgba(0,0,0,0.3)'; i.style.color = '#fff'; i.style.border = '1px solid rgba(255,255,255,0.2)'; "
+                + "          i.style.borderRadius = '3px'; "
+                + "          return i; "
+                + "        } "
+                + "        var settings = document.createElement('div'); settings.id = '__momotSettings'; "
+                + "        settings.style.display = 'flex'; settings.style.flexWrap = 'wrap'; settings.style.gap = '6px'; "
+                + "        settings.style.padding = '6px 8px'; settings.style.borderBottom = '1px solid rgba(255,255,255,0.1)'; "
+                + "        settings.style.alignItems = 'center'; settings.style.fontSize = '11px'; "
+                + "        settings.style.color = '#fff'; "
+                + "        var labSeed = document.createElement('span'); labSeed.textContent = 'Seed:'; "
+                + "        var inpSeed = mkInput('__momotInpSeed', '0', 'Random seed (0 for auto)', '35px'); "
+                + "        var labPop = document.createElement('span'); labPop.textContent = 'Pop:'; "
+                + "        var inpPop = mkInput('__momotInpPop', '50', 'Population size', '35px'); "
+                + "        var labIter = document.createElement('span'); labIter.textContent = 'Iter:'; "
+                + "        var inpIter = mkInput('__momotInpIter', '40', 'Number of iterations (generations)', '30px'); "
+                + "        var labRuns = document.createElement('span'); labRuns.textContent = 'Runs:'; "
+                + "        var inpRuns = mkInput('__momotInpRuns', '10', 'Number of algorithm runs', '25px'); "
+                + "        var labSolLen = document.createElement('span'); labSolLen.textContent = 'SolLen:'; "
+                + "        var inpSolLen = mkInput('__momotInpSolLen', '10', 'Solution length (number of transformation steps)', '25px'); "
+                + "        var mRunBtn = mkBtn('__momotRunBtn', 'Run', 'Execute MOMoT search with current parameters'); "
+                + "        mRunBtn.style.background = 'rgba(70, 150, 70, 0.4)'; "
+                + "        settings.appendChild(labSeed); settings.appendChild(inpSeed); "
+                + "        settings.appendChild(labPop); settings.appendChild(inpPop); "
+                + "        settings.appendChild(labIter); settings.appendChild(inpIter); "
+                + "        settings.appendChild(labRuns); settings.appendChild(inpRuns); "
+                + "        settings.appendChild(labSolLen); settings.appendChild(inpSolLen); "
+                + "        settings.appendChild(mRunBtn); "
                 + "        var refreshBtn = mkBtn('__momotRefreshBtn', 'Refresh', 'Reload solutions from output folders'); "
                 + "        right.appendChild(refreshBtn); "
                 + "        header.appendChild(title); header.appendChild(right); "
@@ -621,18 +671,20 @@ public class BlockyUI extends Application {
                 + "        actions.style.display = 'flex'; actions.style.gap = '6px'; actions.style.marginTop = '8px'; "
                 + "        var loadBtn = mkBtn('__momotLoadBtn', 'Load', 'Load selected model into the game'); "
                 + "        actions.appendChild(loadBtn); "
-                + "        var status = document.createElement('div'); status.id = '__momotStatus'; status.style.marginTop = '6px'; status.style.opacity = '0.9'; "
-                + "        status.textContent = 'Click Refresh to load solutions.'; "
+                + "        var status = document.createElement('div'); status.id = '__momotStatus'; status.style.marginTop = '6px'; "
+                + "        status.style.color = '#0f0'; status.style.fontWeight = 'bold'; "
+                + "        status.textContent = 'Click Refresh or Run to see solutions.'; "
                 + "        var log = document.createElement('pre'); log.id = '__momotLog'; "
                 + "        log.style.margin = '8px 0 0 0'; log.style.padding = '6px 8px'; "
                 + "        log.style.height = '110px'; log.style.overflow = 'auto'; "
-                + "        log.style.background = 'rgba(255,255,255,0.06)'; "
-                + "        log.style.border = '1px solid rgba(255,255,255,0.10)'; "
+                + "        log.style.background = 'rgba(0,0,0,0.4)'; "
+                + "        log.style.color = '#ddd'; "
+                + "        log.style.border = '1px solid rgba(255,255,255,0.15)'; "
                 + "        log.style.borderRadius = '6px'; "
                 + "        log.style.whiteSpace = 'pre-wrap'; log.style.wordBreak = 'break-word'; "
                 + "        log.textContent = ''; "
                 + "        body.appendChild(list); body.appendChild(actions); body.appendChild(status); body.appendChild(log); "
-                + "        panel.appendChild(header); panel.appendChild(body); "
+                + "        panel.appendChild(header); panel.appendChild(settings); panel.appendChild(body); "
                 + "        var rh = document.createElement('div'); rh.id = '__momotResizeHandle'; "
                 + "        rh.style.position = 'absolute'; rh.style.right = '2px'; rh.style.bottom = '2px'; "
                 + "        rh.style.width = '14px'; rh.style.height = '14px'; "
@@ -719,6 +771,20 @@ public class BlockyUI extends Application {
                 + "        } "
                 + "        window.__momotShowAndRefresh = function(){ try { panel.style.display = 'block'; } catch(e) {} try { refresh(); } catch(e2) {} }; "
                 + "        refreshBtn.addEventListener('click', function(){ refresh(); }); "
+                + "        mRunBtn.addEventListener('click', function(){ "
+                + "          try { "
+                + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
+                + "            if (!bridge || !bridge.runMomotWithParams) { setStatus('Java bridge runMomotWithParams not available'); return; } "
+                + "            var s = parseInt(document.getElementById('__momotInpSeed').value) || 0; "
+                + "            var p = parseInt(document.getElementById('__momotInpPop').value) || 50; "
+                + "            var it = parseInt(document.getElementById('__momotInpIter').value) || 40; "
+                + "            var e = p * it; "
+                + "            var r = parseInt(document.getElementById('__momotInpRuns').value) || 10; "
+                + "            var sl = parseInt(document.getElementById('__momotInpSolLen').value) || 10; "
+                + "            setStatus('Starting MoMoT (seed=' + s + ', pop=' + p + ', iter=' + it + ' (eval=' + e + '), runs=' + r + ', solLen=' + sl + ')...'); "
+                + "            bridge.runMomotWithParams(s, p, e, r, sl); "
+                + "          } catch(e) { setStatus('Run failed: ' + e); } "
+                + "        }); "
                 + "        loadBtn.addEventListener('click', function(){ "
                 + "          try { "
                 + "            var p = window.__momotSelectedPath; "
@@ -1235,12 +1301,6 @@ public class BlockyUI extends Application {
             System.out.println("[WebView JS] " + msg);
         }
 
-        /** Saves the current model to XMI. Called only when Run Program is clicked. */
-        public void saveModelNow() {
-            engine.saveModel();
-            System.out.println("[JSBridge] saveModelNow -> save XMI");
-        }
-
         /** Receives a base64 dataUrl PNG generated in the WebView. */
         public void receivePngDataUrl(String dataUrl) {
             snapshotService.receivePngDataUrl(dataUrl);
@@ -1301,9 +1361,9 @@ public class BlockyUI extends Application {
             try {
                 System.out.println("[JSBridge] teleportPegman q=" + q + " s=" + s + " t=" + t);
                 engine.teleportPegman(q, s, t);
-                // Auto-run MoMoT after a DM selection (best-effort).
+                // Show MoMoT panel after a DM selection (do NOT auto-run).
                 try {
-                    startMomotAfterDirectManipulation();
+                    showMomotPanelOnly();
                 } catch (Exception ignored) {
                 }
             } catch (Exception e) {
@@ -1319,11 +1379,15 @@ public class BlockyUI extends Application {
                 String filterDir = momotCurrentOutputDir;
                 if (filterDir != null && !filterDir.trim().isEmpty()) {
                     File outDir = new File(filterDir.trim());
-                    sols = outDir.exists() && outDir.isDirectory()
-                            ? MomotResultsService.loadFromOutputDir(outDir)
-                            : MomotResultsService.loadAll();
+                    if (outDir.exists() && outDir.isDirectory()) {
+                        sols = MomotResultsService.loadFromOutputDir(outDir);
+                    } else {
+                        // Current run directory not yet on disk or invalid; show nothing yet.
+                        sols = Collections.emptyList();
+                    }
                 } else {
-                    sols = MomotResultsService.loadAll();
+                    // No run triggered yet; show nothing.
+                    sols = Collections.emptyList();
                 }
                 StringBuilder sb = new StringBuilder();
                 sb.append("[");
@@ -1351,6 +1415,13 @@ public class BlockyUI extends Application {
             // Keep the MoMoT panel open (no page reload).
             pendingShowMomotPanel = true;
             Platform.runLater(() -> loadMomotSolutionInPlace(xmiPath.trim()));
+        }
+
+        public void runMomotWithParams(int seed, int populationSize, int maxEvaluations, int nrRuns, int solutionLength) {
+            System.out.println("[JSBridge] runMomotWithParams seed=" + seed + " pop=" + populationSize + " eval=" + maxEvaluations + " runs=" + nrRuns + " solLen=" + solutionLength);
+            Platform.runLater(() -> {
+                startMomotWithParams(seed, populationSize, maxEvaluations, nrRuns, solutionLength);
+            });
         }
 
         // --- Debugger controls (Java-driven stepping) ---
@@ -1438,13 +1509,11 @@ public class BlockyUI extends Application {
             }
         }
 
-        /** Called from WebView when the user clicks the "Model" pill; loads the single Model XMI from hardcoded path. */
-        public void loadModel() {
-            Platform.runLater(() -> loadModelImpl());
-        }
-
         public void syncModel(String xml) {
-            if (suppressSync) return;
+            if (suppressSync) {
+                // log this occasionally or just once to verify suppression works
+                return;
+            }
             if (xml == null) return;
             // Guard: WebView can transiently produce an empty <xml/> snapshot during in-place injections
             // or while Blockly is re-rendering. Ignore these so we don't wipe the Java-side solution.
@@ -1453,15 +1522,10 @@ public class BlockyUI extends Application {
                 return;
             }
             try {
-                System.out.println("[JSBridge] Syncing workspace XML:\n" + xml);
+                System.out.println("[JSBridge] Syncing workspace XML (len=" + xml.length() + ")");
                 List<Map<String, Object>> data = parseBlocklyXml(xml);
                 engine.rebuildProgram(data);
-                // Auto-run simulation removed; it restricts to the runButton click now.
-                // if (engine.getCurrentLevel().getSolution() != null) {
-                // engine.simulateUserProgram();
-                // }
-
-                System.out.println("[JSBridge] Sync complete. Top-level blocks: " + data.size());
+                System.out.println("[JSBridge] Sync complete. Top-level blocks: " + (data != null ? data.size() : 0));
             } catch (Exception e) {
                 System.err.println("[JSBridge] Sync Error: " + e.getMessage());
                 e.printStackTrace();
@@ -1490,7 +1554,42 @@ public class BlockyUI extends Application {
         }
     }
 
-    private void startMomotAfterDirectManipulation() {
+    private void showMomotPanelOnly() {
+        try {
+            momotCurrentOutputDir = null; // Clear previous run results when panel is shown for a new location
+            
+            // Infer default solution length
+            int defSolLen = 10;
+            try {
+                String input = MomotRunService.defaultDirectManipulationSpec().inputXmi;
+                File f = new File(input);
+                if (!f.isAbsolute()) {
+                    // Try to resolve it as MomotRunService does
+                    if (!f.exists()) f = new File("..", input);
+                    if (!f.exists()) f = new File("..", ".." + File.separator + input);
+                }
+                if (f.exists()) {
+                    Class<?> metrics = Class.forName("blocky_momot.BlockyProgramMetrics");
+                    Object v = metrics.getMethod("inferSolutionLength", String.class).invoke(null, f.getAbsoluteFile().getPath());
+                    if (v instanceof Number) defSolLen = Math.max(1, ((Number) v).intValue() * 2);
+                }
+            } catch (Exception ignored) {}
+
+            pendingShowMomotPanel = true;
+            final int finalDefSolLen = defSolLen;
+            webView.getEngine().executeScript(
+                "try { " +
+                "  if (window.__momotShowAndRefresh) window.__momotShowAndRefresh();" +
+                "  if (window.__momotSetStatus) window.__momotSetStatus('MoMoT panel ready. Set parameters and click Run.');" +
+                "  var slInp = document.getElementById('__momotInpSolLen');" +
+                "  if (slInp) slInp.value = '" + finalDefSolLen + "';" +
+                "} catch(e) {}"
+            );
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void startMomotWithParams(int seed, int populationSize, int maxEvaluations, int nrRuns, int solutionLength) {
         try {
             pendingShowMomotPanel = true;
             webView.getEngine().executeScript(
@@ -1502,6 +1601,29 @@ public class BlockyUI extends Application {
             );
         } catch (Exception ignored) {
         }
+
+        // Set parameters as system properties so MomotRunService can read them.
+        System.setProperty("blocky.seed", String.valueOf(seed));
+        System.setProperty("blocky.populationSize", String.valueOf(populationSize));
+        System.setProperty("blocky.maxEvaluations", String.valueOf(maxEvaluations));
+        System.setProperty("blocky.nrRuns", String.valueOf(nrRuns));
+        System.setProperty("blocky.solutionLength", String.valueOf(solutionLength));
+
+        // Determine correct Henshin file based on level constraints
+        String henshin = "statement_insertions_henshin_text.henshin";
+        Level lvl = engine.getCurrentLevel();
+        if (lvl != null) {
+            boolean loops = lvl.isAllowLoops();
+            boolean conds = lvl.isAllowConditionals();
+            if (!loops && !conds) {
+                henshin = "statement_insertions_atomic_only.henshin";
+            } else if (!loops) {
+                henshin = "statement_insertions_no_loops.henshin";
+            } else if (!conds) {
+                henshin = "statement_insertions_no_conds.henshin";
+            }
+        }
+        System.setProperty("blocky.henshin", "../blocky_model/transformations/" + henshin);
 
         MomotRunService.RunSpec spec = MomotRunService.defaultDirectManipulationSpec();
         momotCurrentOutputDir = spec.outputBase;
@@ -1598,21 +1720,8 @@ public class BlockyUI extends Application {
         Level level = engine.getCurrentLevel();
         if (level == null) return;
 
-        Cell startCell = null;
-        try {
-            startCell = (level.getMap() != null) ? engine.getStartCell(level.getMap()) : null;
-        } catch (Exception ignored) {
-        }
-        final int startQ = startCell != null ? startCell.getX() : 0;
-        final int startS = startCell != null ? startCell.getY() : 0;
-        final int startT = engine.directionToT(level.getStartOrientation());
-
         // Build block XML to inject into the existing workspace.
         String xml = engine.solutionToBlocklyXml(level);
-        // Some Blockly builds are finicky with namespaces when loading programmatically; keep it simple.
-        if (xml != null) {
-            xml = xml.replace(" xmlns=\"https://developers.google.com/blockly/xml\"", "");
-        }
         try {
             final String preview = xml == null ? "null" : (xml.length() > 400 ? xml.substring(0, 400) + "…" : xml);
             System.out.println("[BlockyUI] MoMoT inject XML preview: " + preview);
@@ -1629,170 +1738,120 @@ public class BlockyUI extends Application {
                 + "window.__injectDmBaselinePath = " + ImmediateFeedbackService.toJsonArray(engine.getDmBaselinePath()) + ";"
                 + "window.__injectDmSolutionPath = " + ImmediateFeedbackService.toJsonArray(engine.getDmSolutionPath()) + ";"
                 + "window.__injectDmCommonLen = " + engine.getDmCommonLen() + ";";
+            if (engine.isDmAlignedValid()) {
+                injectDm += "window.__injectQ = " + engine.getDmAlignedX() + ";"
+                          + "window.__injectS = " + engine.getDmAlignedY() + ";";
+            } else {
+                injectDm += "window.__injectQ = undefined; window.__injectS = undefined;";
+            }
         } else {
             injectDm = ""
                 + "window.__injectDmEnabled = false;"
                 + "window.__injectDmBaselinePath = [];"
                 + "window.__injectDmSolutionPath = [];"
-                + "window.__injectDmCommonLen = 0;";
+                + "window.__injectDmCommonLen = 0;"
+                + "window.__injectQ = undefined; window.__injectS = undefined;";
         }
 
         suppressSync = true;
         awaitingInjectComplete = true;
 
         try {
-            // 1) Apply blocks (in-place), with strong logging so failures can't be silent.
-            webView.getEngine().executeScript(
-                "(function(){"
-                    + "var __b = window.javaBridge || (window.parent && window.parent.javaBridge);"
-                    + "try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: injection script started'); } catch(e0) {}"
-                    + "try {"
-                    + "  if (window.__momotSetStatus) window.__momotSetStatus('Applying solution…');"
-                    + "} catch(e1) {}"
-                    + "try { " + injectPastNew + " } catch(e2) {}"
-                    + "try { " + injectDm + " } catch(e3) {}"
-                    + "try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: xmlLen=" + escapedForJson.length() + "'); } catch(e3b) {}"
-                    + "try {"
-                    + "  var __xml = \"" + escapedForJson + "\";"
-                    + "  function __ws(){"
-                    + "    var w=null;"
-                    + "    try { if (window.BlocklyInterface && window.BlocklyInterface.getWorkspace) w = window.BlocklyInterface.getWorkspace(); } catch(e) {}"
-                    + "    try { if (!w && window.Blockly && window.Blockly.getMainWorkspace) w = window.Blockly.getMainWorkspace(); } catch(e2) {}"
-                    + "    return w;"
-                    + "  }"
-                    + "  function __afterLoad(w){"
-                    + "    try { if (!w) return; if (typeof w.clearUndo === 'function') w.clearUndo(); } catch(e0) {}"
-                    + "    try { if (w && w.undoStack_ && w.undoStack_.length !== undefined) w.undoStack_.length = 0; } catch(e1) {}"
-                    + "    try { if (w && w.redoStack_ && w.redoStack_.length !== undefined) w.redoStack_.length = 0; } catch(e2) {}"
-                    + "    try { if (w && typeof w.render === 'function') w.render(); } catch(e3) {}"
-                    + "    try { if (window.Blockly && typeof window.Blockly.svgResize === 'function') window.Blockly.svgResize(w); } catch(e4) {}"
-                    + "  }"
-                    + "  function __forceSyncModel(){"
-                    + "    try {"
-                    + "      var b = window.javaBridge || (window.parent && window.parent.javaBridge);"
-                    + "      if (!b || !b.syncModelForce) return false;"
-                    + "      var w = __ws();"
-                    + "      if (!w || !window.Blockly || !window.Blockly.Xml || !window.Blockly.Xml.workspaceToDom) return false;"
-                    + "      var dom = window.Blockly.Xml.workspaceToDom(w);"
-                    + "      var xmlTxt = new XMLSerializer().serializeToString(dom);"
-                    + "      b.syncModelForce(xmlTxt);"
-                    + "      return true;"
-                    + "    } catch(ex) { try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: forceSync failed: ' + ex); } catch(eL) {} return false; }"
-                    + "  }"
-                    + "  function __loadFallback(){"
-                    + "    try {"
-                    + "      var w = __ws(); if (!w || !window.Blockly || !window.Blockly.Xml) return false;"
-                    + "      var dom=null;"
-                    + "      try { dom = window.Blockly.utils.xml.textToDom(__xml); } catch(e1) { dom=null; }"
-                    + "      if (!dom) { try { dom = (new DOMParser()).parseFromString(__xml, 'text/xml').documentElement; } catch(e2) { dom=null; } }"
-                    + "      if (!dom) return false;"
-                    + "      if (dom.nodeName && dom.nodeName.toLowerCase() !== 'xml') { try { var wrap=document.createElement('xml'); wrap.appendChild(dom); dom=wrap; } catch(e3) {} }"
-                    + "      if (typeof window.Blockly.Xml.clearWorkspaceAndLoadFromXml === 'function') window.Blockly.Xml.clearWorkspaceAndLoadFromXml(dom, w);"
-                    + "      else { try { w.clear(); } catch(e4) {} window.Blockly.Xml.domToWorkspace(dom, w); }"
-                    + "      __afterLoad(w);"
-                    + "      return true;"
-                    + "    } catch(ex) { return false; }"
-                    + "  }"
-                    + "  function __applyOnce(tag){"
-                    + "    try {"
-                    + "      var missing=[];"
-                    + "      if (!window.BlocklyInterface) missing.push('BlocklyInterface');"
-                    + "      if (!window.BlocklyInterface || !window.BlocklyInterface.Kv) missing.push('BlocklyInterface.Kv');"
-                    + "      if (missing.length) {"
-                    + "        try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: not-ready(' + tag + '): ' + missing.join(',')); } catch(eNR) {}"
-                    + "        return null;"
-                    + "      }"
-                    + "      var before=''; try { if (window.BlocklyInterface.getCode) before = String(window.BlocklyInterface.getCode()||''); } catch(eB) {}"
-                    + "      var ok=false;"
-                    + "      try { window.BlocklyInterface.Kv(__xml); ok=true; } catch(eKv) { ok=false; try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: Kv failed: ' + eKv); } catch(eL) {} }"
-                    + "      if (!ok) { try { ok = __loadFallback(); } catch(eFb) { ok=false; } }"
-                    + "      var after=''; try { if (window.BlocklyInterface.getCode) after = String(window.BlocklyInterface.getCode()||''); } catch(eA) {}"
-                    + "      try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: ok=' + ok + ' codeChanged=' + (before!==after) + ' beforeLen=' + before.length + ' afterLen=' + after.length); } catch(eLog) {}"
-                    + "      try { if (window.__momotSetStatus) window.__momotSetStatus(ok ? 'Solution applied.' : 'Failed to apply blocks.'); } catch(eS) {}"
-                    + "      // After applying a MoMoT model, reposition pegman to the LAST COMMON CELL between\n"
-                    + "      // the baseline path (before MoMoT) and the solution path (after MoMoT).\n"
-                    + "      // This preserves the already-traversed prefix and makes Immediate Feedback overlays meaningful.\n"
-                    + "      try { "
-                    + "        if (ok) { "
-                    + "          var q0 = " + startQ + ", s0 = " + startS + "; "
-                    + "          try { "
-                    + "            var base = window.__injectDmBaselinePath || []; "
-                    + "            var cl = (typeof window.__injectDmCommonLen === 'number') ? window.__injectDmCommonLen : 0; "
-                    + "            if (base && base.length && cl > 0) { "
-                    + "              var idx = Math.min(cl - 1, base.length - 1); "
-                    + "              var pt = base[idx]; "
-                    + "              if (pt && pt.length >= 2) { q0 = pt[0]; s0 = pt[1]; } "
-                    + "            } "
-                    + "          } catch(eC) {} "
-                    + "          try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: reset-to-common q=' + q0 + ' s=' + s0 + ' startQ=" + startQ + " startS=" + startS + " cl=' + window.__injectDmCommonLen + ' baseLen=' + ((window.__injectDmBaselinePath && window.__injectDmBaselinePath.length) || 0) + ' hasZ=' + (typeof Z)); } catch(eL0) {} "
-                    + "          try { "
-                    + "            var clNote = (typeof window.__injectDmCommonLen === 'number') ? window.__injectDmCommonLen : 0; "
-                    + "            var msg = 'Immediate Feedback: program changed -> aligned to last common cell (' + q0 + ',' + s0 + '), commonPrefixLen=' + clNote; "
-                    + "            if (window.__execLogAppend) { "
-                    + "              if (!window.__momotLastAlignNote || window.__momotLastAlignNote !== msg) { "
-                    + "                window.__momotLastAlignNote = msg; "
-                    + "                try { if (window.__execLogClear) window.__execLogClear(); } catch(eC0) {} "
-                    + "                window.__execLogAppend(msg); "
-                    + "                // When debugging starts next, keep this note at top.\n"
-                    + "                window.__dbgPreserveMomotAlignNote = true; "
-                    + "              } "
-                    + "            } "
-                    + "          } catch(eN) {} "
-                    + "          window.Q = q0; window.S = s0; window.T = " + startT + "; "
-                    + "          window.__stableStartT = " + startT + "; window.__modelStartT = " + startT + "; "
-                    + "          try { "
-                    + "            if (typeof Z === 'function') { "
-                    + "              Z(window.Q, window.S, 4*window.T); "
-                    + "              setTimeout(function(){ try { Z(window.Q, window.S, 4*window.T); } catch(e2) {} }, 0); "
-                    + "            } "
-                    + "          } catch(eZ) {} "
-                    + "          window.__dbgSessionStarted = false; window.__dbgActive = false; "
-                    + "          if (window.__dbgTimer) { clearInterval(window.__dbgTimer); window.__dbgTimer = null; } "
-                    + "          window.__dbgStepInFlight = false; "
-                    + "        } "
-                    + "      } catch(eR) { try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: reset-to-common failed: ' + eR); } catch(eRL) {} } "
-                    // IMPORTANT:
-                    // MoMoT in-place loading injects Blockly XML generated from the EMF model.
-                    // Forcing an immediate sync back (Blockly XML -> EMF) *rewrites* the program to whatever
-                    // Blockly can represent (e.g., nested loops get inlined/flattened), which can make the
-                    // same XMI appear to "load differently" compared to the normal load.xmi path.
-                    //
-                    // Keep the EMF model as loaded from XMI; only allow force-sync when explicitly enabled.
-                    + "      try { if (window.__momotForceSync === true) __forceSyncModel(); } catch(eFS) {}"
-                    + "      try { var b2 = window.javaBridge || (window.parent && window.parent.javaBridge); if (b2 && b2.injectComplete) b2.injectComplete(); } catch(eIC) {}"
-                    + "      return ok;"
-                    + "    } catch(exTop) {"
-                    + "      try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: exception ' + exTop); } catch(eX) {}"
-                    + "      try { if (window.__momotSetStatus) window.__momotSetStatus('Failed: ' + exTop); } catch(eS2) {}"
-                    + "      try { var b3 = window.javaBridge || (window.parent && window.parent.javaBridge); if (b3 && b3.injectComplete) b3.injectComplete(); } catch(eIC2) {}"
-                    + "      return false;"
-                    + "    }"
-                    + "  }"
-                    + "  var tries=0, maxTries=60;"
-                    + "  var done = __applyOnce('initial');"
-                    + "  if (done === null) {"
-                    + "    var id=setInterval(function(){"
-                    + "      tries++;"
-                    + "      var r = __applyOnce('t'+tries);"
-                    + "      if (r !== null) { clearInterval(id); }"
-                    + "      if (tries >= maxTries) { clearInterval(id); try { if (window.__momotSetStatus) window.__momotSetStatus('Failed: Blockly not ready.'); } catch(e) {}"
-                    + "        try { var b4 = window.javaBridge || (window.parent && window.parent.javaBridge); if (b4 && b4.injectComplete) b4.injectComplete(); } catch(eIC3) {}"
-                    + "      }"
-                    + "    }, 100);"
-                    + "  }"
-                    + "} catch(__top) {"
-                    + "  try { if (__b && __b.logJS) __b.logJS('MoMoT in-place: top-level error ' + __top); } catch(eT) {}"
-                    + "  try { var b5 = window.javaBridge || (window.parent && window.parent.javaBridge); if (b5 && b5.injectComplete) b5.injectComplete(); } catch(eIC4) {}"
-                    + "}"
-                    + "})();"
-            );
+            System.out.println("[BlockyUI] loadMomotSolutionInPlace: preparing injection...");
+            
+            // First, inject the XML and overlay data as global variables.
+            webView.getEngine().executeScript("window.__momotXml = \"" + escapedForJson + "\";");
+            webView.getEngine().executeScript("try { " + injectPastNew + " } catch(e) {}");
+            webView.getEngine().executeScript("try { " + injectDm + " } catch(e) {}");
+            
+            System.out.println("[BlockyUI] loadMomotSolutionInPlace: sending execution script...");
 
-            // 2) Redraw overlays (separate call keeps this resilient even if the block load script changes).
+            // Now, run the script that applies the XML.
+            // Using alert() as a fallback diagnostic since setOnAlert is hooked to System.out.
+            Object result = webView.getEngine().executeScript(
+                "(function(){\n" +
+                "  var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);\n" +
+                "  function logJS(m) {\n" +
+                "    console.log('MoMoT: ' + m);\n" +
+                "    if (bridge && bridge.logJS) bridge.logJS('MoMoT: ' + m);\n" +
+                "    else alert('MoMoT: ' + m);\n" +
+                "  }\n" +
+                "  function finish() { if (bridge && bridge.injectComplete) bridge.injectComplete(); }\n" +
+                "  try {\n" +
+                "    logJS('In-place script started');\n" +
+                "    if (window.__momotSetStatus) window.__momotSetStatus('Applying solution…');\n" +
+                "    \n" +
+                "    if (window.localStorage) {\n" +
+                "      logJS('Clearing maze cache');\n" +
+                "      for(var i=1; i<=10; i++) window.localStorage.removeItem('maze'+i);\n" +
+                "    }\n" +
+                "    if (window.sessionStorage) window.sessionStorage.removeItem('Vp');\n" +
+                "\n" +
+                "    var attempts = 0, maxAttempts = 50;\n" +
+                "    var interval = setInterval(function() {\n" +
+                "      attempts++;\n" +
+                "      var ws = (window.BlocklyInterface && window.BlocklyInterface.getWorkspace && window.BlocklyInterface.getWorkspace()) ||\n" +
+                "               (window.Blockly && (window.Blockly.getMainWorkspace && window.Blockly.getMainWorkspace() || window.Blockly.mainWorkspace));\n" +
+                "      var bK = (window.h && window.h.K) || (window.Blockly && window.Blockly.Xml);\n" +
+                "      \n" +
+                "      if (ws && bK) {\n" +
+                "        clearInterval(interval);\n" +
+                "        logJS('Workspace found. Applying blocks...');\n" +
+                "        try {\n" +
+                "          var xmlText = window.__momotXml;\n" +
+                "          var ok = false;\n" +
+                "          if (window.BlocklyInterface && window.BlocklyInterface.Kv) {\n" +
+                "             try { window.BlocklyInterface.Kv(xmlText); ok = true; logJS('Applied via Kv'); } catch(eK) { ok = false; }\n" +
+                "          }\n" +
+                "          if (!ok) {\n" +
+                "            var dom = (bK.textToDom ? bK.textToDom(xmlText) : (bK.$f ? bK.$f(xmlText) : null));\n" +
+                "            if (!dom) dom = (new DOMParser()).parseFromString(xmlText, 'text/xml').documentElement;\n" +
+                "            if (dom) {\n" +
+                "              if (dom.nodeName && dom.nodeName.toLowerCase() !== 'xml') {\n" +
+                "                var wrap = document.createElement('xml'); wrap.appendChild(dom); dom = wrap;\n" +
+                "              }\n" +
+                "              ws.clear();\n" +
+                "              if (bK.domToWorkspace) bK.domToWorkspace(dom, ws);\n" +
+                "              else if (bK.Eg) bK.Eg(dom, ws);\n" +
+                "              ok = true; logJS('Applied via fallback');\n" +
+                "            }\n" +
+                "          }\n" +
+                "          if (!ok) logJS('CRITICAL: No injection method worked');\n" +
+                "\n" +
+                "          // Teleport pegman to last common cell if available (DM/MoMoT result alignment)\n" +
+                "          if (window.__injectQ !== undefined && window.__injectS !== undefined) {\n" +
+                "            logJS('Teleporting pegman to aligned cell (' + window.__injectQ + ',' + window.__injectS + ')');\n" +
+                "            window.Q = window.__injectQ;\n" +
+                "            window.S = window.__injectS;\n" +
+                "            if (typeof Z === 'function') {\n" +
+                "              Z(window.Q, window.S, 4 * window.T);\n" +
+                "            }\n" +
+                "          }\n" +
+                "        } catch(e) {\n" +
+                "          logJS('Error applying blocks: ' + e);\n" +
+                "        }\n" +
+                "        finish();\n" +
+                "      } else if (attempts > maxAttempts) {\n" +
+                "        clearInterval(interval);\n" +
+                "        logJS('Timed out waiting for workspace (ws=' + !!ws + ', bK=' + !!bK + ')');\n" +
+                "        finish();\n" +
+                "      }\n" +
+                "    }, 200);\n" +
+                "  } catch(e) {\n" +
+                "    alert('MoMoT TOP ERROR: ' + e);\n" +
+                "    finish();\n" +
+                "  }\n" +
+                "})();"
+            );
+            System.out.println("[BlockyUI] loadMomotSolutionInPlace: executeScript returned: " + result);
+
+            // 2) Redraw overlays
             try {
                 webView.getEngine().executeScript("(function(){ try { " + ImmediateFeedbackService.buildOverlayRenderJs() + " } catch(e) {} })();");
             } catch (Exception ignored) {}
+
         } catch (Exception e) {
-            System.err.println("[BlockyUI] loadMomotSolutionInPlace executeScript failed: " + e.getMessage());
+            System.err.println("[BlockyUI] loadMomotSolutionInPlace failed: " + e.getMessage());
             e.printStackTrace();
             awaitingInjectComplete = false;
             suppressSync = false;
@@ -1859,23 +1918,7 @@ public class BlockyUI extends Application {
                     continue;
                 }
 
-                // Blockly Maze always wraps the user's program in a single top-level "maze_forever"
-                // with a <statement name="DO"> body. That forever-loop is a UI scaffold and must NOT
-                // become part of the EMF solution model; otherwise we accidentally introduce an
-                // infinite loop into the model when round-tripping.
-                //
-                // So we unwrap it here and return its DO-body chain as the program.
-                Object typeObj = block.get("type");
-                String type = typeObj != null ? String.valueOf(typeObj) : "";
-                if ("maze_forever".equals(type)) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> body = (Map<String, Object>) block.get("body");
-                    if (body != null) {
-                        result.add(body);
-                    }
-                } else {
-                    result.add(block);
-                }
+                result.add(block);
             }
         }
         return result;
@@ -1939,19 +1982,34 @@ public class BlockyUI extends Application {
         return null;
     }
 
-    /** Loads the single Model XMI from hardcoded path and applies it to the WebView (levels 1–10 stay predefined in JS). */
+    /** Loads a model XMI via FileChooser and applies it to the WebView. */
     private void loadModelImpl() {
-        File xmiFile = getModelXmiFile();
-        if (!xmiFile.exists()) {
-            Platform.runLater(() -> new Alert(Alert.AlertType.WARNING, "Model file not found: " + xmiFile.getPath()).showAndWait());
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Open Solution Model (XMI)");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("XMI Files", "*.xmi"));
+        
+        // Default directory: blocky_game/ if exists, else current dir.
+        File initialDir = new File("blocky_game");
+        if (!initialDir.exists()) initialDir = new File(".");
+        fileChooser.setInitialDirectory(initialDir);
+
+        Window window = webView != null && webView.getScene() != null ? webView.getScene().getWindow() : null;
+        File xmiFile = fileChooser.showOpenDialog(window);
+
+        if (xmiFile == null) {
+            // User cancelled; ensure overlay is hidden if it was triggered by a pill click
+            webView.getEngine().executeScript("try { if (window.__lvlLoadingHide) window.__lvlLoadingHide(); } catch(e) {}");
             return;
         }
+
         try {
             engine.loadFromFile(xmiFile);
         } catch (IOException e) {
+            webView.getEngine().executeScript("try { if (window.__lvlLoadingHide) window.__lvlLoadingHide(); } catch(e) {}");
             Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Failed to load model: " + e.getMessage()).showAndWait());
             return;
         } catch (IllegalArgumentException e) {
+            webView.getEngine().executeScript("try { if (window.__lvlLoadingHide) window.__lvlLoadingHide(); } catch(e) {}");
             Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Invalid model: " + e.getMessage()).showAndWait());
             return;
         }
@@ -1962,10 +2020,39 @@ public class BlockyUI extends Application {
         webView.getEngine().load(getMazeBaseUrl() + "?lang=en&level=" + levelId);
     }
 
-    /** Single hardcoded XMI for "Model" (levels 1–10 are predefined in the WebView). */
+    /** Saves the current model XMI via FileChooser. */
+    private void saveModelImpl() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Model (XMI)");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("XMI Files", "*.xmi"));
+        
+        // Suggest a name like "save.xmi" or use the currently loaded file name if available
+        fileChooser.setInitialFileName("save.xmi");
+
+        // Default directory: blocky_game/ if exists, else current dir.
+        File initialDir = new File("blocky_game");
+        if (!initialDir.exists()) initialDir = new File(".");
+        fileChooser.setInitialDirectory(initialDir);
+
+        Window window = webView != null && webView.getScene() != null ? webView.getScene().getWindow() : null;
+        File file = fileChooser.showSaveDialog(window);
+
+        if (file != null) {
+            engine.saveToFile(file);
+            System.out.println("[BlockyUI] Manually saved model to: " + file.getAbsolutePath());
+        }
+        
+        // Always ensure overlay is hidden after Save dialog closes (might have been triggered by a pill click)
+        webView.getEngine().executeScript("try { if (window.__lvlLoadingHide) window.__lvlLoadingHide(); } catch(e) {}");
+    }
+
     /** Path for Model load: load.xmi (blocky_game/ or current dir). */
     private static File getModelXmiFile() {
-        File f = new File("blocky_game/load.xmi");
+        File f = new File("blocky_game/save.xmi");
+        if (f.exists()) return f;
+        f = new File("save.xmi");
+        if (f.exists()) return f;
+        f = new File("blocky_game/load.xmi");
         if (f.exists()) return f;
         f = new File("load.xmi");
         if (f.exists()) return f;
@@ -1981,35 +2068,17 @@ public class BlockyUI extends Application {
         return url;
     }
 
-    /** Injects a "Model" option in the level nav; only this one loads from XMI (levels 1–10 are predefined in the WebView). */
-    private void injectLevelNavModelElement(WebEngine webEngine) {
-        webEngine.executeScript(
-            "(function() {" +
-            "  var h1 = document.querySelector('body table tr td h1');" +
-            "  if (!h1 || document.getElementById('levelModel')) return;" +
-            "  h1.appendChild(document.createTextNode(' '));" +
-            "  var span = document.createElement('span');" +
-            "  span.className = 'level_number level_done';" +
-            "  span.id = 'levelModel';" +
-            "  span.textContent = 'Model';" +
-            "  span.style.cursor = 'pointer';" +
-            "  span.title = 'Load level from saved XMI model';" +
-            "  span.addEventListener('click', function() {" +
-            "    if (window.javaBridge && window.javaBridge.loadModel) window.javaBridge.loadModel();" +
-            "  });" +
-            "  h1.appendChild(span);" +
-            "})();"
-        );
-    }
-
     /**
      * Injects the loaded level state into the WebView: map grid, nd/od, metadata (K, Od, T, Q, S),
      * Blockly workspace XML, and resets pegman. Call with suppressSync already set and clear it after.
      */
     private void applyLevelToWebView(Level level, WebEngine webEngine) {
-        if (level == null || level.getMap() == null) return;
+        if (level == null || level.getMap() == null || webEngine == null) return;
+        System.out.println("[BlockyUI] applyLevelToWebView: Level ID=" + level.getId());
+
         suppressSync = true;
         awaitingInjectComplete = true;
+
         try {
             int[][] grid = engine.buildGridForWebView(level.getMap());
             Cell startCell = engine.getStartCell(level.getMap());
@@ -2070,20 +2139,33 @@ public class BlockyUI extends Application {
             }
 
             String xml = engine.solutionToBlocklyXml(level);
-            String escapedForJson = xml.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
+            String escapedForJson = escapeForJsStringLiteral(xml);
             webEngine.executeScript("window.__loadXml = \"" + escapedForJson + "\";");
 
             // 2) Poll until maze DOM and Blockly are ready, then apply our data (overwrite maze defaults), redraw, load blocks, reset pegman
             webEngine.executeScript(
                 "(function(){ " +
+                "var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); " +
+                "function logJS(m) { if (bridge && bridge.logJS) bridge.logJS('ApplyLevel: ' + m); console.log('ApplyLevel: ' + m); } " +
+                "function finish() { if (bridge && bridge.injectComplete) bridge.injectComplete(); } " +
+                "logJS('Injection script started for Level " + levelId + "'); " +
                 "window.__dbgDisableAutoRun = true; " +
                 "var attempts = 0, maxAttempts = 60, interval = 100; " +
                 "var id = setInterval(function() { " +
-                "  if (!document.getElementById('svgMaze') || !window.BlocklyInterface || !window.Blockly || !window.Blockly.Xml) { " +
-                "    attempts++; if (attempts >= maxAttempts) clearInterval(id); " +
+                "  var ws = (window.BlocklyInterface && window.BlocklyInterface.getWorkspace && window.BlocklyInterface.getWorkspace()) || " +
+                "           (window.Blockly && window.Blockly.getMainWorkspace && window.Blockly.getMainWorkspace()); " +
+                "  var bK = (window.h && window.h.K) || (window.Blockly && window.Blockly.Xml); " +
+                "  if (!document.getElementById('svgMaze') || !ws || !bK) { " +
+                "    attempts++; if (attempts >= maxAttempts) { " +
+                "       clearInterval(id); " +
+                "       var m=[]; if(!document.getElementById('svgMaze'))m.push('svgMaze'); if(!ws)m.push('ws'); if(!bK)m.push('bK'); " +
+                "       logJS('Timed out waiting for workspace. Missing: ' + m.join(',')); " +
+                "       finish(); " +
+                "    } " +
                 "    return; " +
                 "  } " +
                 "  clearInterval(id); " +
+                "  logJS('Workspace found. Overwriting maze state...'); " +
                 "  if (window.__injectGridJson !== undefined) { " +
                 "    window.X = window.__injectGridJson; " +
                 "    if (window.__injectQd !== undefined) { window.Qd = window.__injectQd; window.Rd = window.__injectRd; window.Sd = window.__injectSd; window.Td = window.__injectTd; } " +
@@ -2094,7 +2176,7 @@ public class BlockyUI extends Application {
                 "  } " +
                 "  var c = document.getElementById('svgMaze'); " +
                 "  if (c) { while (c.firstChild) c.removeChild(c.firstChild); } " +
-                "  if (typeof Wd === 'function') Wd(); " +
+                "  if (typeof Wd === 'function') { Wd(); logJS('Map redrawn via Wd()'); } " +
                 "  if (!document.getElementById('look') && c) { " +
                 "    var ns = 'http://www.w3.org/2000/svg'; " +
                 "    var g = document.createElementNS(ns, 'g'); g.id = 'look'; " +
@@ -2103,54 +2185,47 @@ public class BlockyUI extends Application {
                 "    var p3 = document.createElementNS(ns, 'path'); p3.setAttribute('d', 'M 0,-55 a 55 55 0 0 1 55 55'); " +
                 "    g.appendChild(p1); g.appendChild(p2); g.appendChild(p3); c.appendChild(g); " +
                 "  } " +
-                "  function __loadBlocksFallback(xmlText) { " +
-                "    try { " +
-                "      if (!xmlText) return false; " +
-                "      var ws = null; " +
-                "      try { if (window.BlocklyInterface && window.BlocklyInterface.getWorkspace) ws = window.BlocklyInterface.getWorkspace(); } catch(e0) {} " +
-                "      try { if (!ws && window.Blockly && window.Blockly.getMainWorkspace) ws = window.Blockly.getMainWorkspace(); } catch(e0b) {} " +
-                "      if (!ws || !window.Blockly || !window.Blockly.Xml) return false; " +
-                "      try { ws.clear(); } catch(e1) {} " +
-                "      var dom = null; " +
-                "      try { dom = window.Blockly.utils.xml.textToDom(xmlText); } catch(e2) { dom = null; } " +
-                "      if (!dom) { " +
-                "        // Older Blockly builds sometimes lack Blockly.utils.xml.textToDom\n" +
-                "        try { dom = (new DOMParser()).parseFromString(xmlText, 'text/xml').documentElement; } catch(e3) { dom = null; } " +
-                "      } " +
-                "      if (!dom) return false; " +
-                "      // Ensure the root is <xml>\n" +
-                "      if (dom.nodeName && dom.nodeName.toLowerCase() !== 'xml') { " +
-                "        try { var wrap = document.createElement('xml'); wrap.appendChild(dom); dom = wrap; } catch(e4) {} " +
-                "      } " +
-                "      try { window.Blockly.Xml.domToWorkspace(dom, ws); return true; } catch(e5) { return false; } " +
-                "    } catch(ex) { return false; } " +
-                "  } " +
                 "  if (window.__loadXml !== undefined) { " +
                 "    var ok = false; " +
                 "    if (window.BlocklyInterface && window.BlocklyInterface.Kv) { " +
-                "      try { window.BlocklyInterface.Kv(window.__loadXml); ok = true; } catch(e) { if (window.javaBridge) window.javaBridge.logJS('Kv: ' + e); ok = false; } " +
+                "      try { window.BlocklyInterface.Kv(window.__loadXml); ok = true; logJS('Blocks loaded via Kv'); } catch(e) { logJS('Kv error: ' + e); ok = false; } " +
                 "    } " +
                 "    if (!ok) { " +
-                "      try { ok = __loadBlocksFallback(window.__loadXml); } catch(e6) { ok = false; } " +
-                "      if (!ok && window.javaBridge) window.javaBridge.logJS('Kv fallback failed'); " +
+                "      try { " +
+                "        var dom = (bK.textToDom ? bK.textToDom(window.__loadXml) : (bK.$f ? bK.$f(window.__loadXml) : null)); " +
+                "        if (!dom) dom = (new DOMParser()).parseFromString(window.__loadXml, 'text/xml').documentElement; " +
+                "        if (dom) { " +
+                "          if (dom.nodeName && dom.nodeName.toLowerCase() !== 'xml') { " +
+                "            var wrap = document.createElement('xml'); wrap.appendChild(dom); dom = wrap; " +
+                "          } " +
+                "          ws.clear(); " +
+                "          if (bK.domToWorkspace) bK.domToWorkspace(dom, ws); " +
+                "          else if (bK.Eg) bK.Eg(dom, ws); " +
+                "          ok = true; logJS('Blocks loaded via fallback'); " +
+                "        } " +
+                "      } catch(e) { logJS('Fallback error: ' + e); ok = false; } " +
+                "      if (!ok) logJS('CRITICAL: All block loading methods failed'); " +
                 "    } " +
                 "    try { delete window.__loadXml; } catch(e7) {} " +
                 "  } " +
                 "  try { window.__forcedT = undefined; } catch(e) {} " +
-                "  if (typeof $d === 'function' && document.getElementById('finish')) { try { $d(false); } catch(e) { if (window.javaBridge) window.javaBridge.logJS('$d: ' + e); } } " +
+                "  if (typeof $d === 'function' && document.getElementById('finish')) { try { $d(false); } catch(e) { logJS('$d error: ' + e); } } " +
                 "  try { "
                 + "    if (window.__modelStartT !== undefined) { "
                 + "      window.T = window.__modelStartT; "
-                + "      if (typeof Z === 'function') Z(window.Q, window.S, 4 * window.T); "
+                + "      if (typeof Z === 'function') { Z(window.Q, window.S, 4 * window.T); logJS('Pegman reset to T=' + window.T); } "
                 + "    } "
-                + "  } catch(e) { if (window.javaBridge) window.javaBridge.logJS('set modelStartT: ' + e); } " +
+                + "  } catch(e) { logJS('set modelStartT error: ' + e); } " +
                 ImmediateFeedbackService.buildOverlayRenderJs() +
                 blocky_game.DebuggingService.renderDebugOverlayJsSnippet() +
-                "  /* Debug buttons are injected by injectDebugControls() on every page load. */ " +
-                "  try { var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); if (bridge && bridge.injectComplete) bridge.injectComplete(); } catch(e) {} " +
+                "  finish(); " +
                 "}, interval); " +
                 "})();"
             );
+        } catch (Exception e) {
+            System.err.println("[BlockyUI] applyLevelToWebView failed: " + e.getMessage());
+            e.printStackTrace();
+            awaitingInjectComplete = false;
         } finally {
             // keep suppressSync until injectComplete() callback
             if (!awaitingInjectComplete) suppressSync = false;

@@ -219,7 +219,10 @@ public final class MomotRunService {
             logLine.accept("[MoMoT] Properties: blocky.populationSize=" + System.getProperty("blocky.populationSize")
                     + " blocky.maxEvaluations=" + System.getProperty("blocky.maxEvaluations")
                     + " blocky.nrRuns=" + System.getProperty("blocky.nrRuns")
-                    + " blocky.solutionLengthFactor=" + System.getProperty("blocky.solutionLengthFactor"));
+                    + " blocky.solutionLength=" + System.getProperty("blocky.solutionLength")
+                    + " blocky.solutionLengthFactor=" + System.getProperty("blocky.solutionLengthFactor")
+                    + " blocky.seed=" + System.getProperty("blocky.seed")
+                    + " blocky.henshin=" + System.getProperty("blocky.henshin"));
         }
 
         // Clean any previous outputs so each run starts fresh.
@@ -236,14 +239,24 @@ public final class MomotRunService {
             ClassLoader cl = Thread.currentThread().getContextClassLoader();
             if (cl == null) cl = MomotRunService.class.getClassLoader();
             // Initialize the runner after setting blocky.input.
-                    // Prefer the non-generated copy so regeneration won't break custom behavior.
-                    runnerClass = Class.forName("blocky", true, cl);
+            // Prefer the non-generated copy so regeneration won't break custom behavior.
+            Class<?> c;
+            try {
+                c = Class.forName("blocky_custom", true, cl);
+            } catch (ClassNotFoundException e) {
+                try {
+                    c = Class.forName("blocky", true, cl);
+                } catch (ClassNotFoundException e2) {
+                    throw e2;
+                }
+            }
+            runnerClass = c;
         } catch (ClassNotFoundException cnf) {
             if (logLine != null) {
-                        logLine.accept("[MoMoT] Cannot start: runner class 'blocky_custom' not found on classpath.");
+                logLine.accept("[MoMoT] Cannot start: runner class 'blocky_custom' or 'blocky' not found on classpath.");
                 logLine.accept("[MoMoT] This usually happens when running blocky_game via Maven (no MoMoT/PDE bundles).");
                 logLine.accept("[MoMoT] Run blocky_game from Eclipse with the modeling target platform active,");
-                        logLine.accept("[MoMoT] and ensure project 'blocky_momot' is built so 'blocky_custom' exists in bin/");
+                logLine.accept("[MoMoT] and ensure project 'blocky_momot' is built so 'blocky_custom' or 'blocky' exists in bin/");
             }
             return null;
         }
@@ -272,19 +285,24 @@ public final class MomotRunService {
             } catch (Exception ignored) {
             }
 
-            // Compute solution length dynamically: BlockyProgramMetrics.inferSolutionLength(input) * factor
+            // Compute solution length: use explicit property if set, else infer dynamically
             int solLen = 10;
             try {
-                Class<?> metrics = Class.forName("blocky_momot.BlockyProgramMetrics");
-                String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
-                Object v = metrics.getMethod("inferSolutionLength", String.class).invoke(null, absInput);
-                int factor = 2;
-                try {
-                    factor = Integer.parseInt(System.getProperty("blocky.solutionLengthFactor", "2"));
-                } catch (Exception ignored) {
+                String explicitSolLen = System.getProperty("blocky.solutionLength");
+                if (explicitSolLen != null && !explicitSolLen.isBlank()) {
+                    solLen = Integer.parseInt(explicitSolLen.trim());
+                } else {
+                    Class<?> metrics = Class.forName("blocky_momot.BlockyProgramMetrics");
+                    String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
+                    Object v = metrics.getMethod("inferSolutionLength", String.class).invoke(null, absInput);
+                    int factor = 2;
+                    try {
+                        factor = Integer.parseInt(System.getProperty("blocky.solutionLengthFactor", "2"));
+                    } catch (Exception ignored) {
+                    }
+                    if (factor < 1) factor = 1;
+                    if (v instanceof Number) solLen = Math.max(1, ((Number) v).intValue() * factor);
                 }
-                if (factor < 1) factor = 1;
-                if (v instanceof Number) solLen = Math.max(1, ((Number) v).intValue() * factor);
             } catch (Exception ignored) {
             }
 

@@ -603,8 +603,7 @@ public class GameEngine {
         logs.add("Start: " + getPosStr(startNode) + " dir=" + initialState.getOrientation());
 
         executeBodyWithLogs(currentLevel.getSolution(), initialState, trace, logs, winCellType);
-        saveModel();
-        System.out.println("[GameEngine] Simulation finished. Model (with execution trace) saved.\n");
+        System.out.println("[GameEngine] Simulation finished.\n");
         GameState last = trace.getStates().isEmpty() ? null : trace.getStates().get(trace.getStates().size() - 1);
         if (last != null) {
             if (last.getStatus() == GameStatus.WON) logs.add("Result: GOAL");
@@ -974,17 +973,16 @@ public class GameEngine {
         return m.find() ? Boolean.parseBoolean(m.group(1)) : defaultVal;
     }
 
-    public void saveModel() {
+    public void saveToFile(File file) {
+        if (file == null) return;
         try {
             // Ensure XMI always contains a non-null solution container to avoid downstream tooling issues.
             ensureLevelHasNonNullSolution(currentLevel);
-            File saveFile = new File("blocky_game/save.xmi");
-            if (!saveFile.getParentFile().exists()) saveFile = new File("save.xmi");
-            resource.setURI(URI.createFileURI(saveFile.getAbsolutePath()));
+            resource.setURI(URI.createFileURI(file.getAbsolutePath()));
             resource.save(null);
             System.out.println("[GameEngine] Model saved to: " + resource.getURI().toFileString());
         } catch (Exception e) {
-            System.err.println("[GameEngine] SAVE FAILED: " + e.getMessage());
+            System.err.println("[GameEngine] SAVE FAILED to " + file.getAbsolutePath() + ": " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -1097,12 +1095,22 @@ public class GameEngine {
                 dmCommonLen = longestCommonPrefixLenByXY(dmBaselinePath, dmSolutionPath);
                 dmAlignedValid = false;
                 if (dmCommonLen > 0 && dmBaselinePath.length >= dmCommonLen) {
-                    int[] pt = dmBaselinePath[dmCommonLen - 1];
-                    if (pt != null && pt.length >= 2) {
-                        dmAlignedX = pt[0];
-                        dmAlignedY = pt[1];
-                        dmAlignedStateIndex = findLastRunningStateIndexAtOrBefore(sol.trace, dmAlignedX, dmAlignedY);
-                        dmAlignedValid = dmAlignedStateIndex > 0;
+                    // Walk back from the last common cell to find the first RUNNING state.
+                    // This avoids aligning onto a WON/CRASHED terminal state if the paths are common up to the goal.
+                    for (int i = dmCommonLen - 1; i >= 0; i--) {
+                        int[] pt = dmBaselinePath[i];
+                        if (pt != null && pt.length >= 2) {
+                            int tx = pt[0];
+                            int ty = pt[1];
+                            int idx = findLastRunningStateIndexAtOrBefore(sol.trace, tx, ty);
+                            if (idx >= 0) {
+                                dmAlignedX = tx;
+                                dmAlignedY = ty;
+                                dmAlignedStateIndex = idx;
+                                dmAlignedValid = true;
+                                break;
+                            }
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -1140,6 +1148,18 @@ public class GameEngine {
         return dmCommonLen;
     }
 
+    public boolean isDmAlignedValid() {
+        return dmAlignedValid;
+    }
+
+    public int getDmAlignedX() {
+        return dmAlignedX;
+    }
+
+    public int getDmAlignedY() {
+        return dmAlignedY;
+    }
+
     // --- Debugger Controls (Java-driven stepping) ---
 
     /**
@@ -1171,7 +1191,7 @@ public class GameEngine {
         //
         // Fix: build the trace from the REAL comparison start (dmStartX/Y/Dir) and jump debugIndex
         // to the last state that reaches the last-common cell. This preserves correct "next block".
-        int desiredIndex = 0;
+        int desiredIndex = -1;
         int traceStartX = startX;
         int traceStartY = startY;
         Direction traceStartDir = debugStartDir;
@@ -1195,7 +1215,7 @@ public class GameEngine {
                 // If we computed the trace from a different start than the UI's desired (q,s),
                 // jump the index to the state that reaches the UI cell.
                 if (traceStartX != startX || traceStartY != startY) {
-                    if (desiredIndex <= 0) {
+                    if (desiredIndex < 0) {
                         desiredIndex = findLastRunningStateIndexAtOrBefore(debugTrace, startX, startY);
                     }
                     // Sanity-check: ensure the chosen index actually matches the requested cell.
@@ -1207,7 +1227,7 @@ public class GameEngine {
                     } catch (Exception ignored2) {}
                     System.out.println("[GameEngine] debugStart aligned: traceStart=(" + traceStartX + "," + traceStartY + ") -> ui=("
                             + startX + "," + startY + ") mappedIndex=" + desiredIndex + " actual=(" + actualX + "," + actualY + ")");
-                    if (desiredIndex <= 0) {
+                    if (desiredIndex < 0) {
                         // If the requested alignment cell is not on the new trace, do NOT snap back to the start.
                         // Fall back to a trace starting from the requested cell so stepping remains usable.
                         blocky_game.DebuggingService.DebugTraceResult fallback =
@@ -1368,14 +1388,29 @@ public class GameEngine {
             commonLen = 1;
         }
 
-        int mappedIndex = 0;
+        int mappedIndex = -1;
         int commonX = debugStartX;
         int commonY = debugStartY;
         if (commonLen > 0 && newFull != null && newFull.length >= commonLen) {
-            int[] commonPt = newFull[commonLen - 1];
-            commonX = commonPt[0];
-            commonY = commonPt[1];
-            mappedIndex = findLastStateIndexAtOrBefore(newTrace, commonPt[0], commonPt[1]);
+            // Walk back from the last common cell to find the first RUNNING state.
+            for (int i = commonLen - 1; i >= 0; i--) {
+                int[] pt = newFull[i];
+                if (pt != null && pt.length >= 2) {
+                    int idx = findLastRunningStateIndexAtOrBefore(newTrace, pt[0], pt[1]);
+                    if (idx >= 0) {
+                        commonX = pt[0];
+                        commonY = pt[1];
+                        mappedIndex = idx;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (mappedIndex < 0) {
+            mappedIndex = 0;
+            commonX = debugStartX;
+            commonY = debugStartY;
         }
 
         debugTrace = newTrace;
@@ -1411,8 +1446,8 @@ public class GameEngine {
     }
 
     private static int findLastStateIndexAtOrBefore(ExecutionTrace trace, int x, int y) {
-        if (trace == null || trace.getStates() == null) return 0;
-        int best = 0;
+        if (trace == null || trace.getStates() == null) return -1;
+        int best = -1;
         List<GameState> states = trace.getStates();
         for (int i = 0; i < states.size(); i++) {
             GameState s = states.get(i);
@@ -1430,8 +1465,8 @@ public class GameEngine {
      * This is preferred for "continue from here" alignment so we don't align onto a CRASH/WON terminal frame.
      */
     private static int findLastRunningStateIndexAtOrBefore(ExecutionTrace trace, int x, int y) {
-        if (trace == null || trace.getStates() == null) return 0;
-        int best = 0;
+        if (trace == null || trace.getStates() == null) return -1;
+        int best = -1;
         List<GameState> states = trace.getStates();
         for (int i = 0; i < states.size(); i++) {
             GameState s = states.get(i);
@@ -1700,29 +1735,16 @@ public class GameEngine {
         Container first = level.getSolution().getFirstContainer();
         if (first == null) return "<xml></xml>";
 
-        // Blockly Maze expects a single top-level "maze_forever" with a DO statement.
-        // IMPORTANT: It does NOT support a "maze_forever" nested inside another "maze_forever".
-        // If the model solution already starts with a Loop, we unwrap it and inject only its body
-        // into the single top-level forever block.
-        if (first.getStatement() instanceof Loop) {
-            Loop top = (Loop) first.getStatement();
-            String inner = "";
-            try {
-                if (top.getBody() != null) {
-                    inner = statementChainToXml(top.getBody().getFirstContainer());
-                }
-            } catch (Exception ignored) {
-            }
-            // Any `first.getNext()` after a forever-loop is not representable in Blockly Maze; ignore it.
-            return "<xml><block type=\"maze_forever\" x=\"0\" y=\"0\"><statement name=\"DO\">"
-                    + inner
-                    + "</statement></block></xml>";
+        String inner = statementChainToXml(first);
+        
+        String xml = "<xml xmlns=\"https://developers.google.com/blockly/xml\">" + inner + "</xml>";
+        // Ensure the first block has x,y coordinates for Blockly's workspace loader.
+        if (xml.contains("<block ")) {
+            xml = xml.replaceFirst("<block ", "<block x=\"70\" y=\"70\" ");
         }
 
-        String inner = statementChainToXml(first);
-        return "<xml><block type=\"maze_forever\" x=\"0\" y=\"0\"><statement name=\"DO\">"
-                + inner
-                + "</statement></block></xml>";
+        System.out.println("[GameEngine] solutionToBlocklyXml: " + xml);
+        return xml;
     }
 
     /**
@@ -1753,40 +1775,34 @@ public class GameEngine {
             if (kind == null) {
                 kind = AtomicStatementKind.TURN_LEFT;
             }
-            if (kind == AtomicStatementKind.MOVE_FORWARD) {
+            if (kind.getValue() == AtomicStatementKind.MOVE_FORWARD_VALUE) {
                 sb.append("<block type=\"maze_moveForward\">");
-            } else if (kind == AtomicStatementKind.TURN_LEFT) {
+            } else if (kind.getValue() == AtomicStatementKind.TURN_LEFT_VALUE) {
                 sb.append("<block type=\"maze_turn\"><field name=\"DIR\">turnLeft</field>");
-            } else if (kind == AtomicStatementKind.TURN_RIGHT) {
+            } else if (kind.getValue() == AtomicStatementKind.TURN_RIGHT_VALUE) {
                 sb.append("<block type=\"maze_turn\"><field name=\"DIR\">turnRight</field>");
-            }
-            if (kind == AtomicStatementKind.MOVE_FORWARD || kind == AtomicStatementKind.TURN_LEFT
-                    || kind == AtomicStatementKind.TURN_RIGHT) {
-                if (next != null) {
-                    sb.append("<next>");
-                    appendStatementXml(next, null, sb);
-                    sb.append("</next>");
-                }
-                sb.append("</block>");
             } else {
-                // Unknown/unsupported atomic kind: skip this statement but keep the chain.
-                if (next != null) {
-                    appendStatementXml(next, null, sb);
-                }
+                // Fallback for unknown kinds to avoid empty blocks.
+                sb.append("<block type=\"maze_moveForward\">");
             }
+
+            if (next != null) {
+                sb.append("<next>");
+                appendStatementXml(next, null, sb);
+                sb.append("</next>");
+            }
+            sb.append("</block>");
         } else if (stmt instanceof Loop) {
             Loop r = (Loop) stmt;
-            // Blockly Maze supports only ONE top-level forever-loop. Any nested loop must be inlined.
-            Container bodyFirst = (r.getBody() != null) ? r.getBody().getFirstContainer() : null;
-            if (bodyFirst != null) {
-                // Inline the loop body and stitch its tail to our "next".
-                appendStatementXml(bodyFirst, next, sb);
-            } else {
-                // Empty loop = no-op; just continue with "next".
-                if (next != null) {
-                    appendStatementXml(next, null, sb);
-                }
+            // Produced as a "Repeat Until Goal" block.
+            // Note: In Blockly Maze, this block is TERMINAL and does not support a <next> connection.
+            sb.append("<block type=\"maze_forever\">");
+            sb.append("<statement name=\"DO\">");
+            if (r.getBody() != null) {
+                appendStatementXml(r.getBody().getFirstContainer(), null, sb);
             }
+            sb.append("</statement>");
+            sb.append("</block>");
         } else if (stmt instanceof IfStmt) {
             IfStmt i = (IfStmt) stmt;
             // Keep Blockly export consistent with MoMoT's BlockySimulator defaults:
@@ -1831,9 +1847,9 @@ public class GameEngine {
         return "isPathForward";
     }
 
-    private static String escapeXml(String s) {
+    private String escapeXml(String s) {
         if (s == null) return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;");
     }
 
     /**
