@@ -653,14 +653,18 @@ public class BlockyUI extends Application {
                 + "        var inpRuns = mkInput('__momotInpRuns', '10', 'Number of algorithm runs', '25px'); "
                 + "        var labSolLen = document.createElement('span'); labSolLen.textContent = 'SolLen:'; "
                 + "        var inpSolLen = mkInput('__momotInpSolLen', '10', 'Solution length (number of transformation steps)', '25px'); "
-                + "        var mRunBtn = mkBtn('__momotRunBtn', 'Run', 'Execute MOMoT search with current parameters'); "
-                + "        mRunBtn.style.background = 'rgba(70, 150, 70, 0.4)'; "
+                + "        var btnCont = document.createElement('div'); btnCont.style.display = 'flex'; btnCont.style.gap = '4px'; "
+                + "        var mRunBtn = mkBtn('__momotRunBtn', 'Run', 'Execute MOMoT search'); "
+                + "        mRunBtn.style.background = 'rgba(70, 150, 70, 0.6)'; "
+                + "        var mStopBtn = mkBtn('__momotStopBtn', 'Stop', 'Stop current MOMoT search'); "
+                + "        mStopBtn.style.background = 'rgba(180, 50, 50, 0.6)'; "
+                + "        btnCont.appendChild(mRunBtn); btnCont.appendChild(mStopBtn); "
                 + "        settings.appendChild(labSeed); settings.appendChild(inpSeed); "
                 + "        settings.appendChild(labPop); settings.appendChild(inpPop); "
                 + "        settings.appendChild(labIter); settings.appendChild(inpIter); "
                 + "        settings.appendChild(labRuns); settings.appendChild(inpRuns); "
                 + "        settings.appendChild(labSolLen); settings.appendChild(inpSolLen); "
-                + "        settings.appendChild(mRunBtn); "
+                + "        settings.appendChild(btnCont); "
                 + "        var refreshBtn = mkBtn('__momotRefreshBtn', 'Refresh', 'Reload solutions from output folders'); "
                 + "        right.appendChild(refreshBtn); "
                 + "        header.appendChild(title); header.appendChild(right); "
@@ -777,22 +781,23 @@ public class BlockyUI extends Application {
                 + "              return th; "
                 + "            } "
                 + "            var objNames = ['Goal Reached', 'Edits', 'Shortest Path', 'Closest to Goal']; "
-                + "            for (var i=0; i<maxObj; i++) hRow.appendChild(mkTh(objNames[i] || ('Obj ' + (i+1)), i)); "
+                + "            var displayCols = Math.max(maxObj, objNames.length); "
+                + "            for (var i=0; i<displayCols; i++) hRow.appendChild(mkTh(objNames[i] || ('Obj ' + (i+1)), i)); "
                 + "            hRow.appendChild(mkTh('Model', 999)); "
                 + "            thead.appendChild(hRow); table.appendChild(thead); "
                 + "            var tbody = document.createElement('tbody'); "
                  + "            processed.forEach(function(p) { "
                  + "              var tr = document.createElement('tr'); "
                  + "              tr.style.cursor = 'pointer'; "
-                  + "              for (var i=0; i<maxObj; i++) { "
-                  + "                var td = document.createElement('td'); "
-                  + "                var val = p.objs[i]; "
+                   + "              for (var i=0; i<displayCols; i++) { "
+                   + "                var td = document.createElement('td'); "
+                   + "                var val = p.objs[i]; "
                   + "                if (i === 0) { "
                   + "                  if (val === -1) td.textContent = 'TRUE'; "
                   + "                  else if (val === 0) td.textContent = 'FALSE'; "
-                  + "                  else td.textContent = val !== undefined ? val : '-'; "
-                  + "                } else { "
-                  + "                  td.textContent = val !== undefined ? val : '-'; "
+                   + "                  else td.textContent = (val !== undefined && !isNaN(val)) ? val : '-'; "
+                   + "                } else { "
+                   + "                  td.textContent = (val !== undefined && !isNaN(val)) ? val : '-'; "
                   + "                } "
                   + "                td.style.padding = '6px 8px'; td.style.textAlign = 'right'; "
                   + "                td.style.border = '1px solid rgba(255,255,255,0.15)'; "
@@ -837,6 +842,15 @@ public class BlockyUI extends Application {
                 + "        } "
                 + "        window.__momotShowAndRefresh = function(){ try { panel.style.display = 'block'; } catch(e) {} try { refresh(); } catch(e2) {} }; "
                 + "        refreshBtn.addEventListener('click', function(){ refresh(); }); "
+                + "        mStopBtn.addEventListener('click', function(){ "
+                + "          try { "
+                + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
+                + "            if (bridge && bridge.stopMomotRun) { "
+                + "              bridge.stopMomotRun(); "
+                + "              setStatus('MoMoT stopping...'); "
+                + "            } "
+                + "          } catch(e) { setStatus('Stop failed'); } "
+                + "        }); "
                 + "        mRunBtn.addEventListener('click', function(){ "
                 + "          try { "
                 + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
@@ -1325,6 +1339,10 @@ public class BlockyUI extends Application {
                 + "                var width  = grid[0].length; "
                 + "                var col = Math.floor((cx / rect.width)  * width); "
                 + "                var row = Math.floor((cy / rect.height) * height); "
+                + "                try { "
+                + "                  var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
+                + "                  if (bridge) bridge.logJS('[DM] Click: client(' + ev.clientX + ',' + ev.clientY + ') rectTop=' + Math.round(rect.top) + ' -> local(' + Math.round(cx) + ',' + Math.round(cy) + ') -> cell(' + col + ',' + row + ') size(' + Math.round(rect.width) + 'x' + Math.round(rect.height) + ')'); "
+                + "                } catch(eLog) {} "
                 + "                if (col < 0 || row < 0 || col >= width || row >= height) return; "
                 + "                var v = grid[row][col]; "
                 + "                if (!(v === 1 || v === 3)) { "
@@ -1490,6 +1508,11 @@ public class BlockyUI extends Application {
             });
         }
 
+        public void stopMomotRun() {
+            System.out.println("[JSBridge] stopMomotRun");
+            MomotRunService.stopCurrentRun();
+        }
+
         // --- Debugger controls (Java-driven stepping) ---
 
         /**
@@ -1563,6 +1586,10 @@ public class BlockyUI extends Application {
         public void syncLevelMeta(String metaJson) {
             if (suppressSync) return;
             System.out.println("[JSBridge] Received level metadata: " + metaJson);
+            
+            // Stop MoMoT if level changed
+            MomotRunService.stopCurrentRun();
+
             engine.syncLevelMeta(metaJson);
             try {
                 Platform.runLater(() -> {

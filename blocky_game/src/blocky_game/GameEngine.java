@@ -328,7 +328,10 @@ public class GameEngine {
                         cell.setType(CellType.START);
                         break;
                     case 3:
-                        cell.setType(CellType.GOAL);
+                        // Value 3 is GOAL in WebView. 
+                        // If we are restoring from a custom model (oldGoal != null), 
+                        // we treat all incoming goals as EMPTY first, then restore the correct one later.
+                        cell.setType(oldGoal != null ? CellType.EMPTY : CellType.GOAL);
                         break;
                 }
 

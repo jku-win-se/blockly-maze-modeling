@@ -117,14 +117,23 @@ public final class MomotResultsService {
 
     private static String objectiveFromModelFilename(String name) {
         if (name == null) return null;
-        // Example: blocky_-1.0_15.0.xmi -> "-1.0 15.0"
+        // Example: blocky_custom_-1.0_4.0_5.0_0.0.xmi -> "-1.0 4.0 5.0 0.0"
         String n = name;
         if (n.toLowerCase().endsWith(".xmi")) n = n.substring(0, n.length() - 4);
-        int idx = n.indexOf("blocky_");
-        if (idx >= 0) n = n.substring(idx + "blocky_".length());
+        
         String[] parts = n.split("_");
-        if (parts.length < 1) return null;
-        return String.join(" ", parts);
+        List<String> numericParts = new ArrayList<>();
+        for (String p : parts) {
+            if (p.isEmpty()) continue;
+            char first = p.charAt(0);
+            // Heuristic: objective parts in MOMoT filenames start with a digit, minus, or dot.
+            if (Character.isDigit(first) || (first == '-' && p.length() > 1) || first == '.') {
+                numericParts.add(p);
+            }
+        }
+        
+        if (numericParts.isEmpty()) return null;
+        return String.join(" ", numericParts);
     }
 
     private static List<String> splitSolutionSummaries(String solutionsTxt) {

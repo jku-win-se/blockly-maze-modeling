@@ -59,7 +59,9 @@ That doubles patterns again for many locations.
 Examples from our domain (depending on how we encode them in rule LHS/conditions):
 
 - **`IfStmt.elseBody` optional**: if we want operators that distinguish “if-only” vs “if-else”, we need variants that require/forbid the else body.
-- **`Level.allowLoops` / `Level.allowConditionals`**: if we encode them as match constraints on `Level`, rules that create loops or conditionals may need `Game → levels → Level` context for nested edits, or we accept that some guards only apply where `Level` is in the LHS.
+- **`Level.allowLoops` / `Level.allowConditionals`**:
+  - If we encode them as match constraints on `Level`, rules that create loops or conditionals may need `Game → levels → Level` context for nested edits, or we accept that some guards only apply where `Level` is in the LHS.
+  - Alternative: keep operators generic and enforce the flags in MoMoT via a **hard penalty objective** (e.g. `AllowControlFlowPenalty`) that assigns a large penalty when the synthesized program contains disallowed `Loop` / `IfStmt` nodes.
 
 Each such constraint tends to add **another rule shape** or duplicate context, not “one extra line” in the same rule.
 

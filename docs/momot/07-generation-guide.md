@@ -151,4 +151,11 @@ Before returning the .momot file, verify:
 | 9 | (Optional) Ensure .henshin uses nsURI for types and package is registered on the resource set. |
 | 10 | Run validation checklist and fix any violations. |
 
+### ⚠️ IMPORTANT: No Manual Edits in `src-gen`
+
+MOMoT generates Java code in `src-gen/`. 
+- **NEVER manually edit the generated Java files in `src-gen`.**
+- If you need to change logic, update the `.momot` file and **regenerate** in Eclipse.
+- Manual changes will be destroyed on the next generation.
+
 Following these steps produces a .momot file that is parseable and semantically valid provided the referenced files exist and names match the .henshin and .ecore content. See [05-ecore-henshin-integration](05-ecore-henshin-integration.md) for .henshin type resolution and [08-reference](08-reference.md) for quick lookup of keywords and rule names.

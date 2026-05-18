@@ -66,6 +66,12 @@ The window shows the Blockly Maze in a WebView. Use the level bar for levels 1�
 
 **Regenerating the EMF model (e.g. after editing `blocky.ecore`)** still requires Eclipse with EMF, or an EMF code-generation Maven plugin; the checked-in `blocky_model/src-gen/` is used by Maven as-is.
 
+### ⚠️ IMPORTANT: No Manual Edits in `src-gen`
+Files in `src-gen` directories (found in `blocky_model`, `blocky_momot`, etc.) are **automatically generated**. 
+- **NEVER manually edit these files.** 
+- If changes are needed, modify the source files (`.ecore`, `.momot`, etc.) and **rebuild/regenerate** in Eclipse.
+- Manual changes in `src-gen` will be overwritten and lost.
+
 ## Direct Manipulation → MoMoT auto-run (solution synthesis)
 
 Blocky supports **Direct Manipulation**: teleport Pegman to a chosen empty cell and treat that cell as an **intermediate goal** for synthesis.

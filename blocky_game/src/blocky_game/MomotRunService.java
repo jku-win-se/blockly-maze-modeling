@@ -88,7 +88,18 @@ public final class MomotRunService {
 
     private static String throwableToString(Throwable t) {
         if (t == null) return "null";
+        
+        // Unwrap common reflection/proxy wrappers to find the meaningful cause
         Throwable root = t;
+        while (root != null) {
+            if (root.getMessage() != null && root.getMessage().contains("MoMoT search interrupted")) {
+                return "MoMoT search stopped by user or level change.";
+            }
+            if (root.getCause() == null || root.getCause() == root) break;
+            root = root.getCause();
+        }
+        
+        root = t;
         while (root.getCause() != null && root.getCause() != root) {
             root = root.getCause();
         }
@@ -161,6 +172,8 @@ public final class MomotRunService {
         return new RunSpec(input, out);
     }
 
+    private static volatile Thread currentMomotThread;
+
     /**
      * Synchronous MoMoT run (no background thread).
      *
@@ -168,6 +181,14 @@ public final class MomotRunService {
      */
     public static String runSync(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
         return runInternal(spec, logLine, onOutputDirReady);
+    }
+
+    public static void stopCurrentRun() {
+        Thread t = currentMomotThread;
+        if (t != null && t.isAlive()) {
+            System.out.println("[MomotRunService] Stopping current MoMoT run (interrupting thread: " + t.getName() + ")...");
+            t.interrupt();
+        }
     }
 
     public static void runAsync(RunSpec spec, Consumer<String> logLine, Runnable onDone) {
@@ -179,6 +200,7 @@ public final class MomotRunService {
      * The output directory may differ from {@link RunSpec#outputBase} if a suffix is applied.
      */
     public static void runAsync(RunSpec spec, Consumer<String> logLine, Runnable onDone, Consumer<String> onOutputDirReady) {
+        stopCurrentRun(); // Ensure only one run at a time
         Thread t = new Thread(() -> {
             try {
                 runInternal(spec, logLine, onOutputDirReady);
@@ -188,11 +210,13 @@ public final class MomotRunService {
                     logLine.accept("[MoMoT] Failed:\n" + details);
                 }
             } finally {
+                currentMomotThread = null;
                 if (onDone != null) {
                     Platform.runLater(onDone);
                 }
             }
         }, "MomotRunService");
+        currentMomotThread = t;
         t.setDaemon(true);
         t.start();
     }
@@ -213,6 +237,11 @@ public final class MomotRunService {
             if (logLine != null) logLine.accept("[MoMoT] Set system property blocky.input = " + absInput);
         } catch (Exception e) {
             if (logLine != null) logLine.accept("[MoMoT] Warning: failed to set blocky.input: " + e.getMessage());
+        }
+
+        if (Thread.interrupted()) {
+            if (logLine != null) logLine.accept("[MoMoT] Interrupted during initialization.");
+            return null;
         }
 
         if (logLine != null) {
@@ -308,10 +337,20 @@ public final class MomotRunService {
 
                     Object inst = runnerClass.getDeclaredConstructor().newInstance();
                     applyExperimentOverrides(inst, logLine);
+                    
+                    if (Thread.interrupted()) {
+                        if (logLine != null) logLine.accept("[MoMoT] Interrupted before starting search.");
+                        return null;
+                    }
+
                     String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
                     runnerClass.getMethod("performSearch", String.class, int.class).invoke(inst, absInput, solLen);
         } catch (Throwable t) {
-            if (logLine != null) logLine.accept("[MoMoT] Failed:\n" + throwableToString(t));
+            if (t instanceof InterruptedException || (t.getCause() instanceof InterruptedException)) {
+                if (logLine != null) logLine.accept("[MoMoT] Execution stopped (interrupted).");
+            } else if (logLine != null) {
+                logLine.accept("[MoMoT] Failed:\n" + throwableToString(t));
+            }
             return null;
         } finally {
             System.setOut(oldOut);
@@ -371,22 +410,10 @@ public final class MomotRunService {
     }
 
     private static void applyExperimentOverrides(Object runnerInstance, Consumer<String> logLine) {
-        if (runnerInstance == null) return;
-        try {
-            int pop = parseIntOrDefault(System.getProperty("blocky.populationSize"), -1);
-            int evals = parseIntOrDefault(System.getProperty("blocky.maxEvaluations"), -1);
-            int runs = parseIntOrDefault(System.getProperty("blocky.nrRuns"), -1);
-
-            // Best-effort: override fields if present (covers older compiled runners that use fixed finals).
-            if (pop > 0) setIntFieldIfExists(runnerInstance, "populationSize", pop);
-            if (evals > 0) setIntFieldIfExists(runnerInstance, "maxEvaluations", evals);
-            if (runs > 0) setIntFieldIfExists(runnerInstance, "nrRuns", runs);
-
-            if (logLine != null) {
-                logLine.accept("[MoMoT] Applied overrides to runner instance (best-effort).");
-            }
-        } catch (Exception e) {
-            if (logLine != null) logLine.accept("[MoMoT] Warning: could not apply overrides: " + e.getMessage());
+        // Overrides are now handled by the blocky_custom mediator class 
+        // which extends 'blocky' and reads system properties directly.
+        if (logLine != null && runnerInstance != null && runnerInstance.getClass().getSimpleName().equals("blocky_custom")) {
+            logLine.accept("[MoMoT] Using blocky_custom mediator for dynamic parameter injection.");
         }
     }
 
@@ -396,22 +423,6 @@ public final class MomotRunService {
             return Integer.parseInt(s.trim());
         } catch (Exception e) {
             return def;
-        }
-    }
-
-    private static void setIntFieldIfExists(Object obj, String fieldName, int value) {
-        Class<?> c = obj.getClass();
-        while (c != null) {
-            try {
-                java.lang.reflect.Field f = c.getDeclaredField(fieldName);
-                f.setAccessible(true);
-                f.setInt(obj, value);
-                return;
-            } catch (NoSuchFieldException ns) {
-                c = c.getSuperclass();
-            } catch (Exception e) {
-                return;
-            }
         }
     }
 

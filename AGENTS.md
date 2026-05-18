@@ -13,6 +13,7 @@ This repository contains **Blocky Maze**, a Java/JavaFX application integrating 
 - **Run App**: `mvn -pl blocky_game javafx:run` (run from root).
 - **Working Directory**: Must be `blocky_game` when running (Maven handles this via `-pl`). If running manually, `load.xmi` and assets are expected in the working directory.
 - **EMF Codegen**: `src-gen/` is checked in. If you edit `.ecore`, you **must** regenerate code using Eclipse EMF (right-click `.genmodel` -> Generate Model Code). Maven only compiles existing code.
+- **NEVER MODIFY SRC-GEN**: Any file in a `src-gen` folder is automatically managed. **NEVER manually edit files in `src-gen`.** If a change is needed, modify the source model/configuration and ask the user to regenerate the code in Eclipse.
 
 ## Framework & Toolchain Quirks
 - **JSBridge**: JavaFX WebView uses **weak references** for `window.javaBridge`. `BlockyUI` keeps a strong field reference `jsBridge` to prevent GC.
