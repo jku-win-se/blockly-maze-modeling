@@ -23,6 +23,7 @@ import org.eclipse.emf.ecore.EObject;
  *   <li>{@link blocky.Level#getMaxBlocks <em>Max Blocks</em>}</li>
  *   <li>{@link blocky.Level#isAllowLoops <em>Allow Loops</em>}</li>
  *   <li>{@link blocky.Level#isAllowConditionals <em>Allow Conditionals</em>}</li>
+ *   <li>{@link blocky.Level#isAllowIfElse <em>Allow If Else</em>}</li>
  *   <li>{@link blocky.Level#getSolution <em>Solution</em>}</li>
  *   <li>{@link blocky.Level#getTraces <em>Traces</em>}</li>
  * </ul>
@@ -210,6 +211,28 @@ public interface Level extends EObject {
 	 * @generated
 	 */
 	void setAllowConditionals(boolean value);
+
+	/**
+	 * Returns the value of the '<em><b>Allow If Else</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the value of the '<em>Allow If Else</em>' attribute.
+	 * @see #setAllowIfElse(boolean)
+	 * @see blocky.BlockyPackage#getLevel_AllowIfElse()
+	 * @model
+	 * @generated
+	 */
+	boolean isAllowIfElse();
+
+	/**
+	 * Sets the value of the '{@link blocky.Level#isAllowIfElse <em>Allow If Else</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Allow If Else</em>' attribute.
+	 * @see #isAllowIfElse()
+	 * @generated
+	 */
+	void setAllowIfElse(boolean value);
 
 	/**
 	 * Returns the value of the '<em><b>Solution</b></em>' containment reference.

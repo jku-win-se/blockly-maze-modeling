@@ -123,8 +123,8 @@ public final class MomotResultsService {
         int idx = n.indexOf("blocky_");
         if (idx >= 0) n = n.substring(idx + "blocky_".length());
         String[] parts = n.split("_");
-        if (parts.length < 2) return null;
-        return parts[0] + " " + parts[1];
+        if (parts.length < 1) return null;
+        return String.join(" ", parts);
     }
 
     private static List<String> splitSolutionSummaries(String solutionsTxt) {

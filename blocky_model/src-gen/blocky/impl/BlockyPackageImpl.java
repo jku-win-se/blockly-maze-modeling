@@ -343,8 +343,18 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 * @generated
 	 */
 	@Override
+	public EAttribute getLevel_AllowIfElse() {
+		return (EAttribute) levelEClass.getEStructuralFeatures().get(8);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EReference getLevel_Solution() {
-		return (EReference) levelEClass.getEStructuralFeatures().get(8);
+		return (EReference) levelEClass.getEStructuralFeatures().get(9);
 	}
 
 	/**
@@ -354,7 +364,7 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 	 */
 	@Override
 	public EReference getLevel_Traces() {
-		return (EReference) levelEClass.getEStructuralFeatures().get(9);
+		return (EReference) levelEClass.getEStructuralFeatures().get(10);
 	}
 
 	/**
@@ -849,6 +859,7 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		createEAttribute(levelEClass, LEVEL__MAX_BLOCKS);
 		createEAttribute(levelEClass, LEVEL__ALLOW_LOOPS);
 		createEAttribute(levelEClass, LEVEL__ALLOW_CONDITIONALS);
+		createEAttribute(levelEClass, LEVEL__ALLOW_IF_ELSE);
 		createEReference(levelEClass, LEVEL__SOLUTION);
 		createEReference(levelEClass, LEVEL__TRACES);
 
@@ -968,6 +979,8 @@ public class BlockyPackageImpl extends EPackageImpl implements BlockyPackage {
 		initEAttribute(getLevel_AllowConditionals(), ecorePackage.getEBoolean(), "allowConditionals", null, 0, 1,
 				Level.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED,
 				IS_ORDERED);
+		initEAttribute(getLevel_AllowIfElse(), ecorePackage.getEBoolean(), "allowIfElse", null, 0, 1, Level.class,
+				!IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getLevel_Solution(), this.getBody(), null, "solution", null, 0, 1, Level.class, !IS_TRANSIENT,
 				!IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED,
 				IS_ORDERED);

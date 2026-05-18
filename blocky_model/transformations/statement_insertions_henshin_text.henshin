@@ -264,7 +264,7 @@
       <nodes xmi:id="_3-8-Az7vEfGXWMXI2nEHeA" name="c" outgoing="_3-8-CT7vEfGXWMXI2nEHeA">
         <type href="http://www.example.org/blocky#//Container"/>
       </nodes>
-      <nodes xmi:id="_3-8-BD7vEfGXWMXI2nEHeA" name="s" incoming="_3-8-CT7vEfGXWMXI2nEHeA" outgoing="_3-8-Cj7vEfGXWMXI2nEHeA _3-8-Cz7vEfGXWMXI2nEHeA">
+      <nodes xmi:id="_3-8-BD7vEfGXWMXI2nEHeA" name="s" incoming="_3-8-CT7vEfGXWMXI2nEHeA" outgoing="_3-8-Cj7vEfGXWMXI2nEHeA">
         <type href="http://www.example.org/blocky#//IfStmt"/>
         <attributes xmi:id="_3-8-BT7vEfGXWMXI2nEHeA" value="true">
           <type href="http://www.example.org/blocky#//Statement/generated"/>
@@ -276,21 +276,72 @@
       <nodes xmi:id="_3-8-Bz7vEfGXWMXI2nEHeA" name="thenB" incoming="_3-8-Cj7vEfGXWMXI2nEHeA">
         <type href="http://www.example.org/blocky#//Body"/>
       </nodes>
-      <nodes xmi:id="_3-8-CD7vEfGXWMXI2nEHeA" name="elseB" incoming="_3-8-Cz7vEfGXWMXI2nEHeA">
-        <type href="http://www.example.org/blocky#//Body"/>
-      </nodes>
       <edges xmi:id="_3-8-CT7vEfGXWMXI2nEHeA" source="_3-8-Az7vEfGXWMXI2nEHeA" target="_3-8-BD7vEfGXWMXI2nEHeA">
         <type href="http://www.example.org/blocky#//Container/statement"/>
       </edges>
       <edges xmi:id="_3-8-Cj7vEfGXWMXI2nEHeA" source="_3-8-BD7vEfGXWMXI2nEHeA" target="_3-8-Bz7vEfGXWMXI2nEHeA">
         <type href="http://www.example.org/blocky#//IfStmt/thenBody"/>
       </edges>
-      <edges xmi:id="_3-8-Cz7vEfGXWMXI2nEHeA" source="_3-8-BD7vEfGXWMXI2nEHeA" target="_3-8-CD7vEfGXWMXI2nEHeA">
-        <type href="http://www.example.org/blocky#//IfStmt/elseBody"/>
-      </edges>
     </rhs>
     <mappings xmi:id="_3-8-DD7vEfGXWMXI2nEHeA" origin="_3-89-j7vEfGXWMXI2nEHeA" image="_3-8-Az7vEfGXWMXI2nEHeA"/>
   </units>
+  <units xsi:type="henshin:Rule" xmi:id="_IfElse_Rule_ID" name="PopulateEmptyContainerWithIfElse">
+    <parameters xmi:id="_IfElse_P1" name="cnd" kind="IN">
+      <type xsi:type="ecore:EDataType" href="http://www.eclipse.org/emf/2002/Ecore#//EEnumerator"/>
+    </parameters>
+    <lhs xmi:id="_IfElse_LHS" name="PopulateEmptyContainerWithIfElse_LHS">
+      <nodes xmi:id="_IfElse_L1" name="c">
+        <type href="http://www.example.org/blocky#//Container"/>
+      </nodes>
+      <formula xsi:type="henshin:Not" xmi:id="_IfElse_L2">
+        <child xsi:type="henshin:NestedCondition" xmi:id="_IfElse_L3">
+          <conclusion xmi:id="_IfElse_L4" name="forbid">
+            <nodes xmi:id="_IfElse_L5" name="s0" incoming="_IfElse_L6">
+              <type href="http://www.example.org/blocky#//Statement"/>
+            </nodes>
+            <nodes xmi:id="_IfElse_L7" name="c" outgoing="_IfElse_L6">
+              <type href="http://www.example.org/blocky#//Container"/>
+            </nodes>
+            <edges xmi:id="_IfElse_L6" source="_IfElse_L7" target="_IfElse_L5">
+              <type href="http://www.example.org/blocky#//Container/statement"/>
+            </edges>
+          </conclusion>
+          <mappings xmi:id="_IfElse_L8" origin="_IfElse_L1" image="_IfElse_L7"/>
+        </child>
+      </formula>
+    </lhs>
+    <rhs xmi:id="_IfElse_RHS" name="PopulateEmptyContainerWithIfElse_RHS">
+      <nodes xmi:id="_IfElse_R1" name="c" outgoing="_IfElse_E1">
+        <type href="http://www.example.org/blocky#//Container"/>
+      </nodes>
+      <nodes xmi:id="_IfElse_R2" name="s" incoming="_IfElse_E1" outgoing="_IfElse_E2 _IfElse_E3">
+        <type href="http://www.example.org/blocky#//IfStmt"/>
+        <attributes xmi:id="_IfElse_A1" value="true">
+          <type href="http://www.example.org/blocky#//Statement/generated"/>
+        </attributes>
+        <attributes xmi:id="_IfElse_A2" value="cnd">
+          <type href="http://www.example.org/blocky#//IfStmt/condition"/>
+        </attributes>
+      </nodes>
+      <nodes xmi:id="_IfElse_R3" name="thenB" incoming="_IfElse_E2">
+        <type href="http://www.example.org/blocky#//Body"/>
+      </nodes>
+      <nodes xmi:id="_IfElse_R4" name="elseB" incoming="_IfElse_E3">
+        <type href="http://www.example.org/blocky#//Body"/>
+      </nodes>
+      <edges xmi:id="_IfElse_E1" source="_IfElse_R1" target="_IfElse_R2">
+        <type href="http://www.example.org/blocky#//Container/statement"/>
+      </edges>
+      <edges xmi:id="_IfElse_E2" source="_IfElse_R2" target="_IfElse_R3">
+        <type href="http://www.example.org/blocky#//IfStmt/thenBody"/>
+      </edges>
+      <edges xmi:id="_IfElse_E3" source="_IfElse_R2" target="_IfElse_R4">
+        <type href="http://www.example.org/blocky#//IfStmt/elseBody"/>
+      </edges>
+    </rhs>
+    <mappings xmi:id="_IfElse_M1" origin="_IfElse_L1" image="_IfElse_R1"/>
+  </units>
+
   <units xsi:type="henshin:Rule" xmi:id="_3-8-DT7vEfGXWMXI2nEHeA" name="DeleteOnlyContainerFromBody">
     <lhs xmi:id="_3-8-Dj7vEfGXWMXI2nEHeA" name="DeleteOnlyContainerFromBody_LHS">
       <nodes xmi:id="_3-8-Dz7vEfGXWMXI2nEHeA" name="body" outgoing="_3-8-FD7vEfGXWMXI2nEHeA">
@@ -492,7 +543,7 @@
     <parameterMappings xmi:id="_3-8-XT7vEfGXWMXI2nEHeA" source="_3-8-YT7vEfGXWMXI2nEHeA" target="_3-8-WT7vEfGXWMXI2nEHeA"/>
   </units>
   <units xsi:type="henshin:IndependentUnit" xmi:id="_3-8-Xj7vEfGXWMXI2nEHeA" name="InsertContainerAnywhere" subUnits="_3-8W0T7vEfGXWMXI2nEHeA _3-8W4T7vEfGXWMXI2nEHeA _3-8W7z7vEfGXWMXI2nEHeA _3-8W_T7vEfGXWMXI2nEHeA"/>
-  <units xsi:type="henshin:IndependentUnit" xmi:id="_3-8-Xz7vEfGXWMXI2nEHeA" name="PopulateAnyEmptyContainer" subUnits="_3-8XDT7vEfGXWMXI2nEHeA _3-895T7vEfGXWMXI2nEHeA _3-899z7vEfGXWMXI2nEHeA">
+  <units xsi:type="henshin:IndependentUnit" xmi:id="_3-8-Xz7vEfGXWMXI2nEHeA" name="PopulateAnyEmptyContainer" subUnits="_3-8XDT7vEfGXWMXI2nEHeA _3-895T7vEfGXWMXI2nEHeA _3-899z7vEfGXWMXI2nEHeA _IfElse_Rule_ID">
     <parameters xmi:id="_3-8-YD7vEfGXWMXI2nEHeA" name="k" kind="IN">
       <type xsi:type="ecore:EDataType" href="http://www.eclipse.org/emf/2002/Ecore#//EEnumerator"/>
     </parameters>
@@ -503,6 +554,8 @@
     <parameterMappings xmi:id="_3-8-Yz7vEfGXWMXI2nEHeA" source="_3-8XDj7vEfGXWMXI2nEHeA" target="_3-8-YD7vEfGXWMXI2nEHeA"/>
     <parameterMappings xmi:id="_3-8-ZD7vEfGXWMXI2nEHeA" source="_3-8-YT7vEfGXWMXI2nEHeA" target="_3-89-D7vEfGXWMXI2nEHeA"/>
     <parameterMappings xmi:id="_3-8-ZT7vEfGXWMXI2nEHeA" source="_3-89-D7vEfGXWMXI2nEHeA" target="_3-8-YT7vEfGXWMXI2nEHeA"/>
+    <parameterMappings xmi:id="_IfElse_PM1" source="_3-8-YT7vEfGXWMXI2nEHeA" target="_IfElse_P1"/>
+    <parameterMappings xmi:id="_IfElse_PM2" source="_IfElse_P1" target="_3-8-YT7vEfGXWMXI2nEHeA"/>
   </units>
   <units xsi:type="henshin:IndependentUnit" xmi:id="_3-8-Zj7vEfGXWMXI2nEHeA" name="DeleteContainerAnywhere" subUnits="_3-8-DT7vEfGXWMXI2nEHeA _3-8-IT7vEfGXWMXI2nEHeA _3-8-Mj7vEfGXWMXI2nEHeA _3-8-Qz7vEfGXWMXI2nEHeA"/>
 </henshin:Module>

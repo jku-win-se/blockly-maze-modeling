@@ -42,4 +42,5 @@ public interface Statement extends EObject {
 	 * @generated
 	 */
 	void setGenerated(boolean value);
+
 } // Statement

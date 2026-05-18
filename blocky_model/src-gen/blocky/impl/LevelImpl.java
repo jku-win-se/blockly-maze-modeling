@@ -41,6 +41,7 @@ import org.eclipse.emf.ecore.util.InternalEList;
  *   <li>{@link blocky.impl.LevelImpl#getMaxBlocks <em>Max Blocks</em>}</li>
  *   <li>{@link blocky.impl.LevelImpl#isAllowLoops <em>Allow Loops</em>}</li>
  *   <li>{@link blocky.impl.LevelImpl#isAllowConditionals <em>Allow Conditionals</em>}</li>
+ *   <li>{@link blocky.impl.LevelImpl#isAllowIfElse <em>Allow If Else</em>}</li>
  *   <li>{@link blocky.impl.LevelImpl#getSolution <em>Solution</em>}</li>
  *   <li>{@link blocky.impl.LevelImpl#getTraces <em>Traces</em>}</li>
  * </ul>
@@ -197,6 +198,26 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 	 * @ordered
 	 */
 	protected boolean allowConditionals = ALLOW_CONDITIONALS_EDEFAULT;
+
+	/**
+	 * The default value of the '{@link #isAllowIfElse() <em>Allow If Else</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #isAllowIfElse()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final boolean ALLOW_IF_ELSE_EDEFAULT = false;
+
+	/**
+	 * The cached value of the '{@link #isAllowIfElse() <em>Allow If Else</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #isAllowIfElse()
+	 * @generated
+	 * @ordered
+	 */
+	protected boolean allowIfElse = ALLOW_IF_ELSE_EDEFAULT;
 
 	/**
 	 * The cached value of the '{@link #getSolution() <em>Solution</em>}' containment reference.
@@ -460,6 +481,30 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 	 * @generated
 	 */
 	@Override
+	public boolean isAllowIfElse() {
+		return allowIfElse;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setAllowIfElse(boolean newAllowIfElse) {
+		boolean oldAllowIfElse = allowIfElse;
+		allowIfElse = newAllowIfElse;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, BlockyPackage.LEVEL__ALLOW_IF_ELSE, oldAllowIfElse,
+					allowIfElse));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public Body getSolution() {
 		return solution;
 	}
@@ -562,6 +607,8 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 			return isAllowLoops();
 		case BlockyPackage.LEVEL__ALLOW_CONDITIONALS:
 			return isAllowConditionals();
+		case BlockyPackage.LEVEL__ALLOW_IF_ELSE:
+			return isAllowIfElse();
 		case BlockyPackage.LEVEL__SOLUTION:
 			return getSolution();
 		case BlockyPackage.LEVEL__TRACES:
@@ -602,6 +649,9 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 			return;
 		case BlockyPackage.LEVEL__ALLOW_CONDITIONALS:
 			setAllowConditionals((Boolean) newValue);
+			return;
+		case BlockyPackage.LEVEL__ALLOW_IF_ELSE:
+			setAllowIfElse((Boolean) newValue);
 			return;
 		case BlockyPackage.LEVEL__SOLUTION:
 			setSolution((Body) newValue);
@@ -646,6 +696,9 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 		case BlockyPackage.LEVEL__ALLOW_CONDITIONALS:
 			setAllowConditionals(ALLOW_CONDITIONALS_EDEFAULT);
 			return;
+		case BlockyPackage.LEVEL__ALLOW_IF_ELSE:
+			setAllowIfElse(ALLOW_IF_ELSE_EDEFAULT);
+			return;
 		case BlockyPackage.LEVEL__SOLUTION:
 			setSolution((Body) null);
 			return;
@@ -680,6 +733,8 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 			return allowLoops != ALLOW_LOOPS_EDEFAULT;
 		case BlockyPackage.LEVEL__ALLOW_CONDITIONALS:
 			return allowConditionals != ALLOW_CONDITIONALS_EDEFAULT;
+		case BlockyPackage.LEVEL__ALLOW_IF_ELSE:
+			return allowIfElse != ALLOW_IF_ELSE_EDEFAULT;
 		case BlockyPackage.LEVEL__SOLUTION:
 			return solution != null;
 		case BlockyPackage.LEVEL__TRACES:
@@ -713,6 +768,8 @@ public class LevelImpl extends MinimalEObjectImpl.Container implements Level {
 		result.append(allowLoops);
 		result.append(", allowConditionals: ");
 		result.append(allowConditionals);
+		result.append(", allowIfElse: ");
+		result.append(allowIfElse);
 		result.append(')');
 		return result.toString();
 	}

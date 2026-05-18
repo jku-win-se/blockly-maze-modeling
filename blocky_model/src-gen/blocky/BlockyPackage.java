@@ -177,13 +177,22 @@ public interface BlockyPackage extends EPackage {
 	int LEVEL__ALLOW_CONDITIONALS = 7;
 
 	/**
+	 * The feature id for the '<em><b>Allow If Else</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LEVEL__ALLOW_IF_ELSE = 8;
+
+	/**
 	 * The feature id for the '<em><b>Solution</b></em>' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int LEVEL__SOLUTION = 8;
+	int LEVEL__SOLUTION = 9;
 
 	/**
 	 * The feature id for the '<em><b>Traces</b></em>' containment reference list.
@@ -192,7 +201,7 @@ public interface BlockyPackage extends EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int LEVEL__TRACES = 9;
+	int LEVEL__TRACES = 10;
 
 	/**
 	 * The number of structural features of the '<em>Level</em>' class.
@@ -201,7 +210,7 @@ public interface BlockyPackage extends EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int LEVEL_FEATURE_COUNT = 10;
+	int LEVEL_FEATURE_COUNT = 11;
 
 	/**
 	 * The number of operations of the '<em>Level</em>' class.
@@ -960,6 +969,17 @@ public interface BlockyPackage extends EPackage {
 	EAttribute getLevel_AllowConditionals();
 
 	/**
+	 * Returns the meta object for the attribute '{@link blocky.Level#isAllowIfElse <em>Allow If Else</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Allow If Else</em>'.
+	 * @see blocky.Level#isAllowIfElse()
+	 * @see #getLevel()
+	 * @generated
+	 */
+	EAttribute getLevel_AllowIfElse();
+
+	/**
 	 * Returns the meta object for the containment reference '{@link blocky.Level#getSolution <em>Solution</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1574,6 +1594,14 @@ public interface BlockyPackage extends EPackage {
 		 * @generated
 		 */
 		EAttribute LEVEL__ALLOW_CONDITIONALS = eINSTANCE.getLevel_AllowConditionals();
+
+		/**
+		 * The meta object literal for the '<em><b>Allow If Else</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute LEVEL__ALLOW_IF_ELSE = eINSTANCE.getLevel_AllowIfElse();
 
 		/**
 		 * The meta object literal for the '<em><b>Solution</b></em>' containment reference feature.

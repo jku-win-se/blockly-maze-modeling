@@ -125,9 +125,11 @@ public final class SimUtils {
         Container cur = c;
         while (cur != null) {
             Statement s = cur.getStatement();
-            if (s instanceof IfStmt) return true;
-            if (s instanceof Loop) {
-                if (containsIf(((Loop) s).getBody())) return true;
+            if (s != null) {
+                if (s instanceof IfStmt) return true;
+                if (s instanceof Loop) {
+                    if (containsIf(((Loop) s).getBody())) return true;
+                }
             }
             cur = cur.getNext();
         }

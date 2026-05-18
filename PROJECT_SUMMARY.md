@@ -91,9 +91,9 @@ All visuals are rendered by an embedded **JavaFX WebView** loading the Blockly G
 - Embeds a **JavaFX WebView** to render the Blockly Games Maze web page locally. There is **no menu bar**; the only UI is the WebView (including the level nav 1–10 and **Model**).
 - On WebView load, attaches a `JSBridge` instance to `window.javaBridge` and injects a JavaScript sync script (`injectSyncScript`).
 - Keeps a **strong Java reference** to the `JSBridge` (field `jsBridge`) to prevent JavaFX WebView garbage collection of the bridge object.
-- Injects a **Model** pill into the WebView level bar (next to levels 1–10). Only **Model** loads from XMI; levels 1–10 are predefined in the WebView and are not loaded from file.
-- **Load** uses a single hardcoded file: **load.xmi** (searched as `blocky_game/load.xmi` then `load.xmi`). **Save** writes to **save.xmi** (same path convention). See *JSBridge* and *Data flow* below.
-- When loading Model, applies the loaded level to the WebView via `applyLevelToWebView`: injects grid, start/goal, metadata, and Blockly XML; polls until `svgMaze` and `BlocklyInterface` exist; redraws maze with `Wd()`, recreates the `#look` element if missing (so "Run Program" does not throw), loads blocks with `BlocklyInterface.Kv()`, then resets pegman with `$d(false)`.
+- Injects a **File** menu into the JavaFX stage (top-left). This allows explicit loading and saving via system file choosers.
+- **No auto-save** is performed. Users must explicitly save via the menu.
+- When loading a model, applies the loaded level to the WebView via `applyLevelToWebView`: injects grid, start/goal, metadata, and Blockly XML; polls until `svgMaze` and `BlocklyInterface` exist; redraws maze with `Wd()`, recreates the `#look` element if missing (so "Run Program" does not throw), loads blocks with `BlocklyInterface.Kv()`, then resets pegman with `$d(false)`.
 - Contains a Blockly XML parser (`parseBlocklyXml` → `parseBlockElement` → `firstBlockChild`) that converts Blockly's serialised XML into `List<Map<String, Object>>` for the engine.
 
 ### Game Engine – [`GameEngine.java`](file:///c:/Users/domin/eclipse-workspace-blocky/blocky_game/src/blocky_game/GameEngine.java)
@@ -133,8 +133,7 @@ The `JSBridge` is a public inner class of `BlockyUI`. An instance is stored in t
 | **`syncMap`** | `void syncMap(String mapJson)` | Workspace becomes active (500 ms after detection); also when Run is clicked (before simulation) | Calls `GameEngine.setMapFromJson(mapJson)` — rebuilds the EMF `GridMap` |
 | **`syncLevelMeta`** | `void syncLevelMeta(String metaJson)` | Immediately after `syncMap`; also when Run is clicked | Calls `GameEngine.syncLevelMeta(metaJson)` — sets level config on EMF `Level` |
 | **`syncModel`** | `void syncModel(String xml)` | Blockly workspace changes (via change listener + 1 s poll); also when Run is clicked | Parses Blockly XML → `List<Map>`, calls `GameEngine.rebuildProgram()` |
-| **`loadModel`** | `void loadModel()` | User clicks the **Model** pill in the level nav | Loads **load.xmi** via `loadFromFile(getModelXmiFile())`, then navigates to maze URL and applies level to WebView |
-| **`runSimulation`** | `void runSimulation()` | Run button hidden (MutationObserver on `#runButton` style) | Syncs state (blocks, map, meta) then calls `GameEngine.simulateUserProgram()`; engine calls `saveModel()` **after** simulation (so execution trace is saved to **save.xmi**) |
+| **`runSimulation`** | `void runSimulation()` | Run button hidden (MutationObserver on `#runButton` style) | Syncs state (blocks, map, meta) then calls `GameEngine.simulateUserProgram()` |
 
 ### Synced Variables: JS Global → Bridge Method → EMF Attribute
 
@@ -168,9 +167,9 @@ The sync script is a self-executing function injected via `WebEngine.executeScri
 
 2. **Map + metadata push** — 500 ms after the workspace is found, reads `window.X` (grid), `window.K` (level), `window.Od` (maxBlocks), and the `#toolbox` DOM (to detect `allowLoops`/`allowConditionals`), then calls `javaBridge.syncMap(JSON.stringify(X))` followed by `javaBridge.syncLevelMeta(JSON.stringify({...}))`.
 
-3. **Run-button hook** — Polls every 500 ms for `#runButton`. Once found, attaches a `MutationObserver` watching for `style` attribute changes. When Blockly hides the button (`display: none`), the observer first syncs current state (workspace XML, map, level meta) to Java, then calls `javaBridge.runSimulation()`. The engine runs the simulation and then calls `saveModel()` once, so **save.xmi** includes the execution trace. No save is performed on block/map/meta sync outside of Run.
+3. **Run-button hook** — Polls every 500 ms for `#runButton`. Once found, attaches a `MutationObserver` watching for `style` attribute changes. When Blockly hides the button (`display: none`), the observer first syncs current state (workspace XML, map, level meta) to Java, then calls `javaBridge.runSimulation()`. The engine runs the simulation. No auto-save is performed.
 
-4. **Model pill** — After the level bar is present, a "Model" span is injected next to levels 1–10. Its click handler calls `javaBridge.loadModel()`, which loads **load.xmi** and applies the level to the WebView.
+4. **File Menu** — Standard JavaFX menu bar with **Load XMI...** and **Save XMI...** actions that open system file choosers.
 
 ---
 
@@ -201,9 +200,8 @@ The sync script is a self-executing function injected via `WebEngine.executeScri
   │  rebuildProgram()    → Level.solution (Block tree)      │
   │  simulateUserProgram → Level.traces (ExecutionTrace)    │
   │                                                         │
-  │  saveModel() (after simulateUserProgram) ─► save.xmi      │
-  │    (XMI root is Game → levels[0] is current level)       │
-  │  loadFromFile(load.xmi) (Model button) ◄── load.xmi      │
+  │  saveToFile(file) (Menu)         ─► User-chosen file   │
+  │  loadFromFile(file) (Menu)       ◄── User-chosen file   │
   └─────────────────────────────────────────────────────────┘
 ```
 
@@ -248,8 +246,8 @@ A local copy of the Blockly Games website lives inside `blocky_game/src/blocky_g
 | Level metadata not stored on model | `id`, `title`, `allowLoops`, `allowConditionals` were never set | `syncLevelMeta` now sets all Level attributes from JS |
 | `c.style` null when clicking Run after loading Model | Clearing `svgMaze` children and calling `Wd()` removed the `<g id="look">` element; `$d()` and run animation expect it | After `Wd()`, inject script recreates `#look` with the three `<path>` elements if missing |
 | DanglingHREFException on save after loading Model | `GameState.position` pointed at `Cell`s from the old map after `setMapFromJson` replaced the map | `setMapFromJson` now clears `currentLevel.getTraces()` before replacing the map |
-| XMI saved too often (every sync) | `saveModel()` was called from setMapFromJson, syncLevelMeta, rebuildProgram, etc. | Save only when user clicks "Run Program"; `saveModel()` is called once at the end of `simulateUserProgram()` |
-| Execution trace not saved | Save was triggered before the simulation ran | Save moved to after `executeSequence()` in `simulateUserProgram()` so **save.xmi** includes the full trace |
+| XMI saved too often (every sync) | `saveModel()` was called from setMapFromJson, syncLevelMeta, rebuildProgram, etc. | Auto-save removed; user now explicitly saves via File menu |
+| Execution trace not saved | Save was triggered before the simulation ran | Users should save after simulation finished |
 
 ---
 

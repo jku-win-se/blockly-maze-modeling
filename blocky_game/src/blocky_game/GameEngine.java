@@ -918,12 +918,14 @@ public class GameEngine {
             int levelNum         = extractJsonInt(metaJson, "level",             1);
             boolean allowLoops   = extractJsonBool(metaJson, "allowLoops",   false);
             boolean allowConds   = extractJsonBool(metaJson, "allowConditionals", false);
+            boolean allowIfElse  = extractJsonBool(metaJson, "allowIfElse", false);
 
             currentLevel.setId(levelNum);
             currentLevel.setTitle("Maze Level " + levelNum);
             currentLevel.setMaxBlocks(maxBlocks < 0 ? 0 : maxBlocks);
             currentLevel.setAllowLoops(allowLoops);
             currentLevel.setAllowConditionals(allowConds);
+            currentLevel.setAllowIfElse(allowIfElse);
 
             // Blockly's startDirection is frequently unreliable (often defaulting to EAST).
             // Prefer an explicitly stored model value; otherwise derive it from the map layout.

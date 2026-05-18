@@ -20,6 +20,7 @@ import org.eclipse.emf.ecore.EObject;
  *   <li>{@link blocky.Cell#getBottom <em>Bottom</em>}</li>
  *   <li>{@link blocky.Cell#getLeft <em>Left</em>}</li>
  *   <li>{@link blocky.Cell#getRight <em>Right</em>}</li>
+ *   <li>{@link blocky.Cell#getDistanceToGoal <em>Distance To Goal</em>}</li>
  * </ul>
  *
  * @see blocky.BlockyPackage#getCell()

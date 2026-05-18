@@ -30,6 +30,7 @@ import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
  *   <li>{@link blocky.impl.CellImpl#getBottom <em>Bottom</em>}</li>
  *   <li>{@link blocky.impl.CellImpl#getLeft <em>Left</em>}</li>
  *   <li>{@link blocky.impl.CellImpl#getRight <em>Right</em>}</li>
+ *   <li>{@link blocky.impl.CellImpl#getDistanceToGoal <em>Distance To Goal</em>}</li>
  * </ul>
  *
  * @generated
