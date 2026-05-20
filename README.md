@@ -71,6 +71,16 @@ The app runs with working directory `blocky_game`, so `load.xmi` / `save.xmi` an
 - **EMF** is pulled in as: `org.eclipse.emf:org.eclipse.emf.ecore`, `org.eclipse.emf.common`, `org.eclipse.emf.ecore.xmi` (version 2.35.0).
 - **JavaFX** is pulled in as: `org.openjfx:javafx-controls`, `org.openjfx:javafx-web` (version 21.0.1).
 
+### Option B: Eclipse IDE (with EMF)
+
+Use this path if you want to **edit the metamodel** or **run with full modeling support** (Henshin, MOMoT).
+
+1. Install **Eclipse Modeling Tools**.
+2. Import projects: **File → Import → Existing Projects into Workspace**.
+3. Set the **Target Platform**: Open `releng/blocky-modeling-2026-06.target` and click **Set as Active Target Platform**.
+4. Run: Right-click `blocky_game.Main` → **Run As → Java Application**.
+   - Note: Requires VM arguments for JavaFX (see [INSTALL.md](INSTALL.md)).
+
 ### Option C: Docker (Full Stack)
 
 Run the entire application, including the GUI (via X11/Wayland forwarding) and the MOMoT synthesis backend, in a consistent containerized environment.
