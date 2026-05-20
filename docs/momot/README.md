@@ -117,7 +117,9 @@ When the user selects a MoMoT-produced solution model (`*.xmi`) from the MoMoT p
 
 ### Implementation notes (Blocky UI / Blockly Maze constraints)
 
-- Blockly Maze expects a **single top-level** `maze_forever` with a `<statement name="DO"> ... </statement>`.
-- Nested `maze_forever` blocks are **not supported** by Maze’s loader. To keep all MoMoT solutions loadable, the Java-side XML generator:
-  - wraps plain statement chains into a single top-level `maze_forever`, and
-  - **inlines** any loop encountered inside a body (treats it as its body) when generating Blockly XML.
+- Blockly Maze typically uses a `maze_forever` block for "Repeat Until Goal" behavior.
+- To keep MoMoT solutions loadable and semantically correct, the Java-side XML generator:
+  - maps EMF `Loop` statements to `maze_forever` blocks,
+  - supports sequential blocks before or after loops (though blocks after a `maze_forever` are unreachable in the game),
+  - preserves the structure of the model solution in the Blockly workspace.
+- **Note:** While some restricted Maze levels might expect a single top-level loop, the generator now prioritizes matching the model's structure.

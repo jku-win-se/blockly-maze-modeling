@@ -66,14 +66,17 @@ public final class BlockySimulator {
         int maxBlocks = level.getMaxBlocks();
         int blocks = countStatements(solution);
         if (maxBlocks > 0 && blocks > maxBlocks) {
+            System.out.println("Diag: Violation - too many blocks: " + blocks + " > " + maxBlocks);
             return true;
         }
 
         if (!level.isAllowLoops() && containsLoop(solution)) {
+            System.out.println("Diag: Violation - loops not allowed");
             return true;
         }
 
         if (!level.isAllowConditionals() && containsIf(solution)) {
+            System.out.println("Diag: Violation - conditionals not allowed");
             return true;
         }
 

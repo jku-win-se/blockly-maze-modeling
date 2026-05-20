@@ -1,3 +1,5 @@
+package blocky_momot_runner;
+
 import at.ac.tuwien.big.moea.SearchExperiment;
 import at.ac.tuwien.big.momot.TransformationSearchOrchestration;
 import at.ac.tuwien.big.momot.problem.solution.TransformationSolution;
@@ -28,6 +30,18 @@ public class blocky_custom extends blocky {
     protected TransformationSearchOrchestration createOrchestration(String initialGraph, int solutionLength) {
         TransformationSearchOrchestration orchestration = super.createOrchestration(initialGraph, solutionLength);
         
+        // BRIDGE ClassLoaders by registering the local dynamic package version
+        try {
+            org.eclipse.emf.ecore.EObject root = at.ac.tuwien.big.momot.util.MomotUtil.getRoot(orchestration.getProblemGraph());
+            if (root != null && root.eResource() != null) {
+                org.eclipse.emf.ecore.resource.ResourceSet rs = root.eResource().getResourceSet();
+                Class<?> pkgClass = Class.forName("blocky.BlockyPackage", true, this.getClass().getClassLoader());
+                org.eclipse.emf.ecore.EPackage localPkg = (org.eclipse.emf.ecore.EPackage) pkgClass.getField("eINSTANCE").get(null);
+                rs.getPackageRegistry().put(localPkg.getNsURI(), localPkg);
+                rs.getPackageRegistry().put(localPkg.getNsURI() + "#", localPkg);
+            }
+        } catch (Throwable ignored) {}
+
         // Re-create the algorithm factory with the overridden population size
         int popSize = getOverriddenPopulationSize();
         EvolutionaryAlgorithmFactory<TransformationSolution> moea = orchestration.createEvolutionaryAlgorithmFactory(popSize);
@@ -60,6 +74,21 @@ public class blocky_custom extends blocky {
     }
 
     @Override
+    public void performSearch(String initialGraph, int solutionLength) {
+        System.out.println("[MoMoT] Starting performSearch override in blocky_custom...");
+        
+        TransformationSearchOrchestration orchestration = createOrchestration(initialGraph, solutionLength);
+        deriveBaseName(orchestration);
+        printSearchInfo(orchestration);
+
+        SearchExperiment<TransformationSolution> experiment = createExperiment(orchestration);
+        experiment.run();
+        
+        System.out.println("[MoMoT] Search finished. Handling results...");
+        handleResults(experiment);
+    }
+
+    @Override
     public void printSearchInfo(TransformationSearchOrchestration orchestration) {
         System.out.println("-------------------------------------------------------");
         System.out.println("Search (Customized via blocky_custom)");
@@ -71,6 +100,9 @@ public class blocky_custom extends blocky {
         System.out.println("MaxEvaluations:  " + getOverriddenMaxEvaluations() + " (overridden)");
         System.out.println("AlgorithmRuns:   " + getOverriddenNrRuns() + " (overridden)");
         System.out.println("Iterations:      " + getOverriddenMaxEvaluations() / getOverriddenPopulationSize());
+        System.out.println("Transformations: " + java.util.Arrays.toString(modules));
+        System.out.println("Units:           " + orchestration.getModuleManager().getUnits());
+        System.out.println("Graph Size:      " + (orchestration.getProblemGraph() != null ? orchestration.getProblemGraph().size() : "null"));
         System.out.println("---------------------------");
     }
 }

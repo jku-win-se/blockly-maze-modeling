@@ -60,8 +60,9 @@ public final class EnumParamPreprocessFitnessFunction extends EGraphMultiDimensi
 					ensureOnVariable(v);
 				}
 			}
-		} catch (Throwable ignore) {
-			// keep default behavior if anything unexpected happens
+		} catch (Throwable t) {
+			System.err.println("Diag: Error in ensureParams: " + t.getMessage());
+			t.printStackTrace();
 		}
 	}
 
@@ -85,8 +86,8 @@ public final class EnumParamPreprocessFitnessFunction extends EGraphMultiDimensi
 			// Only set if missing
 			setIfMissing(unitApp, unit, "k", atomicKind.nextValue());
 			setIfMissing(unitApp, unit, "cnd", conditionKind.nextValue());
-		} catch (Throwable ignore) {
-			// ignore
+		} catch (Throwable t) {
+			System.err.println("Diag: Error in ensureOnVariable: " + t.getMessage());
 		}
 	}
 

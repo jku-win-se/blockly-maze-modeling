@@ -6,143 +6,29 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.PrintStream;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
- * Best-effort MoMoT runner for the Blocky workspace.
- *
- * This is designed to work when MoMoT + blocky_momot are on the runtime classpath
- * (typically when running from Eclipse with the modeling target platform).
+ * Robust MoMoT runner for Docker/Maven environments.
  */
 public final class MomotRunService {
+
     private MomotRunService() {}
 
-    private static final class LineForwardingOutputStream extends OutputStream {
-        private final Consumer<String> onLine;
-        private final ByteArrayOutputStream all;
-        private final StringBuilder line = new StringBuilder();
-
-        LineForwardingOutputStream(Consumer<String> onLine, ByteArrayOutputStream all) {
-            this.onLine = onLine;
-            this.all = all;
-        }
-
-        @Override
-        public synchronized void write(int b) {
-            all.write(b);
-            char ch = (char) (b & 0xFF);
-            if (ch == '\r') return;
-            if (ch == '\n') {
-                flushLine();
-                return;
-            }
-            line.append(ch);
-            // Prevent pathological long lines from blowing memory.
-            if (line.length() > 4000) {
-                flushLine();
-            }
-        }
-
-        @Override
-        public synchronized void flush() {
-            flushLine();
-        }
-
-        private void flushLine() {
-            if (onLine == null) return;
-            if (line.length() == 0) return;
-            String s = line.toString();
-            line.setLength(0);
-            try {
-                onLine.accept(s);
-            } catch (Exception ignored) {
-            }
-        }
-    }
-
-    private static void deleteDirectoryRecursive(Path dir) {
-        if (dir == null) return;
-        try {
-            if (!Files.exists(dir)) return;
-            if (!Files.isDirectory(dir)) return;
-            try (Stream<Path> walk = Files.walk(dir)) {
-                walk.sorted((a, b) -> b.getNameCount() - a.getNameCount()) // delete children first
-                    .forEach(p -> {
-                        try {
-                            Files.deleteIfExists(p);
-                        } catch (Exception ignored) {
-                        }
-                    });
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    private static String throwableToString(Throwable t) {
-        if (t == null) return "null";
-        
-        // Unwrap common reflection/proxy wrappers to find the meaningful cause
-        Throwable root = t;
-        while (root != null) {
-            if (root.getMessage() != null && root.getMessage().contains("MoMoT search interrupted")) {
-                return "MoMoT search stopped by user or level change.";
-            }
-            if (root.getCause() == null || root.getCause() == root) break;
-            root = root.getCause();
-        }
-        
-        root = t;
-        while (root.getCause() != null && root.getCause() != root) {
-            root = root.getCause();
-        }
-        StringBuilder sb = new StringBuilder();
-        sb.append(t.getClass().getName());
-        if (t.getMessage() != null) sb.append(": ").append(t.getMessage());
-        if (root != t) {
-            sb.append("\nCaused by: ").append(root.getClass().getName());
-            if (root.getMessage() != null) sb.append(": ").append(root.getMessage());
-        }
-        appendJdkModuleAccessHint(sb, root);
-        sb.append("\n");
-        java.io.StringWriter sw = new java.io.StringWriter();
-        java.io.PrintWriter pw = new java.io.PrintWriter(sw);
-        t.printStackTrace(pw);
-        pw.flush();
-        sb.append(sw);
-        return sb.toString();
-    }
-
-    private static void appendJdkModuleAccessHint(StringBuilder sb, Throwable root) {
-        if (sb == null || root == null) return;
-        String cn = root.getClass().getName();
-        String msg = root.getMessage();
-        if (cn == null) cn = "";
-        if (msg == null) msg = "";
-
-        // JDK 16+ strongly encapsulates JDK internals; MOEAFramework instrumentation may require opens.
-        if (cn.contains("InaccessibleObjectException")
-                && msg.contains("java.util.AbstractList.modCount")
-                && msg.contains("java.base")
-                && msg.contains("opens java.util")) {
-            sb.append("\n\n")
-              .append("---- JVM module access fix ----\n")
-              .append("Your JVM blocks reflective access needed by MOEAFramework instrumentation.\n")
-              .append("Add this VM argument to your Eclipse run configuration:\n")
-              .append("  --add-opens=java.base/java.util=ALL-UNNAMED\n")
-              .append("If you still see similar errors, also try:\n")
-              .append("  --add-opens=java.base/java.lang=ALL-UNNAMED\n");
-        }
-    }
-
-    public static final class RunSpec {
+    public static class RunSpec {
         public final String inputXmi;
         public final String outputBase;
 
@@ -174,11 +60,6 @@ public final class MomotRunService {
 
     private static volatile Thread currentMomotThread;
 
-    /**
-     * Synchronous MoMoT run (no background thread).
-     *
-     * @return the final moved output directory, or {@code null} if unavailable
-     */
     public static String runSync(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
         return runInternal(spec, logLine, onOutputDirReady);
     }
@@ -186,34 +67,20 @@ public final class MomotRunService {
     public static void stopCurrentRun() {
         Thread t = currentMomotThread;
         if (t != null && t.isAlive()) {
-            System.out.println("[MomotRunService] Stopping current MoMoT run (interrupting thread: " + t.getName() + ")...");
             t.interrupt();
         }
     }
 
-    public static void runAsync(RunSpec spec, Consumer<String> logLine, Runnable onDone) {
-        runAsync(spec, logLine, onDone, null);
-    }
-
-    /**
-     * Runs MoMoT and (best-effort) reports the final moved output directory path.
-     * The output directory may differ from {@link RunSpec#outputBase} if a suffix is applied.
-     */
     public static void runAsync(RunSpec spec, Consumer<String> logLine, Runnable onDone, Consumer<String> onOutputDirReady) {
-        stopCurrentRun(); // Ensure only one run at a time
+        stopCurrentRun();
         Thread t = new Thread(() -> {
             try {
                 runInternal(spec, logLine, onOutputDirReady);
             } catch (Throwable t2) {
-                if (logLine != null) {
-                    String details = throwableToString(t2);
-                    logLine.accept("[MoMoT] Failed:\n" + details);
-                }
+                if (logLine != null) logLine.accept("[MoMoT] Failed:\n" + throwableToString(t2));
             } finally {
                 currentMomotThread = null;
-                if (onDone != null) {
-                    Platform.runLater(onDone);
-                }
+                if (onDone != null) Platform.runLater(onDone);
             }
         }, "MomotRunService");
         currentMomotThread = t;
@@ -221,248 +88,249 @@ public final class MomotRunService {
         t.start();
     }
 
+    private static void findJars(File dir, List<URL> urls) {
+        if (!dir.exists() || !dir.isDirectory()) return;
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f.isDirectory()) findJars(f, urls);
+            else if (f.getName().endsWith(".jar")) {
+                try { urls.add(f.toURI().toURL()); } catch (Exception ignored) {}
+            }
+        }
+    }
+
     private static String runInternal(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
-        if (logLine != null) logLine.accept("[MoMoT] Starting…");
+        if (logLine != null) logLine.accept("[MoMoT] Starting search logic...");
 
-        // NOTE:
-        // `blocky_momot/src-gen/blocky.java` is generated, so we must NOT rely on custom edits there.
-        // We instead set the generated runner's static `input` field via reflection and call its APIs.
-
-        // The generated runner reads its default input model path from a system property.
-        // Set it *before* loading the class so its static initializer uses the right value,
-        // regardless of the current working directory (blocky_game vs blocky_momot).
         try {
-            String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
-            System.setProperty("blocky.input", absInput);
-            if (logLine != null) logLine.accept("[MoMoT] Set system property blocky.input = " + absInput);
-        } catch (Exception e) {
-            if (logLine != null) logLine.accept("[MoMoT] Warning: failed to set blocky.input: " + e.getMessage());
-        }
+            File input = resolveExistingFile(spec.inputXmi);
+            System.setProperty("blocky.input", input.getAbsolutePath());
+        } catch (Exception e) {}
 
-        if (Thread.interrupted()) {
-            if (logLine != null) logLine.accept("[MoMoT] Interrupted during initialization.");
-            return null;
-        }
-
-        if (logLine != null) {
-            logLine.accept("[MoMoT] Properties: blocky.populationSize=" + System.getProperty("blocky.populationSize")
-                    + " blocky.maxEvaluations=" + System.getProperty("blocky.maxEvaluations")
-                    + " blocky.nrRuns=" + System.getProperty("blocky.nrRuns")
-                    + " blocky.solutionLength=" + System.getProperty("blocky.solutionLength")
-                    + " blocky.solutionLengthFactor=" + System.getProperty("blocky.solutionLengthFactor")
-                    + " blocky.seed=" + System.getProperty("blocky.seed")
-                    + " blocky.henshin=" + System.getProperty("blocky.henshin"));
-        }
-
-        // Clean any previous outputs so each run starts fresh.
-        // The runner may write to `output/` (cwd) or `blocky_momot/output/` depending on launch context.
         deleteDirectoryRecursive(Path.of("output"));
         deleteDirectoryRecursive(Path.of("blocky_momot", "output"));
-        deleteDirectoryRecursive(Path.of("..", "output").normalize());
-        deleteDirectoryRecursive(Path.of("..", "blocky_momot", "output").normalize());
 
-        // Ensure the generated runner is available on the runtime classpath.
-        // This typically requires running from Eclipse with the MoMoT target platform active (PDE).
-                final Class<?> runnerClass;
+        Class<?> runnerClass = null;
+        ClassLoader finalCl = MomotRunService.class.getClassLoader();
+        
         try {
-            ClassLoader cl = Thread.currentThread().getContextClassLoader();
-            if (cl == null) cl = MomotRunService.class.getClassLoader();
-            // Initialize the runner after setting blocky.input.
-            // Prefer the non-generated copy so regeneration won't break custom behavior.
-            Class<?> c;
+            runnerClass = Class.forName("blocky_momot_runner.blocky_custom", true, finalCl);
+        } catch (Throwable e) {
             try {
-                c = Class.forName("blocky_custom", true, cl);
-            } catch (ClassNotFoundException e) {
+                runnerClass = Class.forName("blocky_momot_runner.blocky", true, finalCl);
+            } catch (Throwable e2) {
                 try {
-                    c = Class.forName("blocky", true, cl);
-                } catch (ClassNotFoundException e2) {
-                    throw e2;
+                    List<URL> urls = new ArrayList<>();
+                    File[] targets = { 
+                        new File("/app/blocky_momot/target/classes"), 
+                        new File("/app/blocky_game/target/classes"),
+                        new File("blocky_momot/target/classes"), 
+                        new File("blocky_game/target/classes") 
+                    };
+                    for (File f : targets) if (f.exists()) urls.add(f.toURI().toURL());
+                    findJars(new File("/app/blocky_game/target/all_deps"), urls);
+                    findJars(new File("/app/libs"), urls);
+                    findJars(new File("blocky_game/target/all_deps"), urls);
+                    findJars(new File("libs"), urls);
+                    URLClassLoader urlCl = new URLClassLoader(urls.toArray(new URL[0]), finalCl);
+                    try { runnerClass = urlCl.loadClass("blocky_momot_runner.blocky_custom"); }
+                    catch (Throwable e3) { runnerClass = urlCl.loadClass("blocky_momot_runner.blocky"); }
+                    finalCl = urlCl;
+                } catch (Throwable t) {
+                    if (logLine != null) logLine.accept("[MoMoT] Loader Error: " + t.toString());
+                    return null;
                 }
             }
-            runnerClass = c;
-        } catch (ClassNotFoundException cnf) {
-            if (logLine != null) {
-                logLine.accept("[MoMoT] Cannot start: runner class 'blocky_custom' or 'blocky' not found on classpath.");
-                logLine.accept("[MoMoT] This usually happens when running blocky_game via Maven (no MoMoT/PDE bundles).");
-                logLine.accept("[MoMoT] Run blocky_game from Eclipse with the modeling target platform active,");
-                logLine.accept("[MoMoT] and ensure project 'blocky_momot' is built so 'blocky_custom' or 'blocky' exists in bin/");
-            }
-            return null;
         }
 
-        // Capture stdout/stderr from the in-process runner so we can surface progress in the UI.
-        PrintStream oldOut = System.out;
-        PrintStream oldErr = System.err;
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        PrintStream teeOut = new PrintStream(new LineForwardingOutputStream(logLine, buf), true, StandardCharsets.UTF_8);
-        PrintStream teeErr = new PrintStream(new LineForwardingOutputStream((s) -> {
-            if (logLine != null) logLine.accept("[stderr] " + s);
-        }, buf), true, StandardCharsets.UTF_8);
-        System.setOut(teeOut);
-        System.setErr(teeErr);
+        if (runnerClass == null) return null;
+
+        registerPackages(finalCl, logLine);
+
+        ClassLoader originalTCCL = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(finalCl);
+
+        PrintStream oldOut = System.out, oldErr = System.err;
+        MirroringOutputStream mirrorOut = new MirroringOutputStream(logLine, oldOut);
+        MirroringOutputStream mirrorErr = new MirroringOutputStream(s -> { if (logLine != null) logLine.accept("[stderr] " + s); }, oldErr);
+        
+        System.setOut(new PrintStream(mirrorOut, true, StandardCharsets.UTF_8));
+        System.setErr(new PrintStream(mirrorErr, true, StandardCharsets.UTF_8));
+        
         try {
-                    // Call initialization() explicitly (register packages, baseline distance cache, etc.).
+            String absInput = resolveExistingFile(spec.inputXmi).getAbsolutePath();
             try {
-                        // blocky_custom.initialization(String absInputModelPath)
-                        String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
-                        try {
-                            runnerClass.getMethod("initialization", String.class).invoke(null, absInput);
-                        } catch (NoSuchMethodException ns) {
-                            // Fallback for older generated runner signature
-                            runnerClass.getMethod("initialization").invoke(null);
-                        }
-            } catch (Exception ignored) {
+                runnerClass.getMethod("initialization", String.class).invoke(null, absInput);
+            } catch (Throwable e) {
+                try { runnerClass.getMethod("initialization").invoke(null); } catch (Throwable ignored) {}
             }
 
-            // Compute solution length: use explicit property if set, else infer dynamically
             int solLen = 10;
             try {
-                String explicitSolLen = System.getProperty("blocky.solutionLength");
-                if (explicitSolLen != null && !explicitSolLen.isBlank()) {
-                    solLen = Integer.parseInt(explicitSolLen.trim());
-                } else {
-                    Class<?> metrics = Class.forName("blocky_momot.BlockyProgramMetrics");
-                    String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
-                    Object v = metrics.getMethod("inferSolutionLength", String.class).invoke(null, absInput);
-                    int factor = 2;
-                    try {
-                        factor = Integer.parseInt(System.getProperty("blocky.solutionLengthFactor", "2"));
-                    } catch (Exception ignored) {
+                Class<?> m = Class.forName("blocky_momot.BlockyProgramMetrics", true, finalCl);
+                Object v = m.getMethod("inferSolutionLength", String.class).invoke(null, absInput);
+                if (v instanceof Number) solLen = Math.max(1, ((Number) v).intValue() * 2);
+            } catch (Throwable ignored) {}
+
+            Object inst = runnerClass.getDeclaredConstructor().newInstance();
+            
+            if (!Thread.interrupted()) {
+                // Hardened method discovery
+                java.lang.reflect.Method m = null;
+                Class<?> curr = inst.getClass();
+                while (curr != null && m == null) {
+                    for (java.lang.reflect.Method candidate : curr.getDeclaredMethods()) {
+                        if (candidate.getName().equals("performSearch") && candidate.getParameterCount() == 2) {
+                            m = candidate;
+                            break;
+                        }
                     }
-                    if (factor < 1) factor = 1;
-                    if (v instanceof Number) solLen = Math.max(1, ((Number) v).intValue() * factor);
+                    curr = curr.getSuperclass();
                 }
-            } catch (Exception ignored) {
+                if (m != null) {
+                    m.setAccessible(true);
+                    m.invoke(inst, absInput, solLen);
+                }
             }
-
-                    Object inst = runnerClass.getDeclaredConstructor().newInstance();
-                    applyExperimentOverrides(inst, logLine);
-                    
-                    if (Thread.interrupted()) {
-                        if (logLine != null) logLine.accept("[MoMoT] Interrupted before starting search.");
-                        return null;
-                    }
-
-                    String absInput = resolveExistingFile(spec.inputXmi).getAbsoluteFile().getPath();
-                    runnerClass.getMethod("performSearch", String.class, int.class).invoke(inst, absInput, solLen);
         } catch (Throwable t) {
-            if (t instanceof InterruptedException || (t.getCause() instanceof InterruptedException)) {
-                if (logLine != null) logLine.accept("[MoMoT] Execution stopped (interrupted).");
-            } else if (logLine != null) {
-                logLine.accept("[MoMoT] Failed:\n" + throwableToString(t));
-            }
-            return null;
-        } finally {
-            System.setOut(oldOut);
-            System.setErr(oldErr);
+            if (logLine != null) logLine.accept("[MoMoT] Exec Failed: " + t.toString());
+        } finally { 
+            System.out.flush();
+            System.err.flush();
+            Thread.currentThread().setContextClassLoader(originalTCCL);
+            System.setOut(oldOut); 
+            System.setErr(oldErr); 
         }
 
-        // The generated runner typically writes to `output/` relative to the current working directory.
-        // We move that folder into a unique `blocky_momot/output_*` directory so the UI can show multiple runs.
-        String outputDir = null;
+        return finalizeOutput(spec, onOutputDirReady);
+    }
+
+    private static String finalizeOutput(RunSpec spec, Consumer<String> onOutputDirReady) {
         try {
-            Path produced = null;
-            Path[] candidates = new Path[] {
-                    Path.of("output"),
-                    Path.of("blocky_momot", "output"),
-                    Path.of("..", "output").normalize(),
-                    Path.of("..", "blocky_momot", "output").normalize()
-            };
-            for (Path c : candidates) {
-                try {
-                    if (c != null && Files.exists(c) && Files.isDirectory(c)) {
-                        produced = c;
-                        break;
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-            Path target = Path.of(spec.outputBase).normalize();
-            if (produced != null && Files.exists(produced)) {
-                if (Files.exists(target)) {
-                    // avoid failures; keep existing target and pick a suffix
-                    target = Path.of(spec.outputBase + "_2").normalize();
-                }
-                Files.createDirectories(target.getParent() != null ? target.getParent() : Path.of("."));
+            File currentDir = new File(System.getProperty("user.dir"));
+            Path produced = new File(currentDir, "output").toPath();
+            if (Files.exists(produced)) {
+                Path target = Path.of(spec.outputBase).normalize();
+                if (!target.isAbsolute()) target = new File(currentDir, spec.outputBase).toPath();
+                Files.createDirectories(target.getParent());
+                if (Files.exists(target)) deleteDirectoryRecursive(target);
                 Files.move(produced, target, StandardCopyOption.REPLACE_EXISTING);
-                outputDir = target.toString();
-                if (logLine != null) logLine.accept("[MoMoT] Moved outputs: " + produced + " -> " + target);
-                try {
-                    if (onOutputDirReady != null) onOutputDirReady.accept(outputDir);
-                } catch (Exception ignored) {
-                }
-            } else {
-                if (logLine != null) logLine.accept("[MoMoT] No output directory found to move (expected 'output/' or 'blocky_momot/output').");
+                if (onOutputDirReady != null) onOutputDirReady.accept(target.toString());
+                return target.toString();
             }
-        } catch (Exception e) {
-            if (logLine != null) logLine.accept("[MoMoT] Output move failed: " + e.getMessage());
-        }
-
-        if (logLine != null) {
-            String out = buf.toString(StandardCharsets.UTF_8);
-            if (out != null && !out.isEmpty()) {
-                String tail = out.length() > 20000 ? out.substring(out.length() - 20000) : out;
-                logLine.accept(tail);
-            }
-            logLine.accept("[MoMoT] Finished.");
-        }
-        return outputDir;
+        } catch (Exception ignored) {}
+        return null;
     }
 
-    private static void applyExperimentOverrides(Object runnerInstance, Consumer<String> logLine) {
-        // Overrides are now handled by the blocky_custom mediator class 
-        // which extends 'blocky' and reads system properties directly.
-        if (logLine != null && runnerInstance != null && runnerInstance.getClass().getSimpleName().equals("blocky_custom")) {
-            logLine.accept("[MoMoT] Using blocky_custom mediator for dynamic parameter injection.");
+    private static Field findField(Class<?> clazz, String name) {
+        Class<?> curr = clazz;
+        while (curr != null) {
+            try { return curr.getDeclaredField(name); }
+            catch (NoSuchFieldException e) { curr = curr.getSuperclass(); }
         }
+        return null;
     }
 
-    private static int parseIntOrDefault(String s, int def) {
-        if (s == null) return def;
+    private static void registerPackages(ClassLoader cl, Consumer<String> log) {
         try {
-            return Integer.parseInt(s.trim());
-        } catch (Exception e) {
-            return def;
-        }
+            Class<?> regClass = Class.forName("org.eclipse.emf.ecore.EPackage$Registry", true, cl);
+            Class<?> ecorePkgClass = Class.forName("org.eclipse.emf.ecore.EcorePackage", true, cl);
+            Class<?> blockyPkgClass = Class.forName("blocky.BlockyPackage", true, cl);
+            Object registry = regClass.getField("INSTANCE").get(null);
+            Object ecoreInst = ecorePkgClass.getField("eINSTANCE").get(null);
+            String ecoreUri = (String) ecorePkgClass.getField("eNS_URI").get(null);
+            Object blockyInst = blockyPkgClass.getField("eINSTANCE").get(null);
+            String blockyUri = (String) blockyPkgClass.getField("eNS_URI").get(null);
+            
+            java.util.Map map = (java.util.Map) registry;
+            map.put(ecoreUri, ecoreInst);
+            map.put(blockyUri, blockyInst);
+            map.put(blockyUri + "#", blockyInst);
+            
+            try {
+                regClass.getMethod("put", String.class, Object.class).invoke(registry, blockyUri, blockyInst);
+            } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {}
     }
 
-    /**
-     * Resolves an input XMI path robustly across different launch working directories.
-     * If {@code path} is relative and does not exist, tries a few common parent prefixes.
-     */
     private static File resolveExistingFile(String path) {
         if (path == null || path.isBlank()) return new File("model/1.xmi");
         File f = new File(path);
-        if (f.isAbsolute()) return f;
-        if (f.exists()) return f;
-        // common when launching from blocky_game vs workspace root
+        if (f.isAbsolute() || f.exists()) return f;
         File f1 = new File("..", path);
         if (f1.exists()) return f1;
-        File f2 = new File("..", ".." + File.separator + path);
+        File f2 = new File("/app", path);
         if (f2.exists()) return f2;
         return f;
     }
 
     private static String firstExisting(String... paths) {
-        for (String p : paths) {
-            if (p == null) continue;
-            File f = new File(p);
-            if (f.exists() && f.isFile()) return p;
-        }
-        // Return first as default (even if missing) to keep error messages consistent.
-        return (paths != null && paths.length > 0) ? paths[0] : "blocky_momot/model/input/direct_manipulation_request.xmi";
+        for (String p : paths) if (p != null && new File(p).exists()) return p;
+        return paths[0];
     }
 
     private static String firstWritableParent(String... dirPaths) {
         for (String p : dirPaths) {
-            try {
-                File d = new File(p);
-                if (!d.exists() && !d.mkdirs()) continue;
-                if (d.exists() && d.isDirectory()) return p;
-            } catch (Exception ignored) {
+            File d = new File(p);
+            if ((d.exists() || d.mkdirs()) && d.isDirectory()) return p;
+        }
+        return dirPaths[0];
+    }
+
+    private static void deleteDirectoryRecursive(Path path) {
+        if (!Files.exists(path)) return;
+        try (Stream<Path> walk = Files.walk(path)) {
+            walk.sorted((p1, p2) -> p2.compareTo(p1)).map(Path::toFile).forEach(File::delete);
+        } catch (Exception ignored) {}
+    }
+
+    private static String throwableToString(Throwable t) {
+        java.io.StringWriter sw = new java.io.StringWriter();
+        t.printStackTrace(new java.io.PrintWriter(sw));
+        return sw.toString();
+    }
+
+    private static class MirroringOutputStream extends OutputStream {
+        private static final ThreadLocal<Boolean> IN_CALLBACK = ThreadLocal.withInitial(() -> false);
+        private final Consumer<String> logLine;
+        private final PrintStream fallback;
+        private final StringBuilder lineBuf = new StringBuilder();
+
+        public MirroringOutputStream(Consumer<String> l, PrintStream f) {
+            this.logLine = l;
+            this.fallback = f;
+        }
+
+        @Override
+        public void write(int b) throws java.io.IOException {
+            if (fallback != null) fallback.write(b);
+            if (b == '\n') {
+                String s = lineBuf.toString();
+                lineBuf.setLength(0);
+                if (IN_CALLBACK.get()) return;
+                IN_CALLBACK.set(true);
+                try { if (logLine != null) logLine.accept(s); } finally { IN_CALLBACK.set(false); }
+            } else if (b != '\r') {
+                lineBuf.append((char) b);
             }
         }
-        return (dirPaths != null && dirPaths.length > 0) ? dirPaths[0] : "output_dm";
+        
+        @Override public void write(byte[] b, int off, int len) throws java.io.IOException {
+            if (fallback != null) fallback.write(b, off, len);
+            for (int i = 0; i < len; i++) {
+                byte curr = b[off + i];
+                if (curr == '\n') {
+                    String s = lineBuf.toString();
+                    lineBuf.setLength(0);
+                    if (!IN_CALLBACK.get()) {
+                        IN_CALLBACK.set(true);
+                        try { if (logLine != null) logLine.accept(s); } finally { IN_CALLBACK.set(false); }
+                    }
+                } else if (curr != '\r') {
+                    lineBuf.append((char) curr);
+                }
+            }
+        }
     }
 }
-

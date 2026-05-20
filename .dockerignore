@@ -1,0 +1,11 @@
+target/
+.git/
+.metadata/
+.recommenders/
+RemoteSystemsTempFiles/
+*.class
+*.log
+.settings/
+.project
+.classpath
+bin/

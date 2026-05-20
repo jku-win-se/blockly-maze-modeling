@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ASCII"?>
 <blocky:Game xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:blocky="http://www.example.org/blocky">
-  <levels title="Maze Level 9" id="9" startOrientation="EAST" maxBlocks="7" allowLoops="true" allowConditionals="true">
+  <levels title="Maze Level 9" id="9" startOrientation="EAST" maxBlocks="7" allowLoops="true" allowConditionals="true" allowIfElse="true">
     <map width="8" height="8">
       <cells type="WALL" bottom="//@levels.0/@map/@cells.8" right="//@levels.0/@map/@cells.1"/>
       <cells x="1" type="WALL" bottom="//@levels.0/@map/@cells.9" left="//@levels.0/@map/@cells.0" right="//@levels.0/@map/@cells.2"/>

@@ -4,7 +4,26 @@ A **Java/JavaFX desktop application** that recreates the [Blockly Games Maze](ht
 
 This project embeds a local copy of the [Blockly Games](https://github.com/maribethb/blockly-games) web app in a JavaFX WebView and syncs the maze state and block programs with an EMF-based model for simulation, persistence, and analysis.
 
-## Workspace structure
+## 🚀 Docker Quick Start (Easiest)
+
+You can run the entire application, including the GUI and the MoMoT synthesis backend, using Docker. This is the fastest way to play the game without installing Java or IDEs.
+
+### Windows (One-Click)
+1.  Make sure you have **Docker Desktop** installed and running.
+2.  Double-click **`run-game.bat`**.
+3.  The game will open automatically in your browser at: **[http://localhost:6080](http://localhost:6080)**.
+
+### Linux / macOS
+1.  Make sure you have **Docker** and **Docker Compose** installed.
+2.  Run the following in your terminal:
+    ```bash
+    ./run-game.sh
+    ```
+3.  Open your browser and navigate to: **[http://localhost:6080](http://localhost:6080)**.
+
+---
+
+## 🏗 Workspace structure
 
 | Project        | Role                          | Technologies                    |
 |----------------|-------------------------------|---------------------------------|
@@ -52,17 +71,16 @@ The app runs with working directory `blocky_game`, so `load.xmi` / `save.xmi` an
 - **EMF** is pulled in as: `org.eclipse.emf:org.eclipse.emf.ecore`, `org.eclipse.emf.common`, `org.eclipse.emf.ecore.xmi` (version 2.35.0).
 - **JavaFX** is pulled in as: `org.openjfx:javafx-controls`, `org.openjfx:javafx-web` (version 21.0.1).
 
-### Option B: Eclipse
+### Option C: Docker (Full Stack)
 
-1. Open the workspace in **Eclipse** (with EMF and JavaFX support).
-2. Build the **blocky_model** project (EMF code generation, if you changed the metamodel).
-3. Run **blocky_game** → `blocky_game.Main` as a Java Application.
-4. The launch configs use:
-   ```text
-   --module-path "${project_loc}/javafx-sdk-21.0.10/lib" --add-modules javafx.controls,javafx.web
-   ```
+Run the entire application, including the GUI (via X11/Wayland forwarding) and the MOMoT synthesis backend, in a consistent containerized environment.
 
-The window shows the Blockly Maze in a WebView. Use the level bar for levels 1–10 or **Model** to load/save from XMI (`load.xmi` / `save.xmi`).
+```bash
+docker-compose build
+docker-compose up
+```
+
+For detailed configuration instructions (X server setup for Windows/Linux/macOS, MOMoT synthesis commands), see **[DOCKER.md](DOCKER.md)**.
 
 **Regenerating the EMF model (e.g. after editing `blocky.ecore`)** still requires Eclipse with EMF, or an EMF code-generation Maven plugin; the checked-in `blocky_model/src-gen/` is used by Maven as-is.
 
