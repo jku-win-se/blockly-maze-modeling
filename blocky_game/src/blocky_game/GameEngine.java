@@ -122,7 +122,7 @@ public class GameEngine {
             System.err.println("[GameEngine] teleportPegman rejected: no cell at x=" + x + " y=" + y);
             return;
         }
-        if (!(target.getType() == CellType.EMPTY || target.getType() == CellType.GOAL)) {
+        if (!(target.getType() == CellType.EMPTY || target.getType() == CellType.GOAL || target.getType() == CellType.DMG)) {
             System.err.println("[GameEngine] teleportPegman rejected: target type=" + target.getType() + " at x=" + x + " y=" + y);
             return;
         }
@@ -299,8 +299,31 @@ public class GameEngine {
         currentLevel.eUnset(BlockyPackage.Literals.LEVEL__START_ORIENTATION);
 
         // Preserve markers that the WebView doesn't know about or swaps during DM.
+        // We only do this if we were already in DM mode (indicated by an existing DMG cell).
         Cell oldDmg = getDmgCell(currentLevel.getMap());
-        Cell oldGoal = getGoalCell(currentLevel.getMap());
+        Cell oldGoal = (oldDmg != null) ? getGoalCell(currentLevel.getMap()) : null;
+
+        // Detection of level switch: if the incoming map has a goal (value 3) at a position 
+        // that doesn't match our current DMG, it's likely a level switch. 
+        // In that case, discard DM state.
+        if (oldDmg != null) {
+            int newGoalX = -1, newGoalY = -1;
+            String[] rows = mapJson.split("\\],\\[");
+            for (int r = 0; r < rows.length; r++) {
+                String[] cols = rows[r].split(",");
+                for (int c = 0; cols != null && c < cols.length; c++) {
+                    if ("3".equals(cols[c].trim())) {
+                        newGoalX = c; newGoalY = r; break;
+                    }
+                }
+                if (newGoalX != -1) break;
+            }
+            if (newGoalX != -1 && (newGoalX != oldDmg.getX() || newGoalY != oldDmg.getY())) {
+                System.out.println("[GameEngine] Level switch detected via map goal position. Resetting DM state.");
+                oldDmg = null;
+                oldGoal = null;
+            }
+        }
 
         GridMap map = BlockyFactory.eINSTANCE.createGridMap();
         map.setWidth(width);
@@ -1589,17 +1612,14 @@ public class GameEngine {
         int r = pos != null ? pos.getY() : debugCurrentY;
         int t = blocky_game.DebuggingService.directionToT(dir);
 
-        // Prefix path up to current index (in trace-state order).
-        int prefixLen = safeIndex + 1;
+        // Prefix path up to current index (compressed).
+        int[][] prefixPathArr = compressTracePositions(debugTrace, safeIndex);
+        int prefixLen = prefixPathArr.length;
         StringBuilder sb = new StringBuilder();
         sb.append("[");
         for (int i = 0; i < prefixLen; i++) {
-            GameState ps = states.get(i);
-            Cell ppos = ps != null ? ps.getPosition() : null;
-            int px = ppos != null ? ppos.getX() : 0;
-            int py = ppos != null ? ppos.getY() : 0;
             if (i > 0) sb.append(",");
-            sb.append("[").append(px).append(",").append(py).append("]");
+            sb.append("[").append(prefixPathArr[i][0]).append(",").append(prefixPathArr[i][1]).append("]");
         }
         sb.append("]");
 
@@ -1607,7 +1627,11 @@ public class GameEngine {
         int[][] pastPrefixPath = (debugPastPrefixPath != null) ? debugPastPrefixPath : new int[0][0];
         // newPreview should be the full predicted path from the (possibly updated) program.
         int[][] newPreviewPath = compressTracePositions(debugTrace, debugTrace.getStates().size() - 1);
-        int commonLen = longestCommonPrefixLenByXY(pastPrefixPath, newPreviewPath);
+        
+        // The orange path should ONLY show what is ahead of the current index.
+        // Since both paths are now compressed, prefixLen correctly points to the index 
+        // in newPreviewPath that corresponds to the pegman's current cell.
+        int commonLen = prefixLen;
 
         String result = "RUNNING";
         if (safeIndex >= total - 1) {

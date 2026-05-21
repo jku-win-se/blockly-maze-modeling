@@ -111,54 +111,47 @@ public final class ImmediateFeedbackService {
      * Must be inserted into the WebView initialization script after `Wd()` and `$d(false)`.
      */
     public static String buildOverlayRenderJs() {
-        // Use double quotes in JS since this snippet is inserted at runtime by Java string concatenation.
         return ""
                 + "  try { "
-                + "    var svg = document.getElementById('svgMaze'); "
                 + "    var ns = 'http://www.w3.org/2000/svg'; "
-                + "    function drawOverlay(id, path, color) { "
+                + "    function drawOverlay(id, path, color, offset, dash) { "
+                + "      var svg = document.getElementById('svgMaze'); "
                 + "      var old = document.getElementById(id); "
                 + "      if (old && old.parentNode) old.parentNode.removeChild(old); "
                 + "      if (!path || !path.length || !svg) return; "
+                + "      var off = (typeof offset === 'number') ? offset : 25; "
                 + "      var g = document.createElementNS(ns, 'g'); "
                 + "      g.setAttribute('id', id); "
                 + "      g.setAttribute('data-immediate-feedback', 'true'); "
                 + "      if (path.length >= 2) { "
                 + "        var pts = []; "
                 + "        for (var i=0; i<path.length; i++) { "
-                + "          pts.push((50*path[i][0]+25) + ',' + (50*path[i][1]+25)); "
+                + "          pts.push((50*path[i][0]+off) + ',' + (50*path[i][1]+off)); "
                 + "        } "
                 + "        var poly = document.createElementNS(ns, 'polyline'); "
                 + "        poly.setAttribute('points', pts.join(' ')); "
                 + "        poly.setAttribute('fill', 'none'); "
                 + "        poly.setAttribute('stroke', color); "
-                + "        poly.setAttribute('stroke-width', '6'); "
+                + "        poly.setAttribute('stroke-width', '7'); "
                 + "        poly.setAttribute('stroke-linecap', 'round'); "
                 + "        poly.setAttribute('stroke-linejoin', 'round'); "
-                + "        poly.setAttribute('stroke-opacity', '0.85'); "
+                + "        poly.setAttribute('stroke-opacity', '0.9'); "
+                + "        if (dash) poly.setAttribute('stroke-dasharray', dash); "
                 + "        g.appendChild(poly); "
                 + "      } "
                 + "      for (var j=0; j<path.length; j++) { "
-                + "        var cx = (50*path[j][0]+25); "
-                + "        var cy = (50*path[j][1]+25); "
+                + "        var cx = (50*path[j][0]+off); "
+                + "        var cy = (50*path[j][1]+off); "
                 + "        var c = document.createElementNS(ns, 'circle'); "
                 + "        c.setAttribute('cx', cx); "
                 + "        c.setAttribute('cy', cy); "
-                + "        c.setAttribute('r', '5'); "
+                + "        c.setAttribute('r', '4'); "
                 + "        c.setAttribute('fill', color); "
                 + "        c.setAttribute('fill-opacity', '0.75'); "
                 + "        g.appendChild(c); "
                 + "      } "
                 + "      var peg = document.getElementById('pegman'); "
                 + "      if (peg && peg.parentNode) svg.insertBefore(g, peg); else svg.appendChild(g); "
-                + "    } "
-                + "    function sliceFrom(path, idx) { "
-                + "      try { "
-                + "        if (!path || !path.length) return []; "
-                + "        if (idx <= 0) return path.slice(0); "
-                + "        if (idx >= path.length) return []; "
-                + "        return path.slice(Math.max(0, idx-1)); "
-                + "      } catch(e) { return []; } "
                 + "    } "
                 + "    function commonPrefixLen(a, b) { "
                 + "      try { "
@@ -173,79 +166,27 @@ public final class ImmediateFeedbackService {
                 + "        return i; "
                 + "      } catch(e) { return 0; } "
                 + "    } "
-                + "    // If a Direct Manipulation (MoMoT) comparison is enabled, draw common-vs-divergence overlays.\n"
-                + "    if (window.__injectDmEnabled && window.__injectDmBaselinePath && window.__injectDmSolutionPath) { "
-                + "      // remove the default immediate feedback overlays so the DM diff is readable\n"
-                + "      try { var o1 = document.getElementById('" + PAST_OVERLAY_ID + "'); if (o1 && o1.parentNode) o1.parentNode.removeChild(o1); } catch(e0) {} "
-                + "      try { var o2 = document.getElementById('" + NEW_OVERLAY_ID + "'); if (o2 && o2.parentNode) o2.parentNode.removeChild(o2); } catch(e1) {} "
-                + "      var base = window.__injectDmBaselinePath || []; "
-                + "      var sol  = window.__injectDmSolutionPath || []; "
-                + "      var cl = (typeof window.__injectDmCommonLen === 'number') ? window.__injectDmCommonLen : 0; "
-                + "      var common = (cl > 0) ? base.slice(0, Math.min(cl, base.length)) : []; "
-                + "      var baseRem = sliceFrom(base, cl); "
-                + "      var solRem  = sliceFrom(sol, cl); "
-                + "      // Common prefix (green)\n"
-                + "      drawOverlay('dmCommon', common, '#3bd46a'); "
-                + "      // Baseline remainder (blue-ish)\n"
-                + "      drawOverlay('dmBase', baseRem, '#4d90fe'); "
-                + "      // Solution remainder (orange) – dashed polyline for visibility\n"
+                + "    window.__ifRender = function() { "
                 + "      try { "
-                + "        var old = document.getElementById('dmSol'); if (old && old.parentNode) old.parentNode.removeChild(old); "
-                + "        if (solRem && solRem.length && svg) { "
-                + "          var g = document.createElementNS(ns, 'g'); g.setAttribute('id', 'dmSol'); g.setAttribute('data-immediate-feedback','true'); "
-                + "          if (solRem.length >= 2) { "
-                + "            var pts = []; for (var i2=0;i2<solRem.length;i2++){ pts.push((50*solRem[i2][0]+25)+','+(50*solRem[i2][1]+25)); } "
-                + "            var poly = document.createElementNS(ns,'polyline'); "
-                + "            poly.setAttribute('points', pts.join(' ')); poly.setAttribute('fill','none'); "
-                + "            poly.setAttribute('stroke','#ff8c1a'); poly.setAttribute('stroke-width','7'); "
-                + "            poly.setAttribute('stroke-linecap','round'); poly.setAttribute('stroke-linejoin','round'); "
-                + "            poly.setAttribute('stroke-opacity','0.95'); poly.setAttribute('stroke-dasharray','10 6'); "
-                + "            g.appendChild(poly); "
-                + "          } "
-                + "          for (var j2=0;j2<solRem.length;j2++){ "
-                + "            var cx2=(50*solRem[j2][0]+25), cy2=(50*solRem[j2][1]+25); "
-                + "            var c2=document.createElementNS(ns,'circle'); c2.setAttribute('cx',cx2); c2.setAttribute('cy',cy2); "
-                + "            c2.setAttribute('r','4'); c2.setAttribute('fill','#ff8c1a'); c2.setAttribute('fill-opacity','0.8'); "
-                + "            g.appendChild(c2); "
-                + "          } "
-                + "          var peg2=document.getElementById('pegman'); if (peg2 && peg2.parentNode) svg.insertBefore(g, peg2); else svg.appendChild(g); "
+                + "        var rawStep = (typeof window.__ifCurrentStep === 'number') ? window.__ifCurrentStep : 0; "
+                + "        var step = Math.max(1, rawStep); "
+                + "        if (window.__injectDmEnabled && window.__injectDmSolutionPath) { "
+                + "          var sol  = window.__injectDmSolutionPath || []; "
+                + "          var solRem  = (sol.length >= step) ? sol.slice(step - 1) : []; "
+                + "          drawOverlay('dmSol', solRem, '#a020f0', 30, '12 6 2 6'); "
+                + "          var ob = document.getElementById('dmBase'); if (ob && ob.parentNode) ob.parentNode.removeChild(ob); "
+                + "          var oc = document.getElementById('dmCommon'); if (oc && oc.parentNode) oc.parentNode.removeChild(oc); "
+                + "        } else { "
+                + "          var next = window.__injectNewPath || []; "
+                + "          var predictedFull = (next.length >= step) ? next.slice(step - 1) : []; "
+                + "          drawOverlay('ifNew', predictedFull, '#ff8c1a', 20, '10 6'); "
+                + "          var op = document.getElementById('ifPast'); if (op && op.parentNode) op.parentNode.removeChild(op); "
+                + "          var oc2 = document.getElementById('ifCommon'); if (oc2 && oc2.parentNode) oc2.parentNode.removeChild(oc2); "
                 + "        } "
-                + "      } catch(e2) {} "
-                + "    } else { "
-                + "      // Default Immediate Feedback: show common prefix (green) and divergence segments.\n"
-                + "      var past = window.__injectPastPath || []; "
-                + "      var next = window.__injectNewPath || []; "
-                + "      var cl2 = commonPrefixLen(past, next); "
-                + "      var common2 = (cl2 > 0) ? past.slice(0, Math.min(cl2, past.length)) : []; "
-                + "      var pastRem2 = sliceFrom(past, cl2); "
-                + "      var nextRem2 = sliceFrom(next, cl2); "
-                + "      drawOverlay('ifCommon', common2, '#3bd46a'); "
-                + "      drawOverlay('ifPast', pastRem2, '" + PAST_COLOR + "'); "
-                + "      // New remainder (orange dashed)\n"
-                + "      try { "
-                + "        var old3 = document.getElementById('ifNew'); if (old3 && old3.parentNode) old3.parentNode.removeChild(old3); "
-                + "        if (nextRem2 && nextRem2.length && svg) { "
-                + "          var g3 = document.createElementNS(ns, 'g'); g3.setAttribute('id', 'ifNew'); g3.setAttribute('data-immediate-feedback','true'); "
-                + "          if (nextRem2.length >= 2) { "
-                + "            var pts3=[]; for (var i3=0;i3<nextRem2.length;i3++){ pts3.push((50*nextRem2[i3][0]+25)+','+(50*nextRem2[i3][1]+25)); } "
-                + "            var p3=document.createElementNS(ns,'polyline'); "
-                + "            p3.setAttribute('points', pts3.join(' ')); p3.setAttribute('fill','none'); "
-                + "            p3.setAttribute('stroke','#ff8c1a'); p3.setAttribute('stroke-width','7'); "
-                + "            p3.setAttribute('stroke-linecap','round'); p3.setAttribute('stroke-linejoin','round'); "
-                + "            p3.setAttribute('stroke-opacity','0.95'); p3.setAttribute('stroke-dasharray','10 6'); "
-                + "            g3.appendChild(p3); "
-                + "          } "
-                + "          for (var j3=0;j3<nextRem2.length;j3++){ "
-                + "            var cx3=(50*nextRem2[j3][0]+25), cy3=(50*nextRem2[j3][1]+25); "
-                + "            var c3=document.createElementNS(ns,'circle'); c3.setAttribute('cx',cx3); c3.setAttribute('cy',cy3); "
-                + "            c3.setAttribute('r','4'); c3.setAttribute('fill','#ff8c1a'); c3.setAttribute('fill-opacity','0.8'); "
-                + "            g3.appendChild(c3); "
-                + "          } "
-                + "          var peg3=document.getElementById('pegman'); if (peg3 && peg3.parentNode) svg.insertBefore(g3, peg3); else svg.appendChild(g3); "
-                + "        } "
-                + "      } catch(e3) {} "
-                + "    } "
-                + "  } catch(e) { if (window.javaBridge) window.javaBridge.logJS('ImmediateFeedback overlay: ' + e); }";
+                + "      } catch(e) { console.log('__ifRender error: ' + e); } "
+                + "    }; "
+                + "    window.__ifRender(); "
+                + "  } catch(e) { if (window.javaBridge) window.javaBridge.logJS('ImmediateFeedback definition error: ' + e); }";
     }
 
     private static ExecutionTrace firstTrace(Level level) {
@@ -303,18 +244,11 @@ public final class ImmediateFeedbackService {
 
         if (solution == null) return trace;
 
-        boolean enforceConstraints = Boolean.parseBoolean(System.getProperty("blocky.sim.enforceConstraints", "false"));
-        if (enforceConstraints) {
-            // Best-effort constraint check if we had the level, but here we only have solution.
-            // In computePaths, we HAVE the level. Let's move the check there.
-        }
-
         executeBody(solution, initialState, trace, map, winCellType);
         return trace;
     }
 
     private static SensorDirection conditionKindToSensor(ConditionKind ck) {
-        // Align with MoMoT headless simulator defaults: missing condition behaves as CHECK_FORWARD.
         if (ck == null) ck = ConditionKind.CHECK_FORWARD;
         if (ck == ConditionKind.CHECK_LEFT) return SensorDirection.LEFT;
         if (ck == ConditionKind.CHECK_RIGHT) return SensorDirection.RIGHT;
@@ -353,7 +287,6 @@ public final class ImmediateFeedbackService {
 
         if (stmt instanceof AtomicStatement) {
             AtomicStatement a = (AtomicStatement) stmt;
-            // Align with MoMoT headless simulator defaults: missing kind behaves as TURN_LEFT.
             AtomicStatementKind kind = a.getKind();
             if (kind == null) kind = AtomicStatementKind.TURN_LEFT;
             switch (kind) {
@@ -417,14 +350,10 @@ public final class ImmediateFeedbackService {
     private static Cell getAdjacent(Cell c, Direction d) {
         if (c == null || d == null) return null;
         switch (d) {
-            case NORTH:
-                return c.getTop();
-            case SOUTH:
-                return c.getBottom();
-            case EAST:
-                return c.getRight();
-            case WEST:
-                return c.getLeft();
+            case NORTH: return c.getTop();
+            case SOUTH: return c.getBottom();
+            case EAST: return c.getRight();
+            case WEST: return c.getLeft();
         }
         return null;
     }
@@ -433,28 +362,19 @@ public final class ImmediateFeedbackService {
         if (sensor == SensorDirection.AHEAD) return curr;
         if (sensor == SensorDirection.LEFT) {
             switch (curr) {
-                case NORTH:
-                    return Direction.WEST;
-                case WEST:
-                    return Direction.SOUTH;
-                case SOUTH:
-                    return Direction.EAST;
-                case EAST:
-                    return Direction.NORTH;
+                case NORTH: return Direction.WEST;
+                case WEST: return Direction.SOUTH;
+                case SOUTH: return Direction.EAST;
+                case EAST: return Direction.NORTH;
             }
         } else {
             switch (curr) {
-                case NORTH:
-                    return Direction.EAST;
-                case EAST:
-                    return Direction.SOUTH;
-                case SOUTH:
-                    return Direction.WEST;
-                case WEST:
-                    return Direction.NORTH;
+                case NORTH: return Direction.EAST;
+                case EAST: return Direction.SOUTH;
+                case SOUTH: return Direction.WEST;
+                case WEST: return Direction.NORTH;
             }
         }
         return curr;
     }
 }
-

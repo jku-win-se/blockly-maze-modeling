@@ -24,6 +24,12 @@ import netscape.javascript.JSObject;
 
 import blocky.Cell;
 import blocky.Level;
+import blocky.Game;
+import blocky.Direction;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.common.util.URI;
 
 import java.io.File;
 import java.io.IOException;
@@ -364,7 +370,7 @@ public class BlockyUI extends Application {
                 + "        fill.style.borderRadius = '8px'; "
                 + "        fill.style.background = 'linear-gradient(90deg,#4d90fe,#3bd46a,#ffcc00)'; "
                 + "        fill.style.backgroundSize = '200% 100%'; "
-                + "        fill.style.animation = '__lvlLoadAnim 1.1s linear infinite'; "
+                + "        fill.style.animation = '__lvlLoadAnim 1.8s linear infinite'; "
                 + "        bar.appendChild(fill); "
                 + "        var sub = document.createElement('div'); "
                 + "        sub.textContent = 'Syncing toolbox & metadata…'; "
@@ -387,10 +393,20 @@ public class BlockyUI extends Application {
                 + "      window.__lvlLoadingShow = function(txt) { "
                 + "        try { __lvlLoadingEnsure(); var t = document.getElementById('__lvlLoadingTitle'); if (t && txt) t.textContent = txt; "
                 + "          var o = document.getElementById('__lvlLoadingOverlay'); if (o) o.style.display = 'flex'; "
+                + "          window.__lvlLoadingStart = Date.now(); "
                 + "        } catch(e) {} "
                 + "      }; "
                 + "      window.__lvlLoadingHide = function() { "
-                + "        try { var o2 = document.getElementById('__lvlLoadingOverlay'); if (o2) o2.style.display = 'none'; } catch(e) {} "
+                + "        try { "
+                + "          var o2 = document.getElementById('__lvlLoadingOverlay'); if (!o2) return; "
+                + "          var min = 1500; "
+                + "          var elapsed = Date.now() - (window.__lvlLoadingStart || 0); "
+                + "          if (elapsed < min) { "
+                + "            setTimeout(function() { o2.style.display = 'none'; }, min - elapsed); "
+                + "          } else { "
+                + "            o2.style.display = 'none'; "
+                + "          } "
+                + "        } catch(e) {} "
                 + "      }; "
                 + "      return true; "
                 + "    } catch(e) { return false; } "
@@ -704,7 +720,7 @@ public class BlockyUI extends Application {
                 + "        panel.appendChild(rh); "
                 + "        host.appendChild(panel); "
                 + "        window.__momotSelectedPath = null; "
-                + "        window.__momotSortCol = -1; "
+                + "        window.__momotSortCol = 0; "
                 + "        window.__momotSortDir = 1; "
                 + "        window.__momotLastData = []; "
                 + "        function setStatus(msg) { try { status.textContent = msg || ''; } catch(e) {} } "
@@ -726,6 +742,16 @@ public class BlockyUI extends Application {
                 + "        window.__momotSetStatus = setStatus; "
                 + "        window.__momotLogClear = logClear; "
                 + "        window.__momotLogAppend = logAppend; "
+                + "        function __dbgDrawComparisonPath(path) { "
+                + "          try { "
+                + "            window.__injectDmEnabled = !!(path && path.length >= 2); "
+                + "            window.__injectDmSolutionPath = path || []; "
+                + "            // For simple comparison without a baseline, use an empty baseline\n"
+                + "            if (!window.__injectDmBaselinePath) window.__injectDmBaselinePath = []; "
+                + "            if (typeof window.__ifRender === 'function') window.__ifRender(); "
+                + "          } catch(e) {} "
+                + "        } "
+                + "        window.__dbgDrawComparisonPath = __dbgDrawComparisonPath; "
                 + "        function renderSolutions(arr) { "
                 + "          try { "
                 + "            if (arr) window.__momotLastData = arr; else arr = window.__momotLastData; "
@@ -816,6 +842,14 @@ public class BlockyUI extends Application {
                 + "                for (var k=0; k<kids.length; k++) kids[k].style.background = 'transparent'; "
                 + "                tr.style.background = 'rgba(255,255,255,0.15)'; "
                 + "                setStatus('Selected: ' + p.modelName); "
+                + "                try { "
+                + "                  var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
+                + "                  if (bridge && bridge.getSolutionPath) { "
+                + "                    var pathJson = bridge.getSolutionPath(p.it.modelPath); "
+                + "                    var path = JSON.parse(pathJson); "
+                + "                    if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath(path); "
+                + "                  } "
+                + "                } catch(eP) {} "
                 + "              }); "
                 + "              tr.addEventListener('dblclick', function() { "
                 + "                var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
@@ -838,6 +872,11 @@ public class BlockyUI extends Application {
                 + "            var arr = []; "
                 + "            try { arr = JSON.parse(txt); } catch(e2) { arr = []; } "
                 + "            renderSolutions(arr); "
+                + "            try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {} "
+                + "            try { "
+                + "              var oldMarker = document.getElementById('dmgMarker'); "
+                + "              if (oldMarker && oldMarker.parentNode) oldMarker.parentNode.removeChild(oldMarker); "
+                + "            } catch(eM) {} "
                 + "          } catch(e) { setStatus('Refresh failed'); } "
                 + "        } "
                 + "        window.__momotShowAndRefresh = function(){ try { panel.style.display = 'block'; } catch(e) {} try { refresh(); } catch(e2) {} }; "
@@ -855,6 +894,15 @@ public class BlockyUI extends Application {
                 + "          try { "
                 + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
                 + "            if (!bridge || !bridge.runMomotWithParams) { setStatus('Java bridge runMomotWithParams not available'); return; } "
+                + "            try { "
+                + "              if (window.Z && typeof window.__preDmQ === 'number') { "
+                + "                window.Q = window.__preDmQ; "
+                + "                window.S = window.__preDmS; "
+                + "                var t = (typeof window.__stableStartT === 'number') ? window.__stableStartT : window.T; "
+                + "                window.T = t; "
+                + "                Z(window.Q, window.S, 4 * t); "
+                + "              } "
+                + "            } catch(eT) {} "
                 + "            var s = parseInt(document.getElementById('__momotInpSeed').value) || 0; "
                 + "            var p = parseInt(document.getElementById('__momotInpPop').value) || 50; "
                 + "            var it = parseInt(document.getElementById('__momotInpIter').value) || 40; "
@@ -862,6 +910,7 @@ public class BlockyUI extends Application {
                 + "            var r = parseInt(document.getElementById('__momotInpRuns').value) || 10; "
                 + "            var sl = parseInt(document.getElementById('__momotInpSolLen').value) || 10; "
                 + "            setStatus('Starting MoMoT (seed=' + s + ', pop=' + p + ', iter=' + it + ' (eval=' + e + '), runs=' + r + ', solLen=' + sl + ')...'); "
+                + "            try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {} "
                 + "            bridge.runMomotWithParams(s, p, e, r, sl); "
                 + "          } catch(e) { setStatus('Run failed: ' + e); } "
                 + "        }); "
@@ -981,6 +1030,7 @@ public class BlockyUI extends Application {
                 + "          }, 50); "
                 + "        } "
                 + "        " + blocky_game.DebuggingService.renderDebugOverlayJsSnippet() + " "
+                + "        " + blocky_game.ImmediateFeedbackService.buildOverlayRenderJs() + " "
                 + "        function __dbgSync() { "
                 + "          try { "
                 + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
@@ -1362,7 +1412,16 @@ public class BlockyUI extends Application {
                 + "            svg.addEventListener('click', window.__dmClickHandler, true); "
                 + "          } catch(e) {} "
                 + "        } "
-                + "        directManipBtn.addEventListener('click', function(){ try { if (window.__dmActive) __dmStop(); else __dmStart(); } catch(e) {} }); "
+                + "        directManipBtn.addEventListener('click', function(){ "
+                + "          try { "
+                + "            if (window.__dmActive) __dmStop(); "
+                + "            else { "
+                + "              window.__preDmQ = window.Q; "
+                + "              window.__preDmS = window.S; "
+                + "              __dmStart(); "
+                + "            } "
+                + "          } catch(e) {} "
+                + "        }); "
                 + "        // Keep enablement in sync with debug state.\n"
                 + "        try { setInterval(__dmUpdateButton, 200); } catch(e) {} "
                 + "        __dmUpdateButton(); "
@@ -1388,6 +1447,51 @@ public class BlockyUI extends Application {
         /** Receives a base64 dataUrl PNG generated in the WebView. */
         public void receivePngDataUrl(String dataUrl) {
             snapshotService.receivePngDataUrl(dataUrl);
+        }
+
+        public String getSolutionPath(String xmiPath) {
+            if (xmiPath == null || xmiPath.isEmpty()) return "[]";
+            try {
+                File file = new File(xmiPath.trim());
+                if (!file.exists()) return "[]";
+
+                ResourceSet resSet = new ResourceSetImpl();
+                URI uri = URI.createFileURI(file.getAbsolutePath());
+                Resource res = resSet.createResource(uri);
+                res.load(null);
+
+                if (res.getContents().isEmpty()) return "[]";
+                Object root = res.getContents().get(0);
+                Level level = null;
+                if (root instanceof Game) {
+                    Game game = (Game) root;
+                    if (!game.getLevels().isEmpty()) level = game.getLevels().get(0);
+                } else if (root instanceof Level) {
+                    level = (Level) root;
+                }
+
+                if (level == null || level.getMap() == null) return "[]";
+
+                Cell startCell = engine.getStartCell(level.getMap());
+                Direction startDir = SimUtils.determineStartOrientation(level, startCell);
+
+                DebuggingService.DebugTraceResult result = DebuggingService.computeTraceFromState(level,
+                    startCell != null ? startCell.getX() : 0,
+                    startCell != null ? startCell.getY() : 0,
+                    startDir);
+
+                int[][] pts = result.statePositions;
+                StringBuilder sb = new StringBuilder("[");
+                for (int i = 0; i < pts.length; i++) {
+                    if (i > 0) sb.append(",");
+                    sb.append("[").append(pts[i][0]).append(",").append(pts[i][1]).append("]");
+                }
+                sb.append("]");
+                return sb.toString();
+            } catch (Exception e) {
+                System.err.println("[JSBridge] getSolutionPath failed: " + e.getMessage());
+                return "[]";
+            }
         }
 
         /** Called by WebView after loaded model state is injected and stable. */
@@ -1619,6 +1723,19 @@ public class BlockyUI extends Application {
                 List<Map<String, Object>> data = parseBlocklyXml(xml);
                 engine.rebuildProgram(data);
                 System.out.println("[JSBridge] Sync complete. Top-level blocks: " + (data != null ? data.size() : 0));
+                
+                // If a debug session is active, trigger an immediate re-simulation and redraw 
+                // so the orange predicted path updates as the user edits blocks.
+                try {
+                    webView.getEngine().executeScript("if (window.__dbgActive) { " +
+                        "  var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); " +
+                        "  if (bridge && bridge.debugTick) { " +
+                        "    var gen = (typeof window.__javaPageGen === 'number') ? window.__javaPageGen : 0; " +
+                        "    var fr = JSON.parse((bridge.debugTickWithGen ? bridge.debugTickWithGen(gen) : bridge.debugTick())); " +
+                        "    if (typeof __dbgRenderOverlay === 'function') __dbgRenderOverlay(fr.prefix, fr.pastPrefix, fr.newPreview, fr.common); " +
+                        "  } " +
+                        "}");
+                } catch (Exception ignored) {}
             } catch (Exception e) {
                 System.err.println("[JSBridge] Sync Error: " + e.getMessage());
                 e.printStackTrace();
@@ -1916,11 +2033,12 @@ public class BlockyUI extends Application {
                 "          }\n" +
                 "          if (!ok) logJS('CRITICAL: No injection method worked');\n" +
                 "\n" +
-                "          // Teleport pegman to last common cell if available (DM/MoMoT result alignment)\n" +
+                "                      // Teleport pegman to last common cell if available (DM/MoMoT result alignment)\n" +
                 "          if (window.__injectQ !== undefined && window.__injectS !== undefined) {\n" +
                 "            logJS('Teleporting pegman to aligned cell (' + window.__injectQ + ',' + window.__injectS + ')');\n" +
                 "            window.Q = window.__injectQ;\n" +
                 "            window.S = window.__injectS;\n" +
+                "            if (typeof window.__modelStartT === 'number') window.T = window.__modelStartT;\n" +
                 "            if (typeof Z === 'function') {\n" +
                 "              Z(window.Q, window.S, 4 * window.T);\n" +
                 "            }\n" +
@@ -2274,7 +2392,27 @@ public class BlockyUI extends Application {
                 "  } " +
                 "  var c = document.getElementById('svgMaze'); " +
                 "  if (c) { while (c.firstChild) c.removeChild(c.firstChild); } " +
-                "  if (typeof Wd === 'function') { Wd(); logJS('Map redrawn via Wd()'); } " +
+                "  if (typeof Wd === 'function') { " +
+                "    Wd(); " +
+                "    try { " +
+                "      if (window.od && typeof window.od.x === 'number') { " +
+                "        var c = document.getElementById('svgMaze'); " +
+                "        var ns = 'http://www.w3.org/2000/svg'; " +
+                "        var g = document.createElementNS(ns, 'g'); " +
+                "        g.setAttribute('id', 'dmgMarker'); " +
+                "        g.setAttribute('transform', 'translate(' + (50 * window.od.x + 25) + ',' + (50 * window.od.y + 25) + ')'); " +
+                "        var star = document.createElementNS(ns, 'path'); " +
+                "        star.setAttribute('d', 'M 0,-15 L 4.5,-4.5 L 15,-4.5 L 6.5,3 L 10,14 L 0,7 L -10,14 L -6.5,3 L -15,-4.5 L -4.5,-4.5 Z'); " +
+                "        star.setAttribute('fill', '#ff0000'); " +
+                "        star.setAttribute('stroke', '#ffffff'); " +
+                "        star.setAttribute('stroke-width', '2'); " +
+                "        g.appendChild(star); " +
+                "        var peg = document.getElementById('pegman'); " +
+                "        if (peg && peg.parentNode) c.insertBefore(g, peg); else c.appendChild(g); " +
+                "      } " +
+                "    } catch(e) { logJS('DMG Marker Error: ' + e); } " +
+                "    logJS('Map redrawn via Wd()'); " +
+                "  } " +
                 "  if (!document.getElementById('look') && c) { " +
                 "    var ns = 'http://www.w3.org/2000/svg'; " +
                 "    var g = document.createElementNS(ns, 'g'); g.id = 'look'; " +
@@ -2314,8 +2452,7 @@ public class BlockyUI extends Application {
                 + "      if (typeof Z === 'function') { Z(window.Q, window.S, 4 * window.T); logJS('Pegman reset to T=' + window.T); } "
                 + "    } "
                 + "  } catch(e) { logJS('set modelStartT error: ' + e); } " +
-                ImmediateFeedbackService.buildOverlayRenderJs() +
-                blocky_game.DebuggingService.renderDebugOverlayJsSnippet() +
+                "  try { if (typeof window.__ifRender === 'function') window.__ifRender(); } catch(eR) {} " +
                 "  finish(); " +
                 "}, interval); " +
                 "})();"

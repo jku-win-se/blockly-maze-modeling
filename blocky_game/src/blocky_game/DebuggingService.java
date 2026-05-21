@@ -92,11 +92,7 @@ public final class DebuggingService {
 
         Body solution = level.getSolution();
         if (solution != null) {
-            // Blockly Maze semantics: the visible top-level "maze_forever" repeats the whole program
-            // until the goal is reached (or we hit a step bound). Our model intentionally does NOT
-            // include that UI scaffold, so for debugging/stepping we emulate it here by repeatedly
-            // executing the full container chain.
-            executeProgramUntilGoal(solution.getFirstContainer(), initialState, trace, map, logLines, winCellType);
+            executeContainerChain(solution.getFirstContainer(), initialState, trace, map, logLines, winCellType);
         }
 
         return new DebugTraceResult(trace, extractStatePositions(trace), logLines);
@@ -178,7 +174,7 @@ public final class DebuggingService {
                 + "        var pts = []; "
                 + "        if (!path || !path.length) return pts; "
                 + "        for (var i=0; i<path.length; i++) { "
-                + "          pts.push((50*path[i][0]+25) + ',' + (50*path[i][1]+25)); "
+                + "          pts.push((50*path[i][0]+20) + ',' + (50*path[i][1]+20)); "
                 + "        } "
                 + "        return pts; "
                 + "      } "
@@ -201,8 +197,8 @@ public final class DebuggingService {
                 + "        try { "
                 + "          if (!path || !path.length) return; "
                 + "          for (var j=0; j<path.length; j++) { "
-                + "            var cx = (50*path[j][0]+25); "
-                + "            var cy = (50*path[j][1]+25); "
+                + "            var cx = (50*path[j][0]+20); "
+                + "            var cy = (50*path[j][1]+20); "
                 + "            var c = document.createElementNS(ns, 'circle'); "
                 + "            c.setAttribute('cx', cx); "
                 + "            c.setAttribute('cy', cy); "
@@ -215,20 +211,19 @@ public final class DebuggingService {
                 + "      } "
                 + "      // 1) Past prefix (already navigated) – thicker blue.\n"
                 + "      __dbgDrawPolyline(pastPrefix, '" + DEBUG_PAST_PREFIX_COLOR + "', 7, 0.35, null); "
-                + "      // 2) New predicted path: common prefix – thin green, deviation – dashed orange.\n"
-                + "      var cl = (typeof commonLen === 'number' && commonLen >= 0) ? commonLen : 0; "
-                + "      var commonPart = (newPreview && cl > 0) ? newPreview.slice(0, Math.min(cl, newPreview.length)) : []; "
-                + "      var devPart = (newPreview && newPreview.length > cl) ? newPreview.slice(Math.max(0, cl-1)) : []; "
-                + "      __dbgDrawPolyline(commonPart, '" + DEBUG_NEW_COMMON_COLOR + "', 4, 0.85, null); "
-                + "      __dbgDrawPolyline(devPart, '" + DEBUG_NEW_DEVIATION_COLOR + "', 6, 0.95, '10 6'); "
-                + "      __dbgDrawDots(devPart, '" + DEBUG_NEW_DEVIATION_COLOR + "', 4, 0.75); "
-                + "      // 3) Current executed prefix – keep as solid blue on top.\n"
+                + "      // 2) Current executed prefix – solid blue.\n"
                 + "      __dbgDrawPolyline(prefixPath, '" + DEBUG_OVERLAY_COLOR + "', 6, 0.95, null); "
+                + "      try { "
+                + "        window.__ifCurrentStep = prefixPath.length; "
+                + "        if (newPreview) window.__injectNewPath = newPreview; "
+                + "        if (pastPrefix) window.__injectPastPath = pastPrefix; "
+                + "        if (typeof window.__ifRender === 'function') window.__ifRender(); "
+                + "      } catch(eIF) {} "
                 + "      var last = (prefixPath && prefixPath.length) ? prefixPath[prefixPath.length - 1] : null; "
                 + "      if (last) { "
                 + "        var lc = document.createElementNS(ns, 'circle'); "
-                + "        lc.setAttribute('cx', (50*last[0]+25)); "
-                + "        lc.setAttribute('cy', (50*last[1]+25)); "
+                + "        lc.setAttribute('cx', (50*last[0]+20)); "
+                + "        lc.setAttribute('cy', (50*last[1]+20)); "
                 + "        lc.setAttribute('r', '7'); "
                 + "        lc.setAttribute('fill', '" + DEBUG_CURRENT_COLOR + "'); "
                 + "        lc.setAttribute('fill-opacity', '0.95'); "
@@ -267,38 +262,6 @@ public final class DebuggingService {
 
     private static boolean checkCondition(GameState state, ConditionKind ck) {
         return checkSensor(state, conditionKindToSensor(ck));
-    }
-
-    private static GameState executeProgramUntilGoal(
-            Container first,
-            GameState state,
-            ExecutionTrace trace,
-            GridMap map,
-            List<String> logLines,
-            CellType winCellType) {
-        if (first == null || state == null) return state;
-
-        // Same bound idea as the other simulators: proportional to map area.
-        int maxSteps = 0;
-        try {
-            maxSteps = map.getWidth() * map.getHeight() * 2;
-        } catch (Exception ignored) {
-            maxSteps = 128;
-        }
-        if (maxSteps <= 0) maxSteps = 128;
-
-        GameState last = state;
-        while (last.getStatus() == GameStatus.RUNNING && last.getPosition().getType() != winCellType) {
-            if (last.getStep() > maxSteps) {
-                last.setStatus(GameStatus.CRASHED);
-                if (logLines != null) {
-                    logLines.add("Result: INFINITE_LOOP (bound " + maxSteps + " exceeded)");
-                }
-                break;
-            }
-            last = executeContainerChain(first, last, trace, map, logLines, winCellType);
-        }
-        return last;
     }
 
     private static GameState executeContainerChain(
