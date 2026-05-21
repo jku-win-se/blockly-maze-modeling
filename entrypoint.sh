@@ -8,15 +8,17 @@ sleep 2
 
 # 2. Start x11vnc (VNC server)
 echo "Starting x11vnc..."
-x11vnc -display :99 -forever -nopw -listen localhost -xkb &
+x11vnc -display :99 -forever -nopw -shared -xkb &
 sleep 2
+netstat -tunlp | grep 5900 || echo "x11vnc NOT LISTENING on 5900"
 
 # 3. Start noVNC (Web-based VNC client)
 echo "Starting noVNC..."
 # Create a symbolic link so vnc.html is the default index page
 ln -s /usr/share/novnc/vnc.html /usr/share/novnc/index.html || true
-websockify --web /usr/share/novnc 6080 localhost:5900 &
+websockify --web /usr/share/novnc 0.0.0.0:6080 127.0.0.1:5900 &
 sleep 2
+netstat -tunlp | grep 6080 || echo "websockify NOT LISTENING on 6080"
 
 # 4. Run the application
 echo "Starting Blocky Maze..."

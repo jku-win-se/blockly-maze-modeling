@@ -7,7 +7,6 @@ services:
     container_name: blocky-maze-app
     entrypoint: /bin/bash ./entrypoint.sh
     environment:
-      - DISPLAY=${DISPLAY:-host.docker.internal:0.0}
       - LIBGL_ALWAYS_SOFTWARE=1
     ports:
       - "6080:6080"
@@ -16,4 +15,3 @@ services:
       - /app/blocky_game/target
       - /app/blocky_momot/target
       - /app/blocky_model/target
-      - /tmp/.X11-unix:/tmp/.X11-unix

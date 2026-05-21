@@ -60,10 +60,24 @@ RUN apt-get update && apt-get install -y \
     libxkbcommon0 \
     libasound2 \
     libfontconfig1 \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libgbm1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libpango-1.0-0 \
+    libcairo2 \
     xvfb \
     x11vnc \
     novnc \
     websockify \
+    procps \
+    net-tools \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the built application from the build stage
