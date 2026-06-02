@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.PrintStream;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -173,6 +174,26 @@ public final class MomotRunService {
                 if (v instanceof Number) solLen = Math.max(1, ((Number) v).intValue() * 2);
             } catch (Throwable ignored) {}
 
+            // Allow overriding solution length from the MoMoT window / system properties.
+            // If not set, keep the inferred default.
+            try {
+                String forced = System.getProperty("blocky.solutionLength");
+                if (forced != null && !forced.isBlank()) {
+                    int v = Integer.parseInt(forced.trim());
+                    if (v > 0) solLen = v;
+                } else {
+                    String factorStr = System.getProperty("blocky.solutionLengthFactor");
+                    if (factorStr != null && !factorStr.isBlank()) {
+                        int factor = Integer.parseInt(factorStr.trim());
+                        if (factor > 0) {
+                            // solLen currently holds the inferred "*2" length; convert back to baseline and reapply factor.
+                            int baseline = Math.max(1, solLen / 2);
+                            solLen = Math.max(1, baseline * factor);
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
+
             Object inst = runnerClass.getDeclaredConstructor().newInstance();
             
             if (!Thread.interrupted()) {
@@ -194,7 +215,11 @@ public final class MomotRunService {
                 }
             }
         } catch (Throwable t) {
-            if (logLine != null) logLine.accept("[MoMoT] Exec Failed: " + t.toString());
+            Throwable root = unwrapInvocationTargetException(t);
+            if (logLine != null) {
+                logLine.accept("[MoMoT] Exec Failed: " + root);
+                logLine.accept("[MoMoT] Stacktrace:\n" + throwableToString(root));
+            }
         } finally { 
             System.out.flush();
             System.err.flush();
@@ -204,6 +229,33 @@ public final class MomotRunService {
         }
 
         return finalizeOutput(spec, onOutputDirReady);
+    }
+
+    private static Throwable unwrapInvocationTargetException(Throwable t) {
+        Throwable curr = t;
+        while (true) {
+            if (curr instanceof InvocationTargetException ite && ite.getTargetException() != null) {
+                curr = ite.getTargetException();
+                continue;
+            }
+            if (curr.getCause() instanceof InvocationTargetException ite2 && ite2.getTargetException() != null) {
+                curr = ite2.getTargetException();
+                continue;
+            }
+            if (curr.getCause() != null && curr != curr.getCause()) {
+                // Common wrappers: RuntimeException, UndeclaredThrowableException, etc.
+                // Only peel if it looks like reflection noise.
+                String n = curr.getClass().getName();
+                if (n.startsWith("java.lang.reflect.")
+                        || n.equals("java.lang.RuntimeException")
+                        || n.equals("java.lang.Exception")
+                        || n.equals("java.lang.Throwable")) {
+                    curr = curr.getCause();
+                    continue;
+                }
+            }
+            return curr;
+        }
     }
 
     private static String finalizeOutput(RunSpec spec, Consumer<String> onOutputDirReady) {
