@@ -44,11 +44,11 @@ The repo defines a **Target Platform** that pulls in the **Eclipse simultaneous 
 | Eclipse SDK | `https://download.eclipse.org/releases/2026-06/` |
 | **Papyrus for UML** (Papyrus-Desktop) | `https://download.eclipse.org/modeling/mdt/papyrus/papyrus-desktop/updates/releases/2025-06/` ([directory listing](https://download.eclipse.org/modeling/mdt/papyrus/papyrus-desktop/updates/releases/2025-06/)) |
 | Henshin SDK | `https://download.eclipse.org/modeling/emft/henshin/updates/release` |
-| MoMoT 2.0 (develop) | `https://www.dehghani.online/momot-2.0/eclipse/updates/latest/develop/` |
+| MoMoT 2.0 (develop) | `https://jku-win-se.github.io/MOMoT2/eclipse/updates/latest/develop/` |
 
 **Note:** On milestone builds (e.g. 2026-06 M1), **`org.eclipse.papyrus.uml.feature.feature.group` often does not appear** on the main `releases/2026-06` composite. The target uses the official [Papyrus-Desktop updates](https://download.eclipse.org/modeling/mdt/papyrus/papyrus-desktop/updates/releases/2025-06/) composite (versions such as 7.0.0 / 7.1.0) instead.
 
-MoMoT metadata is published from the [`gh-pages` branch of momot-2.0](https://github.com/hadiDHD/momot-2.0/tree/gh-pages/eclipse/updates/latest/develop) (the public URL may redirect to the site above).
+MoMoT p2 metadata lives on the [`main` branch of MOMoT2](https://github.com/jku-win-se/MOMoT2/tree/main/docs/eclipse/updates/latest/develop) under `docs/eclipse/` and is served via GitHub Pages.
 
 If a unit still fails to resolve, open the target in the **Target Definition** editor, use **Add…** on the **Papyrus-Desktop** repository above, and re-select **Papyrus for UML** so Eclipse writes the correct feature id. For a newer Eclipse train, check [Papyrus downloads](https://eclipse.dev/papyrus/download.html) for an updated `papyrus-desktop/updates/releases/…` URL and replace that location in the `.target` file.
 
@@ -59,7 +59,7 @@ If you prefer installing into the running IDE instead of a target platform:
 1. **Help → Install New Software…** → **Manage…** — ensure your **Eclipse release** repository is enabled (e.g. `https://download.eclipse.org/releases/2026-06/`).
 2. Add **Papyrus-Desktop** if **Papyrus for UML** is missing from the release site: **Add…** → `https://download.eclipse.org/modeling/mdt/papyrus/papyrus-desktop/updates/releases/2025-06/` ([repo](https://download.eclipse.org/modeling/mdt/papyrus/papyrus-desktop/updates/releases/2025-06/)). Install **Papyrus for UML** (category *Papyrus Desktop*) **before** Henshin, so `org.eclipse.papyrus.infra.gmfdiag.tooling.runtime` is present.
 3. Add **Henshin:** site [Henshin release updates](https://wiki.eclipse.org/Henshin/Installation_instructions) — install **Henshin SDK** (not only optional extras). Optionally enable **“Contact all update sites during install…”**.
-4. Add **MoMoT 2.0:** `https://www.dehghani.online/momot-2.0/eclipse/updates/latest/develop/` — install the MoMoT features your workspace needs (typically **MoMoT** + **MoMoT Lang**).
+4. Add **MoMoT 2.0:** `https://jku-win-se.github.io/MOMoT2/eclipse/updates/latest/develop/` — install the MoMoT features your workspace needs (typically **MoMoT** + **MoMoT Lang**).
 
 Then import **`blocky_momot`** and **`blocky_model`** (see §1.6) and follow [blocky_momot/README.md](blocky_momot/README.md) for Henshin text compilation and runs.
 

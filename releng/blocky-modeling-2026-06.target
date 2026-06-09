@@ -6,8 +6,8 @@
 	  Papyrus for UML is NOT taken from that composite; use Papyrus-Desktop repo instead:
 	    https://download.eclipse.org/modeling/mdt/papyrus/papyrus-desktop/updates/releases/2025-06/
 	  (composite aggregates 7.0.0 / 7.1.0; required for Henshin’s Papyrus GMF dependencies.)
-	  MoMoT p2 metadata: https://github.com/hadiDHD/momot-2.0/tree/gh-pages/eclipse/updates/latest/develop
-	  Deployed MoMoT URL (may redirect from GitHub Pages): dehghani.online (see location below).
+	  MoMoT p2 metadata (main / docs/eclipse): https://github.com/jku-win-se/MOMoT2/tree/main/docs/eclipse/updates/latest/develop
+	  MoMoT update site: https://jku-win-se.github.io/MOMoT2/eclipse/updates/latest/develop/
 	-->
 	<locations>
 		<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
@@ -23,7 +23,7 @@
 			<unit id="org.eclipse.emf.henshin.sdk.feature.group" version="0.0.0"/>
 		</location>
 		<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
-			<repository location="https://www.dehghani.online/momot-2.0/eclipse/updates/latest/develop/"/>
+			<repository location="https://jku-win-se.github.io/MOMoT2/eclipse/updates/latest/develop/"/>
 			<unit id="at.ac.tuwien.big.momot.feature.feature.group" version="0.0.0"/>
 			<unit id="at.ac.tuwien.big.momot.lang.feature.feature.group" version="0.0.0"/>
 		</location>

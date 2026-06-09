@@ -28,7 +28,7 @@ Transformation rules live in **blocky_model** (not in blocky_momot): see `blocky
 
 **Recommended:** Load the shared target platform so p2 resolves everything in one step — see [INSTALL.md](../INSTALL.md) §1.2 and open [`releng/blocky-modeling-2026-06.target`](../releng/blocky-modeling-2026-06.target) → **Set as Active Target Platform**.
 
-MoMoT is published from [momot-2.0 `gh-pages`](https://github.com/hadiDHD/momot-2.0/tree/gh-pages/eclipse/updates/latest/develop); the p2 URL used in the target is `https://www.dehghani.online/momot-2.0/eclipse/updates/latest/develop/`. For manual installation order (Papyrus → Henshin → MoMoT), see [INSTALL.md](../INSTALL.md) §1.3.
+MoMoT is published from [MOMoT2 `main` / `docs/eclipse`](https://github.com/jku-win-se/MOMoT2/tree/main/docs/eclipse/updates/latest/develop); the p2 URL used in the target is `https://jku-win-se.github.io/MOMoT2/eclipse/updates/latest/develop/`. For manual installation order (Papyrus → Henshin → MoMoT), see [INSTALL.md](../INSTALL.md) §1.3.
 
 ## Project layout
 
