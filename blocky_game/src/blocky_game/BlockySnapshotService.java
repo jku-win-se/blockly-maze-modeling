@@ -1,31 +1,29 @@
 package blocky_game;
 
 import javafx.animation.PauseTransition;
-import javafx.geometry.Point2D;
-import javafx.geometry.Rectangle2D;
-import javafx.stage.Screen;
+import javafx.stage.Stage;
 import javafx.scene.web.WebView;
 import javafx.util.Duration;
 
-import java.awt.AWTException;
-import java.awt.Rectangle;
-import java.awt.Robot;
-import java.awt.image.BufferedImage;
+import netscape.javascript.JSObject;
+
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Base64;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.imageio.ImageIO;
-
 /**
- * Encapsulates all PNG/SVG snapshot functionality from the WebView (including
- * PNG base64 callback persistence and SVG embedding of referenced images).
+ * Snapshots from the Blocky UI: maze SVG export and full-window PNG capture.
  */
 public class BlockySnapshotService {
     private final WebView webView;
+
+    /** Render scale for optional maze-only PNG export (viewBox pixels × this factor). */
+    private static final double PNG_RENDER_SCALE = 4.0;
 
     /** Target file for the next WebView->PNG snapshot callback. */
     private volatile File pendingPngFile;
@@ -69,37 +67,13 @@ public class BlockySnapshotService {
         }
 
         // Match GameEngine.saveModel() path logic exactly.
-        File xmi = new File("blocky_game/save.xmi");
-        if (xmi.getParentFile() == null || !xmi.getParentFile().exists()) {
-            xmi = new File("save.xmi");
-        }
-
+        File xmi = resolveXmiFile();
         File svgFile = svgSiblingOfXmi(xmi);
         System.out.println("[BlockySnapshotService] Attempting SVG snapshot to: " + svgFile.getAbsolutePath());
 
         try {
-            Object result = webView.getEngine().executeScript(
-                    "(function(){\n" +
-                            "  try {\n" +
-                            "    var s = document.getElementById('svgMaze') || document.querySelector('svg#svgMaze');\n" +
-                            "    if (!s) return null;\n" +
-                            "    var clone = s.cloneNode(true);\n" +
-                            "    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');\n" +
-                            "    if (!clone.getAttribute('xmlns:xlink')) clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');\n" +
-                            "    return new XMLSerializer().serializeToString(clone);\n" +
-                            "  } catch(e) { return null; }\n" +
-                            "})()"
-            );
-
-            if (!(result instanceof String)) {
-                System.err.println("[BlockySnapshotService] SVG snapshot failed: JS did not return a String (got "
-                        + (result == null ? "null" : result.getClass().getName()) + ").");
-                return;
-            }
-
-            String svg = ((String) result).trim();
-            if (svg.isEmpty()) {
-                System.err.println("[BlockySnapshotService] SVG snapshot failed: empty SVG string.");
+            String svg = extractSvgFromWebView();
+            if (svg == null || svg.isEmpty()) {
                 return;
             }
 
@@ -114,115 +88,93 @@ public class BlockySnapshotService {
     }
 
     /**
-     * Saves a high-resolution PNG preview by temporarily increasing WebView zoom and capturing
-     * via AWT Robot from the computed WebView screen rectangle.
+     * Saves a true 7680×4320 PNG of the scene root via JavaFX snapshot (no screen capture).
+     * Content is letterboxed/pillarboxed to preserve aspect ratio.
      */
-    public void saveWebViewPngSnapshotByFx() {
-        if (webView == null) {
-            System.err.println("[BlockySnapshotService] WebView PNG snapshot skipped: webView is null.");
+    public JavaFxSnapshotExporter.ExportResult save8kPngSnapshot(javafx.scene.Scene scene) {
+        return save8kPngSnapshot(scene, null, JavaFxSnapshotExporter.ScalingMode.PRESERVE_ASPECT_RATIO);
+    }
+
+    /**
+     * Saves a true 7680×4320 PNG of the scene root.
+     *
+     * @param outputDirectory optional directory; defaults to the parent of the current XMI save file
+     */
+    public JavaFxSnapshotExporter.ExportResult save8kPngSnapshot(
+            javafx.scene.Scene scene,
+            Path outputDirectory,
+            JavaFxSnapshotExporter.ScalingMode mode) {
+        if (scene == null || scene.getRoot() == null) {
+            String message = "8K PNG snapshot skipped: scene or root is null.";
+            System.err.println("[BlockySnapshotService] " + message);
+            return new JavaFxSnapshotExporter.ExportResult(false, null, 0, 0, 0L, message);
+        }
+
+        Path directory = outputDirectory != null ? outputDirectory : resolveDefaultExportDirectory();
+        Path outputPath = JavaFxSnapshotExporter.defaultTimestampedPath(directory);
+        System.out.println("[BlockySnapshotService] Attempting 8K PNG snapshot to: "
+                + outputPath.toAbsolutePath());
+        return JavaFxSnapshotExporter.exportScene(scene, outputPath, mode);
+    }
+
+    private Path resolveDefaultExportDirectory() {
+        File xmiParent = resolveXmiFile().getParentFile();
+        return xmiParent != null ? xmiParent.toPath() : Path.of(".");
+    }
+
+    /**
+     * Saves a true 7680×4320 PNG after a short layout settle delay.
+     */
+    public void save8kPngSnapshot(Stage stage, Consumer<JavaFxSnapshotExporter.ExportResult> afterCapture) {
+        Path outputPath = JavaFxSnapshotExporter.defaultTimestampedPath(resolveDefaultExportDirectory());
+        save8kPngSnapshot(stage, outputPath, JavaFxSnapshotExporter.ScalingMode.PRESERVE_ASPECT_RATIO, afterCapture);
+    }
+
+    /**
+     * Saves a true 7680×4320 PNG to {@code outputPath} after a short layout settle delay.
+     */
+    public void save8kPngSnapshot(
+            Stage stage,
+            Path outputPath,
+            JavaFxSnapshotExporter.ScalingMode mode,
+            Consumer<JavaFxSnapshotExporter.ExportResult> afterCapture) {
+        if (stage == null || stage.getScene() == null || stage.getScene().getRoot() == null) {
+            System.err.println("[BlockySnapshotService] 8K PNG snapshot skipped: stage not ready.");
+            JavaFxSnapshotExporter.ExportResult failure = new JavaFxSnapshotExporter.ExportResult(
+                    false, null, 0, 0, 0L, "Stage or scene not ready.");
+            if (afterCapture != null) {
+                afterCapture.accept(failure);
+            }
+            return;
+        }
+        if (outputPath == null) {
+            JavaFxSnapshotExporter.ExportResult failure = new JavaFxSnapshotExporter.ExportResult(
+                    false, null, 0, 0, 0L, "Output path is null.");
+            if (afterCapture != null) {
+                afterCapture.accept(failure);
+            }
             return;
         }
 
-        // Match GameEngine.saveModel() path logic exactly.
-        File xmi = new File("blocky_game/save.xmi");
-        if (xmi.getParentFile() == null || !xmi.getParentFile().exists()) {
-            xmi = new File("save.xmi");
-        }
-        File pngFile = pngSiblingOfXmi(xmi);
-
-        // PNG zoom is limited by the underlying raster tiles; to avoid "pixelated" screenshots
-        // we capture at a higher WebView zoom (supersampling) and then restore zoom.
-        final double zoomFactor = 20.0; // higher supersampling for crisper PNG preview
-        final double originalZoom = webView.getZoom();
-        webView.setZoom(originalZoom * zoomFactor);
-
-        PauseTransition delay = new PauseTransition(Duration.millis(250));
+        PauseTransition delay = new PauseTransition(Duration.millis(50));
         delay.setOnFinished(e -> {
+            JavaFxSnapshotExporter.ExportResult result = new JavaFxSnapshotExporter.ExportResult(
+                    false, outputPath, 0, 0, 0L, "Export did not run.");
             try {
-                System.out.println("[BlockySnapshotService] Attempting WebView PNG snapshot to: " + pngFile.getAbsolutePath());
-                if (pngFile.getParentFile() != null) pngFile.getParentFile().mkdirs();
-
-                // Compute WebView screen rectangle robustly (Windows DPI-safe).
-                Point2D topLeft = webView.localToScreen(0, 0);
-                Point2D bottomRight = webView.localToScreen(webView.getWidth(), webView.getHeight());
-
-                if (topLeft == null || bottomRight == null) {
-                    System.err.println("[BlockySnapshotService] WebView PNG snapshot failed: localToScreen returned null points.");
-                    return;
+                System.out.println("[BlockySnapshotService] Attempting 8K PNG snapshot to: "
+                        + outputPath.toAbsolutePath());
+                result = JavaFxSnapshotExporter.exportScene(stage.getScene(), outputPath, mode);
+                if (!result.success()) {
+                    System.err.println("[BlockySnapshotService] 8K PNG snapshot failed: " + result.message());
                 }
-
-                double tlX = Math.min(topLeft.getX(), bottomRight.getX());
-                double tlY = Math.min(topLeft.getY(), bottomRight.getY());
-                double brX = Math.max(topLeft.getX(), bottomRight.getX());
-                double brY = Math.max(topLeft.getY(), bottomRight.getY());
-                double wFx = Math.max(1, brX - tlX);
-                double hFx = Math.max(1, brY - tlY);
-
-                Screen targetScreen = Screen.getScreensForRectangle(tlX, tlY, wFx, hFx)
-                        .stream()
-                        .findFirst()
-                        .orElse(Screen.getPrimary());
-
-                double scaleX = targetScreen.getOutputScaleX();
-                double scaleY = targetScreen.getOutputScaleY();
-
-                Rectangle2D screenBoundsFx = targetScreen.getBounds();
-                int screenMinXDev = (int) Math.round(screenBoundsFx.getMinX() * scaleX);
-                int screenMinYDev = (int) Math.round(screenBoundsFx.getMinY() * scaleY);
-                int screenWDev = (int) Math.round(screenBoundsFx.getWidth() * scaleX);
-                int screenHDev = (int) Math.round(screenBoundsFx.getHeight() * scaleY);
-
-                int xDev = (int) Math.round(tlX * scaleX);
-                int yDev = (int) Math.round(tlY * scaleY);
-                int wDev = (int) Math.round(wFx * scaleX);
-                int hDev = (int) Math.round(hFx * scaleY);
-
-                // If scaling was applied incorrectly, the capture rect will exceed monitor bounds.
-                // In that case, fall back to scale=1 which matches Robot's coordinate system on this setup.
-                if (wDev > screenWDev * 1.5 || hDev > screenHDev * 1.5) {
-                    scaleX = 1.0;
-                    scaleY = 1.0;
-                    xDev = (int) Math.round(tlX * scaleX);
-                    yDev = (int) Math.round(tlY * scaleY);
-                    wDev = (int) Math.round(wFx * scaleX);
-                    hDev = (int) Math.round(hFx * scaleY);
-                }
-
-                // Clamp to monitor bounds to avoid capturing the entire screen.
-                int maxWDev = Math.max(1, screenWDev - (xDev - screenMinXDev));
-                int maxHDev = Math.max(1, screenHDev - (yDev - screenMinYDev));
-                xDev = Math.max(screenMinXDev, Math.min(xDev, screenMinXDev + screenWDev - 1));
-                yDev = Math.max(screenMinYDev, Math.min(yDev, screenMinYDev + screenHDev - 1));
-                wDev = Math.max(1, Math.min(wDev, maxWDev));
-                hDev = Math.max(1, Math.min(hDev, maxHDev));
-
-                System.out.println("[BlockySnapshotService] WebView screen rect (JavaFX): TL=("
-                        + tlX + "," + tlY + "), BR=("
-                        + brX + "," + brY + ")"
-                        + ", screenScale=(" + scaleX + "," + scaleY + ")"
-                        + ", captureRect=(" + xDev + "," + yDev + "," + wDev + "x" + hDev + ")");
-
-                if (wDev < 50 || hDev < 50) {
-                    System.err.println("[BlockySnapshotService] WebView PNG snapshot rect too small; refusing to capture.");
-                    return;
-                }
-
-                Rectangle rect = new Rectangle(xDev, yDev, wDev, hDev);
-                Robot robot = new Robot();
-                BufferedImage capture = robot.createScreenCapture(rect);
-                ImageIO.write(capture, "png", pngFile);
-
-                System.out.println("[BlockySnapshotService] WebView PNG snapshot saved to: " + pngFile.getAbsolutePath());
-            } catch (AWTException ex) {
-                System.err.println("[BlockySnapshotService] WebView PNG snapshot failed (Robot): " + ex.getMessage());
-                ex.printStackTrace();
             } catch (Exception ex) {
-                System.err.println("[BlockySnapshotService] WebView PNG snapshot failed: " + ex.getMessage());
+                System.err.println("[BlockySnapshotService] 8K PNG snapshot failed: " + ex.getMessage());
                 ex.printStackTrace();
+                result = new JavaFxSnapshotExporter.ExportResult(
+                        false, outputPath, 0, 0, 0L, ex.getMessage());
             } finally {
-                try {
-                    webView.setZoom(originalZoom);
-                } catch (Exception ignored) {
+                if (afterCapture != null) {
+                    afterCapture.accept(result);
                 }
             }
         });
@@ -230,8 +182,20 @@ public class BlockySnapshotService {
     }
 
     /**
-     * Alternative PNG capture path using SVG->canvas->dataURL inside WebView JS and then
-     * receiving the base64 dataUrl back in {@link #receivePngDataUrl(String)}.
+     * Saves a high-DPI PNG of the entire JavaFX window without resizing the on-screen window.
+     * Delegates to the true 8K JavaFX snapshot exporter (no OS screen capture).
+     */
+    public void saveFullWindowPngSnapshot(Stage stage, Runnable afterCapture) {
+        save8kPngSnapshot(stage, result -> {
+            if (afterCapture != null) {
+                afterCapture.run();
+            }
+        });
+    }
+
+    /**
+     * Maze-only PNG (full SVG viewBox). Prefer {@link #save8kPngSnapshot(Stage, Runnable)}
+     * for UI screenshots.
      */
     public void saveWebViewPngSnapshot() {
         if (webView == null || webView.getEngine() == null) {
@@ -239,55 +203,118 @@ public class BlockySnapshotService {
             return;
         }
 
-        // Match GameEngine.saveModel() path logic exactly.
-        File xmi = new File("blocky_game/save.xmi");
-        if (xmi.getParentFile() == null || !xmi.getParentFile().exists()) {
-            xmi = new File("save.xmi");
-        }
-        File pngFile = pngSiblingOfXmi(xmi);
+        File pngFile = pngSiblingOfXmi(resolveXmiFile());
         pendingPngFile = pngFile;
-        System.out.println("[BlockySnapshotService] Attempting PNG snapshot to: " + pngFile.getAbsolutePath());
+        System.out.println("[BlockySnapshotService] Attempting full-maze PNG snapshot to: "
+                + pngFile.getAbsolutePath());
 
         try {
+            String svg = extractSvgFromWebView();
+            if (svg == null || svg.isEmpty()) {
+                pendingPngFile = null;
+                return;
+            }
+            svg = embedSvgReferencedImages(svg);
+
+            String b64 = Base64.getEncoder().encodeToString(svg.getBytes(StandardCharsets.UTF_8));
+            JSObject window = (JSObject) webView.getEngine().executeScript("window");
+            window.setMember("_snapshotSvgB64", b64);
+
             webView.getEngine().executeScript(
-                    "(function(){\n" +
+                    "(function(scale){\n" +
                             "  try {\n" +
-                            "    var svg = document.getElementById('svgMaze') || document.querySelector('svg#svgMaze');\n" +
+                            "    var svgText = atob(window._snapshotSvgB64 || '');\n" +
                             "    var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);\n" +
-                            "    if (!svg) { if (bridge && bridge.receivePngDataUrl) bridge.receivePngDataUrl(null); return; }\n" +
-                            "    var svgText = new XMLSerializer().serializeToString(svg);\n" +
-                            "    if (!svgText.match(/xmlns=/)) svgText = svgText.replace(/^<svg/, '<svg xmlns=\"http://www.w3.org/2000/svg\"');\n" +
+                            "    if (!svgText) { if (bridge && bridge.receivePngDataUrl) bridge.receivePngDataUrl(null); return; }\n" +
+                            "    var doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');\n" +
+                            "    var svgEl = doc.documentElement;\n" +
+                            "    var vb = svgEl.viewBox && svgEl.viewBox.baseVal;\n" +
+                            "    var w = (vb && vb.width > 0) ? vb.width : (parseFloat(svgEl.getAttribute('width')) || 400);\n" +
+                            "    var h = (vb && vb.height > 0) ? vb.height : (parseFloat(svgEl.getAttribute('height')) || 400);\n" +
                             "    var blob = new Blob([svgText], {type: 'image/svg+xml;charset=utf-8'});\n" +
                             "    var url = URL.createObjectURL(blob);\n" +
                             "    var img = new Image();\n" +
                             "    img.onload = function(){\n" +
                             "      try {\n" +
-                            "        var w = svg.clientWidth || parseFloat(svg.getAttribute('width')) || 400;\n" +
-                            "        var h = svg.clientHeight || parseFloat(svg.getAttribute('height')) || 400;\n" +
                             "        var canvas = document.createElement('canvas');\n" +
-                            "        canvas.width = w; canvas.height = h;\n" +
+                            "        canvas.width = Math.max(1, Math.round(w * scale));\n" +
+                            "        canvas.height = Math.max(1, Math.round(h * scale));\n" +
                             "        var ctx = canvas.getContext('2d');\n" +
-                            "        ctx.clearRect(0,0,w,h);\n" +
+                            "        ctx.setTransform(scale, 0, 0, scale, 0, 0);\n" +
                             "        ctx.drawImage(img, 0, 0, w, h);\n" +
-                            "        var dataUrl = canvas.toDataURL('image/png');\n" +
-                            "        if (bridge && bridge.receivePngDataUrl) bridge.receivePngDataUrl(dataUrl);\n" +
+                            "        if (bridge && bridge.receivePngDataUrl) bridge.receivePngDataUrl(canvas.toDataURL('image/png'));\n" +
                             "      } catch(e) {\n" +
                             "        if (bridge && bridge.receivePngDataUrl) bridge.receivePngDataUrl(null);\n" +
                             "      } finally {\n" +
                             "        try { URL.revokeObjectURL(url); } catch(e2) {}\n" +
                             "      }\n" +
                             "    };\n" +
-                            "    img.onerror = function(){ if (bridge && bridge.receivePngDataUrl) bridge.receivePngDataUrl(null); try { URL.revokeObjectURL(url); } catch(e2) {} };\n" +
+                            "    img.onerror = function(){\n" +
+                            "      if (bridge && bridge.receivePngDataUrl) bridge.receivePngDataUrl(null);\n" +
+                            "      try { URL.revokeObjectURL(url); } catch(e2) {}\n" +
+                            "    };\n" +
                             "    img.src = url;\n" +
                             "  } catch(e) {\n" +
-                            "    try { var bridge2 = window.javaBridge || (window.parent && window.parent.javaBridge); if (bridge2 && bridge2.receivePngDataUrl) bridge2.receivePngDataUrl(null); } catch(e2) {}\n" +
+                            "    try {\n" +
+                            "      var bridge2 = window.javaBridge || (window.parent && window.parent.javaBridge);\n" +
+                            "      if (bridge2 && bridge2.receivePngDataUrl) bridge2.receivePngDataUrl(null);\n" +
+                            "    } catch(e2) {}\n" +
                             "  }\n" +
-                            "})();"
+                            "})(" + PNG_RENDER_SCALE + ");"
             );
         } catch (Exception e) {
-            System.err.println("[BlockySnapshotService] PNG snapshot JS execution failed: " + e.getMessage());
+            System.err.println("[BlockySnapshotService] PNG snapshot failed: " + e.getMessage());
             pendingPngFile = null;
         }
+    }
+
+    /**
+     * Viewport-only WebView PNG capture (legacy). Prefer {@link #save8kPngSnapshot(Stage, Runnable)}.
+     */
+    public void saveWebViewPngSnapshotByFx() {
+        if (webView == null) {
+            System.err.println("[BlockySnapshotService] WebView PNG snapshot skipped: webView is null.");
+            return;
+        }
+
+        System.err.println("[BlockySnapshotService] saveWebViewPngSnapshotByFx is deprecated; "
+                + "use save8kPngSnapshot(Stage, Runnable) instead.");
+    }
+
+    private String extractSvgFromWebView() throws Exception {
+        Object result = webView.getEngine().executeScript(
+                "(function(){\n" +
+                        "  try {\n" +
+                        "    var s = document.getElementById('svgMaze') || document.querySelector('svg#svgMaze');\n" +
+                        "    if (!s) return null;\n" +
+                        "    var clone = s.cloneNode(true);\n" +
+                        "    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');\n" +
+                        "    if (!clone.getAttribute('xmlns:xlink')) clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');\n" +
+                        "    return new XMLSerializer().serializeToString(clone);\n" +
+                        "  } catch(e) { return null; }\n" +
+                        "})()"
+        );
+
+        if (!(result instanceof String)) {
+            System.err.println("[BlockySnapshotService] SVG extraction failed: JS did not return a String (got "
+                    + (result == null ? "null" : result.getClass().getName()) + ").");
+            return null;
+        }
+
+        String svg = ((String) result).trim();
+        if (svg.isEmpty()) {
+            System.err.println("[BlockySnapshotService] SVG extraction failed: empty SVG string.");
+            return null;
+        }
+        return svg;
+    }
+
+    private static File resolveXmiFile() {
+        File xmi = new File("blocky_game/save.xmi");
+        if (xmi.getParentFile() == null || !xmi.getParentFile().exists()) {
+            xmi = new File("save.xmi");
+        }
+        return xmi;
     }
 
     private String embedSvgReferencedImages(String svg) {

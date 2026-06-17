@@ -33,6 +33,7 @@ import org.eclipse.emf.common.util.URI;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -77,16 +78,26 @@ public class BlockyUI extends Application {
             snapshotService = new BlockySnapshotService(webView);
             WebEngine webEngine = webView.getEngine();
 
-            // Manual snapshot control overlay (top-right corner).
+            // Manual snapshot control overlay (bottom-left corner).
             Button snapshotButton = new Button("Snapshot");
             snapshotButton.setOnAction(e2 -> {
                 if (awaitingInjectComplete) {
                     System.err.println("[BlockyUI] Snapshot skipped: WebView injection not complete yet.");
                     return;
                 }
-                // Snapshots are best-effort; failures are logged inside BlockySnapshotService.
+                // Maze SVG + true 8K PNG (JavaFX snapshot, not screen capture).
                 snapshotService.saveWebViewSvgSnapshot();
-                snapshotService.saveWebViewPngSnapshotByFx();
+                snapshotButton.setVisible(false);
+                snapshotService.save8kPngSnapshot(primaryStage, result -> {
+                    snapshotButton.setVisible(true);
+                    if (result.success() && result.outputPath() != null) {
+                        result = JavaFxSnapshotExporter.verifyPng(
+                                result.outputPath(),
+                                JavaFxSnapshotExporter.TARGET_WIDTH,
+                                JavaFxSnapshotExporter.TARGET_HEIGHT);
+                    }
+                    showExportAlert(result);
+                });
             });
             StackPane.setAlignment(snapshotButton, Pos.BOTTOM_LEFT);
             StackPane.setMargin(snapshotButton, new Insets(10));
@@ -149,9 +160,11 @@ public class BlockyUI extends Application {
             loadItem.setOnAction(e -> loadModelImpl());
             MenuItem saveItem = new MenuItem("Save XMI...");
             saveItem.setOnAction(e -> saveModelImpl());
+            MenuItem export8kItem = new MenuItem("Export 8K PNG...");
+            export8kItem.setOnAction(e -> export8kPngImpl(primaryStage));
             MenuItem exitItem = new MenuItem("Exit");
             exitItem.setOnAction(e -> Platform.exit());
-            fileMenu.getItems().addAll(loadItem, saveItem, exitItem);
+            fileMenu.getItems().addAll(loadItem, saveItem, export8kItem, exitItem);
             menuBar.getMenus().add(fileMenu);
 
             StackPane content = new StackPane(webView, snapshotButton);
@@ -2260,6 +2273,58 @@ public class BlockyUI extends Application {
         
         // Always ensure overlay is hidden after Save dialog closes (might have been triggered by a pill click)
         webView.getEngine().executeScript("try { if (window.__lvlLoadingHide) window.__lvlLoadingHide(); } catch(e) {}");
+    }
+
+    /** Exports the current scene as a true 7680×4320 PNG via FileChooser. */
+    private void export8kPngImpl(Stage stage) {
+        if (stage == null || stage.getScene() == null) {
+            showExportAlert(new JavaFxSnapshotExporter.ExportResult(
+                    false, null, 0, 0, 0L, "Scene is not ready for export."));
+            return;
+        }
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export 8K PNG");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG Images", "*.png"));
+        fileChooser.setInitialFileName(
+                JavaFxSnapshotExporter.defaultTimestampedPath(Path.of(".")).getFileName().toString());
+
+        File initialDir = new File("blocky_game");
+        if (!initialDir.exists()) {
+            initialDir = new File(".");
+        }
+        fileChooser.setInitialDirectory(initialDir);
+
+        Window window = webView != null && webView.getScene() != null ? webView.getScene().getWindow() : null;
+        File file = fileChooser.showSaveDialog(window);
+        if (file == null) {
+            return;
+        }
+
+        Path outputPath = file.toPath();
+        snapshotService.save8kPngSnapshot(
+                stage,
+                outputPath,
+                JavaFxSnapshotExporter.ScalingMode.PRESERVE_ASPECT_RATIO,
+                result -> {
+                    if (result.success()) {
+                        result = JavaFxSnapshotExporter.verifyPng(
+                                outputPath,
+                                JavaFxSnapshotExporter.TARGET_WIDTH,
+                                JavaFxSnapshotExporter.TARGET_HEIGHT);
+                    }
+                    showExportAlert(result);
+                });
+    }
+
+    private static void showExportAlert(JavaFxSnapshotExporter.ExportResult result) {
+        if (result == null) {
+            return;
+        }
+        Alert.AlertType type = result.success() ? Alert.AlertType.INFORMATION : Alert.AlertType.ERROR;
+        Alert alert = new Alert(type, result.message());
+        // PauseTransition callbacks run during the animation pulse; defer modal dialogs.
+        Platform.runLater(alert::showAndWait);
     }
 
     /** Path for Model load: load.xmi (blocky_game/ or current dir). */
