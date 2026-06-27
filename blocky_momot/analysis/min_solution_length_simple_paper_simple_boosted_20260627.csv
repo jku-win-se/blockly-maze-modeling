@@ -1,0 +1,11 @@
+level,inputXmi,optimalBlockCount,minSolutionLength,momotBlockCount,successesAtMin,nrRuns,lengthsTried,status,populationSize,iterationsPerRun,maxEvaluations,winningOutputDir
+1,blocky_momot/model/input/1.xmi,2,2,2,10,10,2,SOLVED,150,100,15000,blocky_game/blocky_momot/output_simple_paper_simple_boosted_20260627_lvl1_len2_try2
+2,blocky_momot/model/input/2.xmi,5,8,8,2,10,8,SOLVED,150,100,15000,blocky_game/blocky_momot/output_simple_paper_simple_boosted_20260627_lvl2_len8_try8
+3,blocky_momot/model/input/3.xmi,2,2,2,9,10,2,SOLVED,150,100,15000,blocky_game/blocky_momot/output_simple_paper_simple_boosted_20260627_lvl3_len2_try2
+4,blocky_momot/model/input/4.xmi,5,11,8,1,10,11,SOLVED,150,100,15000,blocky_game/blocky_momot/output_simple_paper_simple_boosted_20260627_lvl4_len11_try11
+5,blocky_momot/model/input/5.xmi,5,8,8,1,10,8,SOLVED,150,100,15000,blocky_game/blocky_momot/output_simple_paper_simple_boosted_20260627_lvl5_len8_try8
+6,blocky_momot/model/input/6.xmi,4,10,9,1,10,10,SOLVED,150,100,15000,blocky_game/blocky_momot/output_simple_paper_simple_boosted_20260627_lvl6_len10_try10
+7,blocky_momot/model/input/7.xmi,4,8,6,1,10,8,SOLVED,150,100,15000,blocky_game/blocky_momot/output_simple_paper_simple_boosted_20260627_lvl7_len8_try8
+8,blocky_momot/model/input/8.xmi,5,12,11,1,10,12,SOLVED,150,100,15000,blocky_game/blocky_momot/output_simple_paper_simple_boosted_20260627_lvl8_len12_try12
+9,blocky_momot/model/input/9.xmi,4,8,5,2,10,8,SOLVED,150,100,15000,blocky_game/blocky_momot/output_simple_paper_simple_boosted_20260627_lvl9_len8_try8
+10,blocky_momot/model/input/10.xmi,7,38,10,1,10,38,SOLVED,150,100,15000,blocky_game/blocky_momot/output_simple_paper_simple_boosted_20260627_lvl10_len38_try38

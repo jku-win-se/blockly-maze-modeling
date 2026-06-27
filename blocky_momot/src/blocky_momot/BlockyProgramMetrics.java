@@ -55,6 +55,11 @@ public final class BlockyProgramMetrics {
         return level == null ? 0 : countStatements(level.getSolution());
     }
 
+    /** Count Blockly statements in a persisted {@link Game} XMI. */
+    public static int countStatementsInXmi(String gameXmiPath) {
+        return countStatements(loadGame(gameXmiPath));
+    }
+
     public static int countLoops(Game game) {
         if (game == null || game.getLevels().isEmpty()) {
             return 0;

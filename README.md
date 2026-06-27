@@ -29,7 +29,7 @@ You can run the entire application, including the GUI and the MoMoT synthesis ba
 |----------------|-------------------------------|---------------------------------|
 | **blocky_model** | EMF metamodel & generated code | Eclipse EMF, Ecore, XMI         |
 | **blocky_game**  | Main application (UI + engine) | Java 17, JavaFX 21, WebView     |
-| **blocky_momot** | Search-based program synthesis (optional) | Eclipse MOMoT, Henshin, EMF — see [blocky_momot/README.md](blocky_momot/README.md) |
+| **blocky_momot** | Search-based program synthesis (optional) | Eclipse MOMoT, Henshin, EMF — see [blocky_momot/README.md](blocky_momot/README.md) and the [minimum solution-length benchmark](blocky_momot/analysis/BENCHMARK.md) |
 
 - **blocky_model**: Domain model (Level, GridMap, Cell, Block types, ExecutionTrace) defined in `blocky.ecore`; Java API generated in `src-gen/`.
 - **blocky_game**: Entry point `Main.java`; UI in `BlockyUI.java` (WebView + JSBridge); game/simulation logic in `GameEngine.java`. The WebView loads the Blockly Games Maze from `blocky_game/src/blocky_game/blockly-games-web/`.
@@ -113,6 +113,12 @@ Blocky supports **Direct Manipulation**: teleport Pegman to a chosen empty cell 
 **Runtime notes (Java 17 / MoMoT):**
 - MoMoT/MOEA may require: `--add-opens java.base/java.util=ALL-UNNAMED` (see [INSTALL.md](INSTALL.md)).
 - Running MoMoT is typically done from **Eclipse with the modeling target platform** active (PDE + MoMoT bundles). Maven-only runs generally do not include MoMoT.
+
+## MOMoT minimum solution-length benchmark
+
+Reproducible empirical study over all ten maze levels (optimal block count vs. minimum MOMoT `solutionLength` vs. synthesized program size). Full protocol, expected results, and one-command rerun:
+
+**[blocky_momot/analysis/BENCHMARK.md](blocky_momot/analysis/BENCHMARK.md)**
 
 ## Licenses
 

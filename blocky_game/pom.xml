@@ -202,15 +202,23 @@
                 <version>3.1.0</version>
                 <configuration>
                     <mainClass>blocky_game.Main</mainClass>
-                    <arguments>
-                        <argument>--add-opens</argument>
-                        <argument>java.base/java.util=ALL-UNNAMED</argument>
-                        <argument>--add-opens</argument>
-                        <argument>java.base/java.lang=ALL-UNNAMED</argument>
-                        <argument>--add-opens</argument>
-                        <argument>java.base/java.lang.reflect=ALL-UNNAMED</argument>
-                    </arguments>
+                    <jvmArgs>
+                        <jvmArg>--add-opens=java.base/java.util=ALL-UNNAMED</jvmArg>
+                        <jvmArg>--add-opens=java.base/java.lang=ALL-UNNAMED</jvmArg>
+                        <jvmArg>--add-opens=java.base/java.lang.reflect=ALL-UNNAMED</jvmArg>
+                    </jvmArgs>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>simple-min-solution-length</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>blocky_game.MomotSimpleMinSolutionLengthRunner</mainClass>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

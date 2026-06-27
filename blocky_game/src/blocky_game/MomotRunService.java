@@ -32,10 +32,22 @@ public final class MomotRunService {
     public static class RunSpec {
         public final String inputXmi;
         public final String outputBase;
+        public final int populationSize;
+        public final int maxEvaluations;
+        public final int nrRuns;
+        public final int solutionLength;
 
         public RunSpec(String inputXmi, String outputBase) {
+            this(inputXmi, outputBase, -1, -1, -1, -1);
+        }
+
+        public RunSpec(String inputXmi, String outputBase, int populationSize, int maxEvaluations, int nrRuns, int solutionLength) {
             this.inputXmi = Objects.requireNonNull(inputXmi);
             this.outputBase = Objects.requireNonNull(outputBase);
+            this.populationSize = populationSize;
+            this.maxEvaluations = maxEvaluations;
+            this.nrRuns = nrRuns;
+            this.solutionLength = solutionLength;
         }
     }
 
@@ -60,6 +72,21 @@ public final class MomotRunService {
     }
 
     private static volatile Thread currentMomotThread;
+    private static final Object RUNNER_CLASS_LOCK = new Object();
+    /** Henshin/EMF matching is not thread-safe; serialize all MoMoT runs. */
+    private static final Object MOMOT_EXECUTION_LOCK = new Object();
+    private static volatile Class<?> cachedRunnerClass;
+    private static volatile ClassLoader cachedRunnerClassLoader;
+
+    /** Pre-load the MoMoT runner class (required before parallel benchmark runs). */
+    public static void warmupRunnerClass() {
+        try {
+            ensureBlockyInputForClassInit();
+            resolveRunnerClass(MomotRunService.class.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Failed to load MoMoT runner class", e);
+        }
+    }
 
     public static String runSync(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
         return runInternal(spec, logLine, onOutputDirReady);
@@ -102,46 +129,62 @@ public final class MomotRunService {
     }
 
     private static String runInternal(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
+        synchronized (MOMOT_EXECUTION_LOCK) {
+            return runInternalLocked(spec, logLine, onOutputDirReady);
+        }
+    }
+
+    private static String runInternalLocked(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
         if (logLine != null) logLine.accept("[MoMoT] Starting search logic...");
+
+        File currentDir = new File(System.getProperty("user.dir"));
+        Path outputDir = resolveOutputPath(currentDir, spec.outputBase);
+        boolean isolatedOutput = spec.populationSize > 0 || spec.maxEvaluations > 0 || spec.nrRuns > 0 || spec.solutionLength > 0;
 
         try {
             File input = resolveExistingFile(spec.inputXmi);
-            System.setProperty("blocky.input", input.getAbsolutePath());
+            if (!isolatedOutput) {
+                System.setProperty("blocky.input", input.getAbsolutePath());
+            }
         } catch (Exception e) {}
 
-        deleteDirectoryRecursive(Path.of("output"));
-        deleteDirectoryRecursive(Path.of("blocky_momot", "output"));
+        if (isolatedOutput) {
+            deleteDirectoryRecursive(outputDir);
+            try {
+                Files.createDirectories(outputDir);
+            } catch (Exception ignored) {}
+        } else {
+            deleteDirectoryRecursive(Path.of("output"));
+            deleteDirectoryRecursive(Path.of("blocky_momot", "output"));
+        }
+
+        ensureBlockyInputForClassInit();
 
         Class<?> runnerClass = null;
         ClassLoader finalCl = MomotRunService.class.getClassLoader();
         
         try {
-            runnerClass = Class.forName("blocky_momot_runner.blocky_custom", true, finalCl);
+            runnerClass = resolveRunnerClass(finalCl);
         } catch (Throwable e) {
             try {
-                runnerClass = Class.forName("blocky_momot_runner.blocky", true, finalCl);
-            } catch (Throwable e2) {
-                try {
-                    List<URL> urls = new ArrayList<>();
-                    File[] targets = { 
-                        new File("/app/blocky_momot/target/classes"), 
-                        new File("/app/blocky_game/target/classes"),
-                        new File("blocky_momot/target/classes"), 
-                        new File("blocky_game/target/classes") 
-                    };
-                    for (File f : targets) if (f.exists()) urls.add(f.toURI().toURL());
-                    findJars(new File("/app/blocky_game/target/all_deps"), urls);
-                    findJars(new File("/app/libs"), urls);
-                    findJars(new File("blocky_game/target/all_deps"), urls);
-                    findJars(new File("libs"), urls);
-                    URLClassLoader urlCl = new URLClassLoader(urls.toArray(new URL[0]), finalCl);
-                    try { runnerClass = urlCl.loadClass("blocky_momot_runner.blocky_custom"); }
-                    catch (Throwable e3) { runnerClass = urlCl.loadClass("blocky_momot_runner.blocky"); }
-                    finalCl = urlCl;
-                } catch (Throwable t) {
-                    if (logLine != null) logLine.accept("[MoMoT] Loader Error: " + t.toString());
-                    return null;
-                }
+                List<URL> urls = new ArrayList<>();
+                File[] targets = { 
+                    new File("/app/blocky_momot/target/classes"), 
+                    new File("/app/blocky_game/target/classes"),
+                    new File("blocky_momot/target/classes"), 
+                    new File("blocky_game/target/classes") 
+                };
+                for (File f : targets) if (f.exists()) urls.add(f.toURI().toURL());
+                findJars(new File("/app/blocky_game/target/all_deps"), urls);
+                findJars(new File("/app/libs"), urls);
+                findJars(new File("blocky_game/target/all_deps"), urls);
+                findJars(new File("libs"), urls);
+                URLClassLoader urlCl = new URLClassLoader(urls.toArray(new URL[0]), finalCl);
+                runnerClass = resolveRunnerClass(urlCl);
+                finalCl = urlCl;
+            } catch (Throwable t) {
+                if (logLine != null) logLine.accept("[MoMoT] Loader Error: " + t.toString());
+                return null;
             }
         }
 
@@ -161,38 +204,44 @@ public final class MomotRunService {
         
         try {
             String absInput = resolveExistingFile(spec.inputXmi).getAbsolutePath();
+
+            int solLen = 10;
+            if (spec.solutionLength > 0) {
+                solLen = spec.solutionLength;
+            } else {
+                try {
+                    Class<?> m = Class.forName("blocky_momot.BlockyProgramMetrics", true, finalCl);
+                    Object v = m.getMethod("inferSolutionLength", String.class).invoke(null, absInput);
+                    if (v instanceof Number) solLen = Math.max(1, ((Number) v).intValue() * 2);
+                } catch (Throwable ignored) {}
+
+                try {
+                    String forced = System.getProperty("blocky.solutionLength");
+                    if (forced != null && !forced.isBlank()) {
+                        int v = Integer.parseInt(forced.trim());
+                        if (v > 0) solLen = v;
+                    } else {
+                        String factorStr = System.getProperty("blocky.solutionLengthFactor");
+                        if (factorStr != null && !factorStr.isBlank()) {
+                            int factor = Integer.parseInt(factorStr.trim());
+                            if (factor > 0) {
+                                int baseline = Math.max(1, solLen / 2);
+                                solLen = Math.max(1, baseline * factor);
+                            }
+                        }
+                    }
+                } catch (Throwable ignored) {}
+            }
+
+            if (isolatedOutput) {
+                installRunContext(spec, outputDir, solLen, finalCl);
+            }
+
             try {
                 runnerClass.getMethod("initialization", String.class).invoke(null, absInput);
             } catch (Throwable e) {
                 try { runnerClass.getMethod("initialization").invoke(null); } catch (Throwable ignored) {}
             }
-
-            int solLen = 10;
-            try {
-                Class<?> m = Class.forName("blocky_momot.BlockyProgramMetrics", true, finalCl);
-                Object v = m.getMethod("inferSolutionLength", String.class).invoke(null, absInput);
-                if (v instanceof Number) solLen = Math.max(1, ((Number) v).intValue() * 2);
-            } catch (Throwable ignored) {}
-
-            // Allow overriding solution length from the MoMoT window / system properties.
-            // If not set, keep the inferred default.
-            try {
-                String forced = System.getProperty("blocky.solutionLength");
-                if (forced != null && !forced.isBlank()) {
-                    int v = Integer.parseInt(forced.trim());
-                    if (v > 0) solLen = v;
-                } else {
-                    String factorStr = System.getProperty("blocky.solutionLengthFactor");
-                    if (factorStr != null && !factorStr.isBlank()) {
-                        int factor = Integer.parseInt(factorStr.trim());
-                        if (factor > 0) {
-                            // solLen currently holds the inferred "*2" length; convert back to baseline and reapply factor.
-                            int baseline = Math.max(1, solLen / 2);
-                            solLen = Math.max(1, baseline * factor);
-                        }
-                    }
-                }
-            } catch (Throwable ignored) {}
 
             Object inst = runnerClass.getDeclaredConstructor().newInstance();
             
@@ -225,10 +274,71 @@ public final class MomotRunService {
             System.err.flush();
             Thread.currentThread().setContextClassLoader(originalTCCL);
             System.setOut(oldOut); 
-            System.setErr(oldErr); 
+            System.setErr(oldErr);
+            clearRunContext(finalCl);
         }
 
-        return finalizeOutput(spec, onOutputDirReady);
+        return finalizeOutput(spec, onOutputDirReady, outputDir, isolatedOutput);
+    }
+
+    private static void installRunContext(RunSpec spec, Path outputDir, int solutionLength, ClassLoader cl) {
+        try {
+            Class<?> ctxClass = Class.forName("blocky_momot_runner.MomotRunContext", true, cl);
+            Class<?> cfgClass = Class.forName("blocky_momot_runner.MomotRunContext$Config", true, cl);
+            Object cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class)
+                    .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir);
+            ctxClass.getMethod("set", cfgClass).invoke(null, cfg);
+        } catch (Throwable ignored) {}
+    }
+
+    private static void clearRunContext(ClassLoader cl) {
+        try {
+            Class<?> ctxClass = Class.forName("blocky_momot_runner.MomotRunContext", true, cl);
+            ctxClass.getMethod("clear").invoke(null);
+        } catch (Throwable ignored) {}
+    }
+
+    private static Path resolveOutputPath(File currentDir, String outputBase) {
+        Path target = Path.of(outputBase).normalize();
+        if (!target.isAbsolute()) {
+            target = new File(currentDir, outputBase).toPath();
+        }
+        return target;
+    }
+
+    private static void ensureBlockyInputForClassInit() {
+        try {
+            String current = System.getProperty("blocky.input");
+            if (current != null && !current.isBlank()) {
+                File existing = resolveExistingFile(current);
+                if (existing.exists() && existing.isFile()) {
+                    System.setProperty("blocky.input", existing.getAbsolutePath());
+                    return;
+                }
+            }
+            String fallback = firstExisting(
+                    "blocky_momot/model/input/1.xmi",
+                    "../blocky_momot/model/input/1.xmi",
+                    "model/1.xmi",
+                    "model/input/game.xmi"
+            );
+            System.setProperty("blocky.input", resolveExistingFile(fallback).getAbsolutePath());
+        } catch (Exception ignored) {}
+    }
+
+    private static Class<?> resolveRunnerClass(ClassLoader cl) throws ClassNotFoundException {
+        synchronized (RUNNER_CLASS_LOCK) {
+            if (cachedRunnerClass != null && cachedRunnerClassLoader == cl) {
+                return cachedRunnerClass;
+            }
+            try {
+                cachedRunnerClass = Class.forName("blocky_momot_runner.blocky_custom", true, cl);
+            } catch (Throwable e) {
+                cachedRunnerClass = Class.forName("blocky_momot_runner.blocky", true, cl);
+            }
+            cachedRunnerClassLoader = cl;
+            return cachedRunnerClass;
+        }
     }
 
     private static Throwable unwrapInvocationTargetException(Throwable t) {
@@ -258,13 +368,20 @@ public final class MomotRunService {
         }
     }
 
-    private static String finalizeOutput(RunSpec spec, Consumer<String> onOutputDirReady) {
+    private static String finalizeOutput(RunSpec spec, Consumer<String> onOutputDirReady, Path outputDir, boolean isolatedOutput) {
         try {
+            if (isolatedOutput) {
+                if (Files.exists(outputDir)) {
+                    if (onOutputDirReady != null) onOutputDirReady.accept(outputDir.toString());
+                    return outputDir.toString();
+                }
+                return null;
+            }
+
             File currentDir = new File(System.getProperty("user.dir"));
             Path produced = new File(currentDir, "output").toPath();
             if (Files.exists(produced)) {
-                Path target = Path.of(spec.outputBase).normalize();
-                if (!target.isAbsolute()) target = new File(currentDir, spec.outputBase).toPath();
+                Path target = resolveOutputPath(currentDir, spec.outputBase);
                 Files.createDirectories(target.getParent());
                 if (Files.exists(target)) deleteDirectoryRecursive(target);
                 Files.move(produced, target, StandardCopyOption.REPLACE_EXISTING);
