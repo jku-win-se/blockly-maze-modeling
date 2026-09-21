@@ -7,16 +7,28 @@ import at.ac.tuwien.big.moea.print.IPopulationWriter;
 import at.ac.tuwien.big.moea.print.ISolutionWriter;
 import at.ac.tuwien.big.moea.search.algorithm.EvolutionaryAlgorithmFactory;
 import at.ac.tuwien.big.moea.search.algorithm.LocalSearchAlgorithmFactory;
+import at.ac.tuwien.big.moea.search.algorithm.provider.IRegisteredAlgorithm;
 import at.ac.tuwien.big.momot.TransformationResultManager;
 import at.ac.tuwien.big.momot.TransformationSearchOrchestration;
 import at.ac.tuwien.big.momot.problem.solution.TransformationSolution;
 import at.ac.tuwien.big.momot.util.MomotUtil;
+import blocky_momot.listener.IParetoFrontSubscriber;
+import blocky_momot.listener.ParetoFrontPublisherListener;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import org.moeaframework.algorithm.NSGAII;
+import org.moeaframework.analysis.collector.Accumulator;
+import org.moeaframework.analysis.collector.AttachPoint;
+import org.moeaframework.analysis.collector.Collector;
+import org.moeaframework.core.Algorithm;
 import org.moeaframework.core.NondominatedPopulation;
-import org.moeaframework.core.Population;
 import org.moeaframework.core.PRNG;
+import org.moeaframework.core.Population;
+import org.moeaframework.core.Solution;
 import org.moeaframework.util.progress.ProgressEvent;
 import org.moeaframework.util.progress.ProgressListener;
 
@@ -27,6 +39,14 @@ import org.moeaframework.util.progress.ProgressListener;
 public class blocky_custom extends blocky {
 
     private String currentInputModel;
+    private ParetoFrontPublisherListener publisherListener;
+
+    public synchronized ParetoFrontPublisherListener getPublisherListener() {
+        if (publisherListener == null) {
+            publisherListener = new ParetoFrontPublisherListener();
+        }
+        return publisherListener;
+    }
 
     private int getOverriddenPopulationSize() {
         MomotRunContext.Config ctx = MomotRunContext.get();
@@ -87,6 +107,37 @@ public class blocky_custom extends blocky {
         return orchestration;
     }
 
+    @Override
+    protected IRegisteredAlgorithm<NSGAII> _createRegisteredAlgorithm_0(
+            final TransformationSearchOrchestration orchestration,
+            final EvolutionaryAlgorithmFactory<TransformationSolution> moea,
+            final LocalSearchAlgorithmFactory<TransformationSolution> local) {
+        final IRegisteredAlgorithm<NSGAII> delegate = super._createRegisteredAlgorithm_0(orchestration, moea, local);
+        return new IRegisteredAlgorithm<NSGAII>() {
+            @Override
+            public NSGAII createAlgorithm() {
+                NSGAII alg = delegate.createAlgorithm();
+                getPublisherListener().setCurrentAlgorithm(alg);
+                return alg;
+            }
+
+            @Override
+            public String getRegisteredName() {
+                return delegate.getRegisteredName();
+            }
+
+            @Override
+            public boolean isRegistered() {
+                return delegate.isRegistered();
+            }
+
+            @Override
+            public String register() {
+                return delegate.register();
+            }
+        };
+    }
+
     private ProgressListener createPerRunSeedListener() {
         return new AbstractProgressListener() {
             @Override
@@ -109,6 +160,42 @@ public class blocky_custom extends blocky {
         experiment.addProgressListener(_createListener_0());
         experiment.addProgressListener(createPerRunSeedListener());
 
+        ParetoFrontPublisherListener pubListener = getPublisherListener();
+
+        Path outputDir = getOutputDirectory();
+        pubListener.addSubscriber((nfe, paretoFront) -> {
+            if (outputDir != null && paretoFront instanceof NondominatedPopulation pop && !pop.isEmpty()) {
+                saveLiveResults(outputDir, pop);
+            }
+        });
+
+        MomotRunContext.Config ctx = MomotRunContext.get();
+        if (ctx != null && ctx.paretoFrontSubscriber != null) {
+            pubListener.addSubscriber(ctx.paretoFrontSubscriber);
+        }
+
+        // Add a custom collector to capture the running algorithm on attach
+        experiment.addCustomCollector(new Collector() {
+            @Override
+            public AttachPoint getAttachPoint() {
+                return AttachPoint.isSubclass(Algorithm.class);
+            }
+
+            @Override
+            public Collector attach(Object object) {
+                if (object instanceof Algorithm alg) {
+                    getPublisherListener().setCurrentAlgorithm(alg);
+                }
+                return this;
+            }
+
+            @Override
+            public void collect(Accumulator accumulator) {
+            }
+        });
+
+        experiment.addProgressListener(pubListener);
+
         // Force-stop the experiment if the thread is interrupted
         experiment.addProgressListener(new ProgressListener() {
             @Override
@@ -120,6 +207,55 @@ public class blocky_custom extends blocky {
         });
 
         return experiment;
+    }
+
+    private synchronized void saveLiveResults(Path outputDir, NondominatedPopulation paretoFront) {
+        try {
+            Path modelsPath = outputDir.resolve("models");
+            Files.createDirectories(modelsPath);
+
+            String effectiveBaseName = (baseName != null && !baseName.isBlank()) ? baseName : "blocky_custom";
+            List<File> savedModels = TransformationResultManager.saveModels(modelsPath.toString(), effectiveBaseName, paretoFront);
+            java.util.Set<String> validNames = new java.util.HashSet<>();
+            if (savedModels != null) {
+                for (File f : savedModels) {
+                    if (f != null) validNames.add(f.getName());
+                }
+            }
+            File[] existing = modelsPath.toFile().listFiles((dir, name) -> name.toLowerCase().endsWith(".xmi"));
+            if (existing != null) {
+                for (File f : existing) {
+                    if (!validNames.contains(f.getName())) {
+                        f.delete();
+                    }
+                }
+            }
+
+            File timesFile = outputDir.resolve("times.pf").toFile();
+            StringBuilder timesContent = new StringBuilder();
+            ParetoFrontPublisherListener pub = getPublisherListener();
+            for (Solution solution : paretoFront) {
+                long t = 0L;
+                if (solution != null) {
+                    Object attr = solution.getAttribute(ParetoFrontPublisherListener.ATTRIBUTE_TIME_TO_FORM);
+                    if (attr instanceof Number n) {
+                        t = n.longValue();
+                    } else if (pub != null) {
+                        String key = ParetoFrontPublisherListener.getSolutionKey(solution);
+                        Long mapped = pub.getSolutionTimeToFormMap().get(key);
+                        if (mapped != null) {
+                            t = mapped;
+                        }
+                    }
+                }
+                timesContent.append(t).append("\n");
+            }
+            Files.writeString(timesFile.toPath(), timesContent.toString(), StandardCharsets.UTF_8);
+
+            String objectivesFile = outputDir.resolve("objectives.pf").toString();
+            TransformationResultManager.saveObjectives(objectivesFile, paretoFront);
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override
@@ -159,6 +295,30 @@ public class blocky_custom extends blocky {
         System.out.println("- Save objectives of all algorithms to '" + objectivesFile + "'");
         TransformationResultManager.saveObjectives(objectivesFile, population);
 
+        File timesFile = outputDir.resolve("times.pf").toFile();
+        StringBuilder timesContent = new StringBuilder();
+        ParetoFrontPublisherListener pub = getPublisherListener();
+        for (Solution solution : population) {
+            long t = 0L;
+            if (solution != null) {
+                Object attr = solution.getAttribute(ParetoFrontPublisherListener.ATTRIBUTE_TIME_TO_FORM);
+                if (attr instanceof Number n) {
+                    t = n.longValue();
+                } else if (pub != null) {
+                    String key = ParetoFrontPublisherListener.getSolutionKey(solution);
+                    Long mapped = pub.getSolutionTimeToFormMap().get(key);
+                    if (mapped != null) {
+                        t = mapped;
+                    }
+                }
+            }
+            timesContent.append(t).append("\n");
+        }
+        try {
+            Files.writeString(timesFile.toPath(), timesContent.toString(), StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+        }
+
         if (experiment.hasResults()) {
             int seed = 1;
             for (Map.Entry<SearchExecutor, List<NondominatedPopulation>> entry : experiment.getResults().entrySet()) {
@@ -180,7 +340,21 @@ public class blocky_custom extends blocky {
                 solutionsDir, baseName, MomotUtil.asIterables(population, TransformationSolution.class), solutionWriter);
 
         population = TransformationResultManager.createApproximationSet(experiment, (String[]) null);
-        TransformationResultManager.saveModels(modelsDir, baseName, population);
+        List<File> savedModels = TransformationResultManager.saveModels(modelsDir, baseName, population);
+        java.util.Set<String> validNames = new java.util.HashSet<>();
+        if (savedModels != null) {
+            for (File f : savedModels) {
+                if (f != null) validNames.add(f.getName());
+            }
+        }
+        File[] existing = new File(modelsDir).listFiles((dir, name) -> name.toLowerCase().endsWith(".xmi"));
+        if (existing != null) {
+            for (File f : existing) {
+                if (!validNames.contains(f.getName())) {
+                    f.delete();
+                }
+            }
+        }
 
         return resultManager;
     }
@@ -204,4 +378,3 @@ public class blocky_custom extends blocky {
         System.out.println("---------------------------");
     }
 }
-

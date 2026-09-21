@@ -335,8 +335,7 @@ public class BlockyUI extends Application {
      */
     private void injectDebugControls(WebEngine webEngine) {
         try {
-            webEngine.executeScript(
-                "(function(){ " +
+            String part1 = "(function(){ " +
                 "  try { "
                 + "    if (window.__dbgButtonsBound) return; "
                 + "  } catch(e) {} "
@@ -764,18 +763,31 @@ public class BlockyUI extends Application {
                 + "            if (typeof window.__ifRender === 'function') window.__ifRender(); "
                 + "          } catch(e) {} "
                 + "        } "
-                + "        window.__dbgDrawComparisonPath = __dbgDrawComparisonPath; "
-                + "        function renderSolutions(arr) { "
+                + "        window.__dbgDrawComparisonPath = __dbgDrawComparisonPath; ";
+
+            String part2 = "        function renderSolutions(arr) { "
                 + "          try { "
-                + "            if (arr) window.__momotLastData = arr; else arr = window.__momotLastData; "
-                + "            list.innerHTML = ''; "
-                + "            window.__momotSelectedPath = null; "
+                + "            if (arr && arr.length) { "
+                + "              window.__momotLastData = arr; "
+                + "            } else if (!arr) { "
+                + "              arr = window.__momotLastData; "
+                + "            } else if (arr && !arr.length && window.__momotLastData && window.__momotLastData.length) { "
+                + "              arr = window.__momotLastData; "
+                + "            } "
+                + "            var rawJson = JSON.stringify(arr || []); "
+                + "            if (rawJson === window.__momotLastJson && list.children.length > 0) { "
+                + "              return; "
+                + "            } "
                 + "            if (!arr || !arr.length) { "
-                + "              setStatus('No solutions found.'); "
-                + "              list.style.display = 'none'; "
+                + "              if (!window.__momotLastData || !window.__momotLastData.length) { "
+                + "                setStatus('No solutions found.'); "
+                + "                list.style.display = 'none'; "
+                + "                list.innerHTML = ''; "
+                + "              } "
                 + "              return; "
                 + "            } "
                 + "            list.style.display = 'block'; "
+                + "            window.__momotLastJson = rawJson; "
                 + "            var maxObj = 0; "
                 + "            var processed = arr.map(function(it) { "
                 + "              var ln = it.objectiveLine || \"\"; "
@@ -788,7 +800,12 @@ public class BlockyUI extends Application {
                 + "            if (window.__momotSortCol !== -1) { "
                 + "              processed.sort(function(a, b) { "
                 + "                var vA, vB; "
-                + "                if (window.__momotSortCol < maxObj) { "
+                + "                if (window.__momotSortCol === 998) { "
+                + "                  vA = (a.it.timeToFormMs !== undefined && a.it.timeToFormMs !== null && a.it.timeToFormMs >= 0) ? a.it.timeToFormMs : Infinity; "
+                + "                  vB = (b.it.timeToFormMs !== undefined && b.it.timeToFormMs !== null && b.it.timeToFormMs >= 0) ? b.it.timeToFormMs : Infinity; "
+                + "                } else if (window.__momotSortCol === 999) { "
+                + "                  vA = a.modelName; vB = b.modelName; "
+                + "                } else if (window.__momotSortCol < maxObj) { "
                 + "                  vA = a.objs[window.__momotSortCol] !== undefined ? a.objs[window.__momotSortCol] : Infinity; "
                 + "                  vB = b.objs[window.__momotSortCol] !== undefined ? b.objs[window.__momotSortCol] : Infinity; "
                 + "                } else { "
@@ -812,40 +829,59 @@ public class BlockyUI extends Application {
                  + "              th.style.cursor = 'pointer'; th.style.textAlign = 'left'; "
                  + "              if (window.__momotSortCol === colIdx) th.textContent += (window.__momotSortDir === 1 ? ' ▲' : ' ▼'); "
 
-                + "              th.addEventListener('click', function() { "
-                + "                if (window.__momotSortCol === colIdx) window.__momotSortDir *= -1; "
-                + "                else { window.__momotSortCol = colIdx; window.__momotSortDir = 1; } "
-                + "                renderSolutions(); "
-                + "              }); "
-                + "              return th; "
-                + "            } "
-                + "            var objNames = ['Goal Reached', 'Edits', 'Shortest Path', 'Closest to Goal']; "
-                + "            var displayCols = Math.max(maxObj, objNames.length); "
-                + "            for (var i=0; i<displayCols; i++) hRow.appendChild(mkTh(objNames[i] || ('Obj ' + (i+1)), i)); "
-                + "            hRow.appendChild(mkTh('Model', 999)); "
-                + "            thead.appendChild(hRow); table.appendChild(thead); "
-                + "            var tbody = document.createElement('tbody'); "
-                 + "            processed.forEach(function(p) { "
-                 + "              var tr = document.createElement('tr'); "
-                 + "              tr.style.cursor = 'pointer'; "
-                   + "              for (var i=0; i<displayCols; i++) { "
-                   + "                var td = document.createElement('td'); "
-                   + "                var val = p.objs[i]; "
-                  + "                if (i === 0) { "
-                  + "                  if (val === -1) td.textContent = 'TRUE'; "
-                  + "                  else if (val === 0) td.textContent = 'FALSE'; "
-                   + "                  else td.textContent = (val !== undefined && !isNaN(val)) ? val : '-'; "
-                   + "                } else { "
-                   + "                  td.textContent = (val !== undefined && !isNaN(val)) ? val : '-'; "
-                  + "                } "
-                  + "                td.style.padding = '6px 8px'; td.style.textAlign = 'right'; "
-                  + "                td.style.border = '1px solid rgba(255,255,255,0.15)'; "
-                  + "                tr.appendChild(td); "
-                  + "              } "
-                 + "              var tdM = document.createElement('td'); "
-                 + "              tdM.textContent = p.modelName; tdM.style.padding = '6px 8px'; "
-                 + "              tdM.style.border = '1px solid rgba(255,255,255,0.15)'; "
-                 + "              tr.appendChild(tdM); "
+                 + "              th.addEventListener('click', function() { "
+                 + "                if (window.__momotSortCol === colIdx) window.__momotSortDir *= -1; "
+                 + "                else { window.__momotSortCol = colIdx; window.__momotSortDir = 1; } "
+                 + "                window.__momotLastJson = null; "
+                 + "                renderSolutions(); "
+                 + "              }); "
+                 + "              return th; "
+                 + "            } "
+                + "                        var objNames = ['Goal Reached', 'Edits', 'Shortest Path', 'Closest to Goal']; "
+            + "            var displayCols = Math.max(maxObj, objNames.length); "
+            + "            for (var i=0; i<displayCols; i++) hRow.appendChild(mkTh(objNames[i] || ('Obj ' + (i+1)), i)); "
+            + "            hRow.appendChild(mkTh('Time (s)', 998)); "
+            + "            hRow.appendChild(mkTh('Model', 999)); "
+            + "            thead.appendChild(hRow); table.appendChild(thead); "
+            + "            var tbody = document.createElement('tbody'); "
+            + "            processed.forEach(function(p) { "
+            + "              var tr = document.createElement('tr'); "
+            + "              tr.style.cursor = 'pointer'; "
+            + "              if (window.__momotSelectedPath && window.__momotSelectedPath === p.it.modelPath) { "
+            + "                tr.style.background = 'rgba(255,255,255,0.15)'; "
+            + "              } "
+            + "              for (var i=0; i<displayCols; i++) { "
+            + "                var td = document.createElement('td'); "
+            + "                var val = p.objs[i]; "
+            + "                if (i === 0) { "
+            + "                  if (val === -1) td.textContent = 'TRUE'; "
+            + "                  else if (val === 0) td.textContent = 'FALSE'; "
+            + "                  else td.textContent = (val !== undefined && !isNaN(val)) ? val : '-'; "
+            + "                } else { "
+            + "                  td.textContent = (val !== undefined && !isNaN(val)) ? val : '-'; "
+            + "                } "
+            + "                td.style.padding = '6px 8px'; td.style.textAlign = 'right'; "
+            + "                td.style.border = '1px solid rgba(255,255,255,0.15)'; "
+            + "                tr.appendChild(td); "
+            + "              } "
+            + "              var tdT = document.createElement('td'); "
+            + "              var tText = p.it.timeFormatted; "
+            + "              if (!tText || tText === '-') { "
+            + "                if (p.it.timeToFormMs !== undefined && p.it.timeToFormMs !== null && p.it.timeToFormMs >= 0) { "
+            + "                  var sec = p.it.timeToFormMs / 1000.0; "
+            + "                  tText = (sec < 0.01 && p.it.timeToFormMs > 0) ? '0.01s' : sec.toFixed(2) + 's'; "
+            + "                } else { "
+            + "                  tText = '-'; "
+            + "                } "
+            + "              } "
+            + "              tdT.textContent = tText; "
+            + "              tdT.style.padding = '6px 8px'; tdT.style.textAlign = 'right'; "
+            + "              tdT.style.border = '1px solid rgba(255,255,255,0.15)'; "
+            + "              tr.appendChild(tdT); "
+            + "              var tdM = document.createElement('td'); "
+            + "              tdM.textContent = p.modelName; tdM.style.padding = '6px 8px'; "
+            + "              tdM.style.border = '1px solid rgba(255,255,255,0.15)'; "
+            + "              tr.appendChild(tdM); "
                  + "              tr.addEventListener('mouseenter', function() { if (window.__momotSelectedPath !== p.it.modelPath) tr.style.background = 'rgba(255,255,255,0.05)'; }); "
                  + "              tr.addEventListener('mouseleave', function() { if (window.__momotSelectedPath !== p.it.modelPath) tr.style.background = 'transparent'; }); "
 
@@ -873,26 +909,36 @@ public class BlockyUI extends Application {
                 + "              }); "
                 + "              tbody.appendChild(tr); "
                 + "            }); "
-                + "            table.appendChild(tbody); list.appendChild(table); "
+                + "            table.appendChild(tbody); "
+                + "            var prevScroll = list.scrollTop; "
+                + "            if (typeof list.replaceChildren === 'function') { "
+                + "              list.replaceChildren(table); "
+                + "            } else { "
+                + "              list.innerHTML = ''; "
+                + "              list.appendChild(table); "
+                + "            } "
+                + "            list.scrollTop = prevScroll; "
                 + "          } catch(e) { setStatus('Failed to render: ' + e); } "
                 + "        } "
-                + "        function refresh() { "
+                + "        function refresh(isSilent) { "
                 + "          try { "
                 + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
                 + "            if (!bridge || !bridge.listMomotSolutions) { setStatus('Java bridge listMomotSolutions not available'); return; } "
-                + "            setStatus('Loading solutions...'); "
+                + "            if (!isSilent) setStatus('Loading solutions...'); "
                 + "            var txt = bridge.listMomotSolutions(); "
                 + "            var arr = []; "
                 + "            try { arr = JSON.parse(txt); } catch(e2) { arr = []; } "
                 + "            renderSolutions(arr); "
-                + "            try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {} "
+                + "            try { if (window.__dbgDrawComparisonPath && !isSilent) window.__dbgDrawComparisonPath([]); } catch(eC) {} "
                 + "            try { "
-                + "              var oldMarker = document.getElementById('dmgMarker'); "
-                + "              if (oldMarker && oldMarker.parentNode) oldMarker.parentNode.removeChild(oldMarker); "
+                + "              if (!isSilent) { "
+                + "                var oldMarker = document.getElementById('dmgMarker'); "
+                + "                if (oldMarker && oldMarker.parentNode) oldMarker.parentNode.removeChild(oldMarker); "
+                + "              } "
                 + "            } catch(eM) {} "
-                + "          } catch(e) { setStatus('Refresh failed'); } "
+                + "          } catch(e) { if (!isSilent) setStatus('Refresh failed'); } "
                 + "        } "
-                + "        window.__momotShowAndRefresh = function(){ try { panel.style.display = 'block'; } catch(e) {} try { refresh(); } catch(e2) {} }; "
+                + "        window.__momotShowAndRefresh = function(){ try { panel.style.display = 'block'; } catch(e) {} try { refresh(true); } catch(e2) {} }; "
                 + "        refreshBtn.addEventListener('click', function(){ refresh(); }); "
                 + "        mStopBtn.addEventListener('click', function(){ "
                 + "          try { "
@@ -1041,8 +1087,9 @@ public class BlockyUI extends Application {
                 + "              } "
                 + "            } catch(e) {} "
                 + "          }, 50); "
-                + "        } "
-                + "        " + blocky_game.DebuggingService.renderDebugOverlayJsSnippet() + " "
+                + "        } ";
+
+            String part3 = "        " + blocky_game.DebuggingService.renderDebugOverlayJsSnippet() + " "
                 + "        " + blocky_game.ImmediateFeedbackService.buildOverlayRenderJs() + " "
                 + "        function __dbgSync() { "
                 + "          try { "
@@ -1444,8 +1491,9 @@ public class BlockyUI extends Application {
                 + "      if (attempts >= maxAttempts) clearInterval(id); "
                 + "    } catch(e) {} "
                 + "  }, interval); "
-                + "})();"
-            );
+                + "})();";
+
+            webEngine.executeScript(part1 + part2 + part3);
         } catch (Exception e) {
             System.err.println("[BlockyUI] injectDebugControls executeScript failed: " + e.getMessage());
             e.printStackTrace();
@@ -1599,7 +1647,18 @@ public class BlockyUI extends Application {
                     sb.append("\"outputDir\":\"").append(escapeJsonString(e.outputDir)).append("\",");
                     sb.append("\"modelPath\":\"").append(escapeJsonString(e.modelPath)).append("\",");
                     sb.append("\"objectiveLine\":\"").append(escapeJsonString(e.objectiveLine)).append("\",");
-                    sb.append("\"summary\":\"").append(escapeJsonString(e.summary)).append("\"");
+                    sb.append("\"summary\":\"").append(escapeJsonString(e.summary)).append("\",");
+                    sb.append("\"timeToFormMs\":").append(e.timeToFormMs != null ? e.timeToFormMs : -1).append(",");
+                    String formattedTime = "-";
+                    if (e.timeToFormMs != null && e.timeToFormMs >= 0) {
+                        double sec = e.timeToFormMs / 1000.0;
+                        if (sec < 0.01 && e.timeToFormMs > 0) {
+                            formattedTime = "0.01s";
+                        } else {
+                            formattedTime = String.format(java.util.Locale.US, "%.2fs", sec);
+                        }
+                    }
+                    sb.append("\"timeFormatted\":\"").append(escapeJsonString(formattedTime)).append("\"");
                     sb.append("}");
                 }
                 sb.append("]");
@@ -1853,8 +1912,35 @@ public class BlockyUI extends Application {
         }
         System.setProperty("blocky.henshin", "../blocky_model/transformations/" + henshin);
 
-        MomotRunService.RunSpec spec = MomotRunService.defaultDirectManipulationSpec();
+        MomotRunService.RunSpec baseSpec = MomotRunService.defaultDirectManipulationSpec();
+        MomotRunService.RunSpec spec = new MomotRunService.RunSpec(
+                baseSpec.inputXmi,
+                baseSpec.outputBase,
+                populationSize,
+                maxEvaluations,
+                nrRuns,
+                solutionLength
+        );
         momotCurrentOutputDir = spec.outputBase;
+
+        final java.util.concurrent.atomic.AtomicBoolean uiRefreshPending = new java.util.concurrent.atomic.AtomicBoolean(false);
+        final java.util.concurrent.atomic.AtomicLong lastRefreshMs = new java.util.concurrent.atomic.AtomicLong(0);
+        java.util.function.BiConsumer<Integer, Object> liveSubscriber = (nfe, paretoFront) -> {
+            long now = System.currentTimeMillis();
+            if ((now - lastRefreshMs.get() >= 250 || lastRefreshMs.get() == 0) && uiRefreshPending.compareAndSet(false, true)) {
+                lastRefreshMs.set(now);
+                Platform.runLater(() -> {
+                    uiRefreshPending.set(false);
+                    try {
+                        webView.getEngine().executeScript(
+                            "try { if (window.__momotShowAndRefresh) window.__momotShowAndRefresh(); } catch(e) {}"
+                        );
+                    } catch (Exception ignored) {
+                    }
+                });
+            }
+        };
+
         MomotRunService.runAsync(spec, (txt) -> {
             if (txt == null) return;
             final String safe = txt.replace("\\", "\\\\").replace("\"", "\\\"").replace("\r", "\\r").replace("\n", "\\n");
@@ -1881,7 +1967,7 @@ public class BlockyUI extends Application {
             if (finalOutDir != null && !finalOutDir.trim().isEmpty()) {
                 momotCurrentOutputDir = finalOutDir.trim();
             }
-        });
+        }, liveSubscriber);
     }
 
     private void loadXmiFromPathImpl(String xmiPath) {

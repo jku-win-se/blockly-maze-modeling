@@ -2,12 +2,11 @@ package blocky_game;
 
 import javafx.application.Platform;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.PrintStream;
 import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
+import java.io.PrintStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
@@ -89,7 +88,11 @@ public final class MomotRunService {
     }
 
     public static String runSync(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
-        return runInternal(spec, logLine, onOutputDirReady);
+        return runSync(spec, logLine, onOutputDirReady, null);
+    }
+
+    public static String runSync(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady, Object subscriber) {
+        return runInternal(spec, logLine, onOutputDirReady, subscriber);
     }
 
     public static void stopCurrentRun() {
@@ -100,10 +103,14 @@ public final class MomotRunService {
     }
 
     public static void runAsync(RunSpec spec, Consumer<String> logLine, Runnable onDone, Consumer<String> onOutputDirReady) {
+        runAsync(spec, logLine, onDone, onOutputDirReady, null);
+    }
+
+    public static void runAsync(RunSpec spec, Consumer<String> logLine, Runnable onDone, Consumer<String> onOutputDirReady, Object subscriber) {
         stopCurrentRun();
         Thread t = new Thread(() -> {
             try {
-                runInternal(spec, logLine, onOutputDirReady);
+                runInternal(spec, logLine, onOutputDirReady, subscriber);
             } catch (Throwable t2) {
                 if (logLine != null) logLine.accept("[MoMoT] Failed:\n" + throwableToString(t2));
             } finally {
@@ -128,13 +135,13 @@ public final class MomotRunService {
         }
     }
 
-    private static String runInternal(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
+    private static String runInternal(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady, Object subscriber) {
         synchronized (MOMOT_EXECUTION_LOCK) {
-            return runInternalLocked(spec, logLine, onOutputDirReady);
+            return runInternalLocked(spec, logLine, onOutputDirReady, subscriber);
         }
     }
 
-    private static String runInternalLocked(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady) {
+    private static String runInternalLocked(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady, Object subscriber) {
         if (logLine != null) logLine.accept("[MoMoT] Starting search logic...");
 
         File currentDir = new File(System.getProperty("user.dir"));
@@ -143,7 +150,7 @@ public final class MomotRunService {
 
         try {
             File input = resolveExistingFile(spec.inputXmi);
-            if (!isolatedOutput) {
+            if (input.exists() && input.isFile()) {
                 System.setProperty("blocky.input", input.getAbsolutePath());
             }
         } catch (Exception e) {}
@@ -233,9 +240,7 @@ public final class MomotRunService {
                 } catch (Throwable ignored) {}
             }
 
-            if (isolatedOutput) {
-                installRunContext(spec, outputDir, solLen, finalCl);
-            }
+            installRunContext(spec, outputDir, solLen, finalCl, subscriber);
 
             try {
                 runnerClass.getMethod("initialization", String.class).invoke(null, absInput);
@@ -281,14 +286,64 @@ public final class MomotRunService {
         return finalizeOutput(spec, onOutputDirReady, outputDir, isolatedOutput);
     }
 
-    private static void installRunContext(RunSpec spec, Path outputDir, int solutionLength, ClassLoader cl) {
+    private static void installRunContext(RunSpec spec, Path outputDir, int solutionLength, ClassLoader cl, Object subscriber) {
         try {
             Class<?> ctxClass = Class.forName("blocky_momot_runner.MomotRunContext", true, cl);
             Class<?> cfgClass = Class.forName("blocky_momot_runner.MomotRunContext$Config", true, cl);
-            Object cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class)
-                    .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir);
+            Class<?> subClass = Class.forName("blocky_momot.listener.IParetoFrontSubscriber", true, cl);
+
+            Object safeSubscriber = subscriber;
+            if (subscriber != null && !subClass.isInstance(subscriber)) {
+                safeSubscriber = java.lang.reflect.Proxy.newProxyInstance(
+                        cl,
+                        new Class<?>[]{subClass},
+                        (proxy, method, args) -> {
+                            String name = method.getName();
+                            if ("equals".equals(name)) {
+                                return proxy == (args != null && args.length > 0 ? args[0] : null);
+                            }
+                            if ("hashCode".equals(name)) {
+                                return System.identityHashCode(proxy);
+                            }
+                            if ("toString".equals(name)) {
+                                return "IParetoFrontSubscriberProxy[" + subscriber + "]";
+                            }
+                            if ("onParetoFrontUpdated".equals(name) && args != null && args.length == 2) {
+                                if (subscriber instanceof java.util.function.BiConsumer bi) {
+                                    bi.accept(args[0], args[1]);
+                                    return null;
+                                }
+                                if (subscriber instanceof Runnable r) {
+                                    r.run();
+                                    return null;
+                                }
+                                if (subscriber instanceof java.util.function.Consumer c) {
+                                    c.accept(args[0]);
+                                    return null;
+                                }
+                                try {
+                                    java.lang.reflect.Method m = subscriber.getClass().getMethod("onParetoFrontUpdated", int.class, Object.class);
+                                    return m.invoke(subscriber, args[0], args[1]);
+                                } catch (Throwable t) {
+                                    for (java.lang.reflect.Method candidate : subscriber.getClass().getMethods()) {
+                                        if (candidate.getName().equals("onParetoFrontUpdated") && candidate.getParameterCount() == 2) {
+                                            return candidate.invoke(subscriber, args[0], args[1]);
+                                        }
+                                    }
+                                }
+                            }
+                            return null;
+                        }
+                );
+            }
+
+            Object cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class, subClass)
+                    .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir, safeSubscriber);
             ctxClass.getMethod("set", cfgClass).invoke(null, cfg);
-        } catch (Throwable ignored) {}
+        } catch (Throwable t) {
+            System.err.println("[MomotRunService] Failed to install run context: " + t);
+            t.printStackTrace();
+        }
     }
 
     private static void clearRunContext(ClassLoader cl) {
@@ -319,6 +374,10 @@ public final class MomotRunService {
             String fallback = firstExisting(
                     "blocky_momot/model/input/1.xmi",
                     "../blocky_momot/model/input/1.xmi",
+                    "blocky_game/direct_manipulation_request.xmi",
+                    "../blocky_game/direct_manipulation_request.xmi",
+                    "direct_manipulation_request.xmi",
+                    "model/input/1.xmi",
                     "model/1.xmi",
                     "model/input/game.xmi"
             );
@@ -353,8 +412,6 @@ public final class MomotRunService {
                 continue;
             }
             if (curr.getCause() != null && curr != curr.getCause()) {
-                // Common wrappers: RuntimeException, UndeclaredThrowableException, etc.
-                // Only peel if it looks like reflection noise.
                 String n = curr.getClass().getName();
                 if (n.startsWith("java.lang.reflect.")
                         || n.equals("java.lang.RuntimeException")
@@ -426,11 +483,20 @@ public final class MomotRunService {
     private static File resolveExistingFile(String path) {
         if (path == null || path.isBlank()) return new File("model/1.xmi");
         File f = new File(path);
-        if (f.isAbsolute() || f.exists()) return f;
+        if (f.isAbsolute() && f.exists()) return f;
+        if (f.exists()) return f;
         File f1 = new File("..", path);
         if (f1.exists()) return f1;
-        File f2 = new File("/app", path);
+        File f2 = new File("blocky_momot", path);
         if (f2.exists()) return f2;
+        File f3 = new File("../blocky_momot", path);
+        if (f3.exists()) return f3;
+        File f4 = new File("blocky_game", path);
+        if (f4.exists()) return f4;
+        File f5 = new File("../blocky_game", path);
+        if (f5.exists()) return f5;
+        File f6 = new File("/app", path);
+        if (f6.exists()) return f6;
         return f;
     }
 

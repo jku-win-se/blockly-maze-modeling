@@ -1,5 +1,6 @@
 package blocky_momot_runner;
 
+import blocky_momot.listener.IParetoFrontSubscriber;
 import java.nio.file.Path;
 
 /**
@@ -13,13 +14,25 @@ public final class MomotRunContext {
         public final int nrRuns;
         public final int solutionLength;
         public final Path outputDirectory;
+        public final IParetoFrontSubscriber paretoFrontSubscriber;
 
         public Config(int populationSize, int maxEvaluations, int nrRuns, int solutionLength, Path outputDirectory) {
+            this(populationSize, maxEvaluations, nrRuns, solutionLength, outputDirectory, null);
+        }
+
+        public Config(
+                int populationSize,
+                int maxEvaluations,
+                int nrRuns,
+                int solutionLength,
+                Path outputDirectory,
+                IParetoFrontSubscriber paretoFrontSubscriber) {
             this.populationSize = populationSize;
             this.maxEvaluations = maxEvaluations;
             this.nrRuns = nrRuns;
             this.solutionLength = solutionLength;
             this.outputDirectory = outputDirectory;
+            this.paretoFrontSubscriber = paretoFrontSubscriber;
         }
     }
 
@@ -39,4 +52,3 @@ public final class MomotRunContext {
         CURRENT.remove();
     }
 }
-

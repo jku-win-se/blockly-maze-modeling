@@ -11,11 +11,8 @@ Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ClassPath: .,
  javafx-sdk-21.0.10/lib/javafx.base.jar,
  javafx-sdk-21.0.10/lib/javafx.controls.jar,
- javafx-sdk-21.0.10/lib/javafx.fxml.jar,
  javafx-sdk-21.0.10/lib/javafx.graphics.jar,
  javafx-sdk-21.0.10/lib/javafx.media.jar,
- javafx-sdk-21.0.10/lib/javafx.swing.jar,
- javafx-sdk-21.0.10/lib/javafx.web.jar,
- javafx-sdk-21.0.10/lib/javafx-swt.jar
+ javafx-sdk-21.0.10/lib/javafx.web.jar
 Export-Package: blocky_game
 Automatic-Module-Name: blocky.game

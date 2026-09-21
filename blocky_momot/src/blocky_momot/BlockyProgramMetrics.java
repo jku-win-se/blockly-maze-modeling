@@ -34,17 +34,24 @@ public final class BlockyProgramMetrics {
      * So we return {@code existingStatementCount + maxBlocks}.
      */
     public static int inferSolutionLength(String gameXmiPath) {
-        Game game = loadGame(gameXmiPath);
-        if (game == null || game.getLevels().isEmpty() || game.getLevels().get(0) == null) {
-            return 1;
+        try {
+            if (gameXmiPath == null || gameXmiPath.trim().isEmpty()) {
+                return 10;
+            }
+            Game game = loadGame(gameXmiPath);
+            if (game == null || game.getLevels().isEmpty() || game.getLevels().get(0) == null) {
+                return 10;
+            }
+            Level level = game.getLevels().get(0);
+            int existing = countStatements(level.getSolution());
+            int maxBlocks = level.getMaxBlocks();
+            if (maxBlocks <= 0) {
+                maxBlocks = 5;
+            }
+            return Math.max(1, existing + maxBlocks);
+        } catch (Throwable t) {
+            return 10;
         }
-        Level level = game.getLevels().get(0);
-        int existing = countStatements(level.getSolution());
-        int maxBlocks = level.getMaxBlocks();
-        if (maxBlocks <= 0) {
-            maxBlocks = 5;
-        }
-        return Math.max(1, existing + maxBlocks);
     }
 
     public static int countStatements(Game game) {
@@ -57,7 +64,11 @@ public final class BlockyProgramMetrics {
 
     /** Count Blockly statements in a persisted {@link Game} XMI. */
     public static int countStatementsInXmi(String gameXmiPath) {
-        return countStatements(loadGame(gameXmiPath));
+        try {
+            return countStatements(loadGame(gameXmiPath));
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     public static int countLoops(Game game) {
@@ -141,34 +152,53 @@ public final class BlockyProgramMetrics {
     }
 
     private static Game loadGame(String path) {
-        Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().putIfAbsent("xmi", new XMIResourceFactoryImpl());
-
-        EPackage pkg = BlockyPackage.eINSTANCE;
-        EPackage.Registry.INSTANCE.put(pkg.getNsURI(), pkg);
-        EPackage.Registry.INSTANCE.put(pkg.getName(), pkg);
-
-        ResourceSet rs = new ResourceSetImpl();
-        rs.getPackageRegistry().put(pkg.getNsURI(), pkg);
-        rs.getPackageRegistry().put(pkg.getName(), pkg);
-
-        URI uri;
-        File f = new File(path);
-        if (f.isAbsolute()) {
-            uri = URI.createFileURI(f.getAbsolutePath());
-        } else {
-            uri = URI.createFileURI(new File(System.getProperty("user.dir"), path).getAbsolutePath());
+        if (path == null || path.trim().isEmpty()) {
+            return null;
         }
-
-        Resource r = rs.getResource(uri, true);
         try {
+            Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().putIfAbsent("xmi", new XMIResourceFactoryImpl());
+
+            EPackage pkg = BlockyPackage.eINSTANCE;
+            EPackage.Registry.INSTANCE.put(pkg.getNsURI(), pkg);
+            EPackage.Registry.INSTANCE.put(pkg.getName(), pkg);
+
+            ResourceSet rs = new ResourceSetImpl();
+            rs.getPackageRegistry().put(pkg.getNsURI(), pkg);
+            rs.getPackageRegistry().put(pkg.getName(), pkg);
+
+            File f = new File(path);
+            if (!f.exists()) {
+                File rel = new File(System.getProperty("user.dir"), path);
+                if (rel.exists()) {
+                    f = rel;
+                }
+            }
+            if (!f.exists()) {
+                File inMomot = new File("blocky_momot", path);
+                if (inMomot.exists()) {
+                    f = inMomot;
+                } else {
+                    File inGame = new File("blocky_game", path);
+                    if (inGame.exists()) {
+                        f = inGame;
+                    }
+                }
+            }
+
+            if (!f.exists() || !f.isFile()) {
+                return null;
+            }
+
+            URI uri = URI.createFileURI(f.getAbsolutePath());
+            Resource r = rs.getResource(uri, true);
             r.load(null);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load game XMI from: " + uri, e);
+            if (r.getContents().isEmpty() || !(r.getContents().get(0) instanceof Game)) {
+                return null;
+            }
+            return (Game) r.getContents().get(0);
+        } catch (Throwable t) {
+            return null;
         }
-        if (r.getContents().isEmpty() || !(r.getContents().get(0) instanceof Game)) {
-            throw new IllegalStateException("XMI does not contain a blocky.Game root: " + uri);
-        }
-        return (Game) r.getContents().get(0);
     }
 }
 
