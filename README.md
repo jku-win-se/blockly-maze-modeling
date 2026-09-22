@@ -29,7 +29,7 @@ You can run the entire application, including the GUI and the MoMoT synthesis ba
 |----------------|-------------------------------|---------------------------------|
 | **blocky_model** | EMF metamodel & generated code | Eclipse EMF, Ecore, XMI         |
 | **blocky_game**  | Main application (UI + engine) | Java 17, JavaFX 21, WebView     |
-| **blocky_momot** | Search-based program synthesis (optional) | Eclipse MOMoT, Henshin, EMF — see [blocky_momot/README.md](blocky_momot/README.md) and the [minimum solution-length benchmark](blocky_momot/analysis/BENCHMARK.md) |
+| **blocky_momot** | Search-based program synthesis (optional) | Eclipse MOMoT, Henshin, EMF — see [blocky_momot/README.md](blocky_momot/README.md), [minimum solution-length benchmark](blocky_momot/analysis/BENCHMARK.md), and [first-goal benchmark](blocky_momot/analysis/FIRST_GOAL_BENCHMARK.md) |
 
 - **blocky_model**: Domain model (Level, GridMap, Cell, Block types, ExecutionTrace) defined in `blocky.ecore`; Java API generated in `src-gen/`.
 - **blocky_game**: Entry point `Main.java`; UI in `BlockyUI.java` (WebView + JSBridge); game/simulation logic in `GameEngine.java`. The WebView loads the Blockly Games Maze from `blocky_game/src/blocky_game/blockly-games-web/`.
@@ -114,11 +114,15 @@ Blocky supports **Direct Manipulation**: teleport Pegman to a chosen empty cell 
 - MoMoT/MOEA may require: `--add-opens java.base/java.util=ALL-UNNAMED` (see [INSTALL.md](INSTALL.md)).
 - Running MoMoT is typically done from **Eclipse with the modeling target platform** active (PDE + MoMoT bundles). Maven-only runs generally do not include MoMoT.
 
-## MOMoT minimum solution-length benchmark
+## MOMoT Benchmarks & Analysis
 
-Reproducible empirical study over all ten maze levels (optimal block count vs. minimum MOMoT `solutionLength` vs. synthesized program size). Full protocol, expected results, and one-command rerun:
+The repository contains two reproducible empirical benchmark suites for search-based program synthesis:
 
-**[blocky_momot/analysis/BENCHMARK.md](blocky_momot/analysis/BENCHMARK.md)**
+1. **[MOMoT Minimum Solution-Length Benchmark](blocky_momot/analysis/BENCHMARK.md)**:
+   Measures the required graph transformation steps (`solutionLength`), optimal block counts, and synthesized AST sizes across all 10 maze levels.
+
+2. **[MOMoT First-Goal Benchmark & Statistical Analysis](blocky_momot/analysis/FIRST_GOAL_BENCHMARK.md)**:
+   Evaluates search efficiency (wall-clock time and generation number) under **early stopping** upon discovering the first goal-reaching solution ($N = 30$ independent runs per level). Covers statistical distributions, search space explosion on hard levels, and human vs. automated synthesis trade-offs.
 
 ## Licenses
 

@@ -93,4 +93,6 @@ To avoid common runtime errors and get correct behavior (e.g. empty solution):
 ## References
 
 - Blocky project summary: [PROJECT_SUMMARY.md](../PROJECT_SUMMARY.md)  
+- MOMoT minimum solution-length benchmark: [analysis/BENCHMARK.md](analysis/BENCHMARK.md)
+- MOMoT first-goal benchmark & statistical analysis: [analysis/FIRST_GOAL_BENCHMARK.md](analysis/FIRST_GOAL_BENCHMARK.md)
 - MOMoT docs: [docs/momot/README.md](../docs/momot/README.md), [02-syntax-and-structure.md](../docs/momot/02-syntax-and-structure.md), [03-search-orchestration.md](../docs/momot/03-search-orchestration.md), [04-experiment-analysis-results.md](../docs/momot/04-experiment-analysis-results.md), [08-reference.md](../docs/momot/08-reference.md)
