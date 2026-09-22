@@ -188,14 +188,11 @@ search = {
 			Edits : minimize {
 				try { BlockyProgramDistance.distanceToBaseline(root as Game) as double } catch (Throwable t) { 1000000.0 }
 			}
-			ShortestPath : minimize {
+			Actions : minimize {
 				try {
 					val game = root as Game
 					val level = if (game.levels.isEmpty) null else game.levels.get(0)
-					if (level == null) 1000000.0 else {
-						val d = BlockySimulator.distanceToGoalOrPenalty(level) as double
-						if (d > 0.0) 1000.0 + d else BlockySimulator.stepsToGoalOrPenalty(level) as double
-					}
+					if (level == null) 1000000.0 else BlockySimulator.simulationSteps(level) as double
 				} catch (Throwable t) { 1000000.0 }
 			}
 			closestToGoal : minimize {

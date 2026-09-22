@@ -468,20 +468,8 @@ public class blocky {
         if (_equals) {
           _xifexpression_1 = 1000000.0;
         } else {
-          double _xblockexpression_1 = (double) 0;
-          {
-            int _distanceToGoalOrPenalty = BlockySimulator.distanceToGoalOrPenalty(level);
-            final double d = ((double) _distanceToGoalOrPenalty);
-            double _xifexpression_2 = (double) 0;
-            if ((d > 0.0)) {
-              _xifexpression_2 = (1000.0 + d);
-            } else {
-              int _stepsToGoalOrPenalty = BlockySimulator.stepsToGoalOrPenalty(level);
-              _xifexpression_2 = ((double) _stepsToGoalOrPenalty);
-            }
-            _xblockexpression_1 = _xifexpression_2;
-          }
-          _xifexpression_1 = _xblockexpression_1;
+          int _simulationSteps = BlockySimulator.simulationSteps(level);
+          _xifexpression_1 = ((double) _simulationSteps);
         }
         _xblockexpression = _xifexpression_1;
       }
@@ -497,7 +485,7 @@ public class blocky {
   }
 
   protected IFitnessDimension<TransformationSolution> _createObjective_2(final TransformationSearchOrchestration orchestration) {
-    return new AbstractEGraphFitnessDimension("ShortestPath", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
+    return new AbstractEGraphFitnessDimension("Actions", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
        @Override
        protected double internalEvaluate(TransformationSolution solution) {
           EGraph graph = solution.execute();

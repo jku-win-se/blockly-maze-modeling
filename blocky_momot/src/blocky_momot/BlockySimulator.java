@@ -429,6 +429,49 @@ public final class BlockySimulator {
     }
 
     /**
+     * Executes the level's solution and returns the total number of executed steps/actions
+     * during the simulation (whether won, crashed, or terminated).
+     */
+    public static int simulationSteps(Level level) {
+        if (level == null || level.getMap() == null) {
+            return 0;
+        }
+        Body solution = level.getSolution();
+        if (solution == null) {
+            return 0;
+        }
+        if (ENFORCE_CONSTRAINTS && violatesLevelConstraints(level, solution)) {
+            return 100000;
+        }
+
+        GridMap map = level.getMap();
+        Cell startCell = null;
+        for (Cell c : map.getCells()) {
+            if (c.getType() == CellType.START) {
+                startCell = c;
+                break;
+            }
+        }
+        if (startCell == null) {
+            startCell = map.getCells().isEmpty() ? null : map.getCells().get(0);
+        }
+        if (startCell == null) {
+            return 0;
+        }
+
+        Direction startDir = determineStartOrientation(level, startCell);
+        GameState state = BlockyFactory.eINSTANCE.createGameState();
+        state.setStep(0);
+        state.setPosition(startCell);
+        state.setOrientation(startDir);
+        state.setStatus(GameStatus.RUNNING);
+
+        final CellType winCellType = determineWinCellType(level);
+        GameState last = executeBodyLite(solution, state, level, winCellType);
+        return last != null ? last.getStep() : 0;
+    }
+
+    /**
      * Executes the level's solution and returns the executed step count if the goal is reached;
      * otherwise returns {@code penalty}.
      */

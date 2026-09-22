@@ -8,10 +8,15 @@ import at.ac.tuwien.big.moea.print.ISolutionWriter;
 import at.ac.tuwien.big.moea.search.algorithm.EvolutionaryAlgorithmFactory;
 import at.ac.tuwien.big.moea.search.algorithm.LocalSearchAlgorithmFactory;
 import at.ac.tuwien.big.moea.search.algorithm.provider.IRegisteredAlgorithm;
+import at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension;
 import at.ac.tuwien.big.momot.TransformationResultManager;
 import at.ac.tuwien.big.momot.TransformationSearchOrchestration;
 import at.ac.tuwien.big.momot.problem.solution.TransformationSolution;
+import at.ac.tuwien.big.momot.search.fitness.dimension.AbstractEGraphFitnessDimension;
 import at.ac.tuwien.big.momot.util.MomotUtil;
+import blocky.Game;
+import blocky.Level;
+import blocky_momot.BlockySimulator;
 import blocky_momot.listener.IParetoFrontSubscriber;
 import blocky_momot.listener.ParetoFrontPublisherListener;
 import java.io.File;
@@ -20,6 +25,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.henshin.interpreter.EGraph;
 import org.moeaframework.algorithm.NSGAII;
 import org.moeaframework.analysis.collector.Accumulator;
 import org.moeaframework.analysis.collector.AttachPoint;
@@ -108,6 +115,32 @@ public class blocky_custom extends blocky {
     }
 
     @Override
+    protected double _createObjectiveHelper_2(final TransformationSolution solution, final EGraph graph, final EObject root) {
+        try {
+            if (root instanceof Game game) {
+                Level level = game.getLevels().isEmpty() ? null : game.getLevels().get(0);
+                if (level == null) return 1000000.0;
+                return (double) BlockySimulator.simulationSteps(level);
+            }
+        } catch (Throwable t) {
+            return 1000000.0;
+        }
+        return 1000000.0;
+    }
+
+    @Override
+    protected IFitnessDimension<TransformationSolution> _createObjective_2(final TransformationSearchOrchestration orchestration) {
+        return new AbstractEGraphFitnessDimension("Actions", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
+            @Override
+            protected double internalEvaluate(TransformationSolution solution) {
+                EGraph graph = solution.execute();
+                EObject root = MomotUtil.getRoot(graph);
+                return _createObjectiveHelper_2(solution, graph, root);
+            }
+        };
+    }
+
+    @Override
     protected IRegisteredAlgorithm<NSGAII> _createRegisteredAlgorithm_0(
             final TransformationSearchOrchestration orchestration,
             final EvolutionaryAlgorithmFactory<TransformationSolution> moea,
@@ -161,6 +194,7 @@ public class blocky_custom extends blocky {
         experiment.addProgressListener(createPerRunSeedListener());
 
         ParetoFrontPublisherListener pubListener = getPublisherListener();
+        pubListener.setPopulationSize(getOverriddenPopulationSize());
 
         Path outputDir = getOutputDirectory();
         pubListener.addSubscriber((nfe, paretoFront) -> {
@@ -232,10 +266,13 @@ public class blocky_custom extends blocky {
             }
 
             File timesFile = outputDir.resolve("times.pf").toFile();
+            File gensFile = outputDir.resolve("generations.pf").toFile();
             StringBuilder timesContent = new StringBuilder();
+            StringBuilder gensContent = new StringBuilder();
             ParetoFrontPublisherListener pub = getPublisherListener();
             for (Solution solution : paretoFront) {
                 long t = 0L;
+                int g = 1;
                 if (solution != null) {
                     Object attr = solution.getAttribute(ParetoFrontPublisherListener.ATTRIBUTE_TIME_TO_FORM);
                     if (attr instanceof Number n) {
@@ -247,10 +284,30 @@ public class blocky_custom extends blocky {
                             t = mapped;
                         }
                     }
+                    Object gAttr = solution.getAttribute(ParetoFrontPublisherListener.ATTRIBUTE_GENERATION_TO_FORM);
+                    if (gAttr instanceof Number gn) {
+                        g = gn.intValue();
+                    } else if (pub != null) {
+                        String key = ParetoFrontPublisherListener.getSolutionKey(solution);
+                        Integer mappedGen = pub.getSolutionGenerationToFormMap().get(key);
+                        if (mappedGen != null) {
+                            g = mappedGen;
+                        }
+                    }
                 }
                 timesContent.append(t).append("\n");
+                gensContent.append(g).append("\n");
             }
             Files.writeString(timesFile.toPath(), timesContent.toString(), StandardCharsets.UTF_8);
+            Files.writeString(gensFile.toPath(), gensContent.toString(), StandardCharsets.UTF_8);
+
+            File firstGoalFile = outputDir.resolve("first_goal.txt").toFile();
+            Long firstGoalTime = pub != null ? pub.getFirstGoalReachedTimeMs() : null;
+            Integer firstGoalGen = pub != null ? pub.getFirstGoalReachedGeneration() : null;
+            if (firstGoalTime != null && firstGoalGen != null) {
+                String firstGoalContent = "timeToFirstGoalMs=" + firstGoalTime + "\ngenerationOfFirstGoal=" + firstGoalGen + "\n";
+                Files.writeString(firstGoalFile.toPath(), firstGoalContent, StandardCharsets.UTF_8);
+            }
 
             String objectivesFile = outputDir.resolve("objectives.pf").toString();
             TransformationResultManager.saveObjectives(objectivesFile, paretoFront);
@@ -296,10 +353,13 @@ public class blocky_custom extends blocky {
         TransformationResultManager.saveObjectives(objectivesFile, population);
 
         File timesFile = outputDir.resolve("times.pf").toFile();
+        File gensFile = outputDir.resolve("generations.pf").toFile();
         StringBuilder timesContent = new StringBuilder();
+        StringBuilder gensContent = new StringBuilder();
         ParetoFrontPublisherListener pub = getPublisherListener();
         for (Solution solution : population) {
             long t = 0L;
+            int g = 1;
             if (solution != null) {
                 Object attr = solution.getAttribute(ParetoFrontPublisherListener.ATTRIBUTE_TIME_TO_FORM);
                 if (attr instanceof Number n) {
@@ -311,11 +371,33 @@ public class blocky_custom extends blocky {
                         t = mapped;
                     }
                 }
+                Object gAttr = solution.getAttribute(ParetoFrontPublisherListener.ATTRIBUTE_GENERATION_TO_FORM);
+                if (gAttr instanceof Number gn) {
+                    g = gn.intValue();
+                } else if (pub != null) {
+                    String key = ParetoFrontPublisherListener.getSolutionKey(solution);
+                    Integer mappedGen = pub.getSolutionGenerationToFormMap().get(key);
+                    if (mappedGen != null) {
+                        g = mappedGen;
+                    }
+                }
             }
             timesContent.append(t).append("\n");
+            gensContent.append(g).append("\n");
         }
         try {
             Files.writeString(timesFile.toPath(), timesContent.toString(), StandardCharsets.UTF_8);
+            Files.writeString(gensFile.toPath(), gensContent.toString(), StandardCharsets.UTF_8);
+            File firstGoalFile = outputDir.resolve("first_goal.txt").toFile();
+            Long firstGoalTime = pub != null ? pub.getFirstGoalReachedTimeMs() : null;
+            Integer firstGoalGen = pub != null ? pub.getFirstGoalReachedGeneration() : null;
+            if (firstGoalTime != null && firstGoalGen != null) {
+                String firstGoalContent = "timeToFirstGoalMs=" + firstGoalTime + "\ngenerationOfFirstGoal=" + firstGoalGen + "\n";
+                Files.writeString(firstGoalFile.toPath(), firstGoalContent, StandardCharsets.UTF_8);
+                System.out.println("---------------------------");
+                System.out.println("First Goal-Reaching Solution: " + String.format(java.util.Locale.US, "%.2fs", firstGoalTime / 1000.0) + " (" + firstGoalTime + " ms), Generation: " + firstGoalGen);
+                System.out.println("---------------------------");
+            }
         } catch (Exception ignored) {
         }
 

@@ -46,6 +46,38 @@ import java.util.Map;
  */
 public class BlockyUI extends Application {
 
+    static {
+        // JavaFX WebView can crash on some Windows setups when it tries to initialize the
+        // HTML5 media pipeline (GStreamer) even though Blockly Maze doesn't require it.
+        System.setProperty("com.sun.webkit.useMediaPlayer", "false");
+        System.setProperty("com.sun.media.jfxmediaimpl.disableGStreamer", "true");
+
+        // Fix for JavaFX Prism D3D texture pool race condition on Windows (JDK-8352209:
+        // com.sun.prism.d3d.D3DTextureResource.getResource() returning null during texture updates):
+        if (System.getProperty("prism.dirtyopts") == null) {
+            System.setProperty("prism.dirtyopts", "false");
+        }
+        if (System.getProperty("prism.disableRegionCaching") == null) {
+            System.setProperty("prism.disableRegionCaching", "true");
+        }
+        if (System.getProperty("prism.cacheshapes") == null) {
+            System.setProperty("prism.cacheshapes", "false");
+        }
+        if (System.getProperty("prism.primtextures") == null) {
+            System.setProperty("prism.primtextures", "false");
+        }
+        if (System.getProperty("prism.maxvram") == null) {
+            System.setProperty("prism.maxvram", "1G");
+        }
+        if (System.getProperty("prism.targetvram") == null) {
+            System.setProperty("prism.targetvram", "512M");
+        }
+    }
+
+    public static void main(String[] args) {
+        Application.launch(BlockyUI.class, args);
+    }
+
     private GameEngine engine;
     private WebView webView;
     private BlockySnapshotService snapshotService;
@@ -706,9 +738,17 @@ public class BlockyUI extends Application {
                 + "        list.style.background = 'rgba(0,0,0,0.2)'; "
                 + "        list.style.display = 'none'; "
                 + "        var actions = document.createElement('div'); actions.id = '__momotActions'; "
-                + "        actions.style.display = 'flex'; actions.style.gap = '6px'; actions.style.marginTop = '8px'; "
+                + "        actions.style.display = 'flex'; actions.style.alignItems = 'center'; actions.style.justifyContent = 'space-between'; actions.style.marginTop = '8px'; "
                 + "        var loadBtn = mkBtn('__momotLoadBtn', 'Load', 'Load selected model into the game'); "
-                + "        actions.appendChild(loadBtn); "
+                + "        var cbLabel = document.createElement('label'); cbLabel.id = '__momotShowNonGoalLabel'; "
+                + "        cbLabel.style.display = 'flex'; cbLabel.style.alignItems = 'center'; cbLabel.style.gap = '4px'; "
+                + "        cbLabel.style.cursor = 'pointer'; cbLabel.style.fontSize = '11px'; cbLabel.style.color = '#ccc'; cbLabel.style.userSelect = 'none'; "
+                + "        var cbNonGoal = document.createElement('input'); cbNonGoal.type = 'checkbox'; cbNonGoal.id = '__momotShowNonGoal'; "
+                + "        cbNonGoal.checked = false; "
+                + "        cbLabel.appendChild(cbNonGoal); "
+                + "        var cbSpan = document.createElement('span'); cbSpan.textContent = 'Show non-goal solutions'; "
+                + "        cbLabel.appendChild(cbSpan); "
+                + "        actions.appendChild(loadBtn); actions.appendChild(cbLabel); "
                 + "        var status = document.createElement('div'); status.id = '__momotStatus'; status.style.marginTop = '6px'; "
                 + "        status.style.color = '#0f0'; status.style.fontWeight = 'bold'; "
                 + "        status.textContent = 'Click Refresh or Run to see solutions.'; "
@@ -734,7 +774,17 @@ public class BlockyUI extends Application {
                 + "        window.__momotSelectedPath = null; "
                 + "        window.__momotSortCol = 0; "
                 + "        window.__momotSortDir = 1; "
-                + "        window.__momotLastData = []; "
+                + "        window.__momotLastData = null; "
+                + "        window.__momotFirstGoalTime = null; "
+                + "        window.__momotFirstGoalGen = null; "
+                + "        window.__momotFirstGoalFormatted = null; "
+                + "        window.__momotFirstGoalReset = function() { "
+                + "          window.__momotFirstGoalTime = null; "
+                + "          window.__momotFirstGoalGen = null; "
+                + "          window.__momotFirstGoalFormatted = null; "
+                + "          window.__momotLastData = null; "
+                + "          window.__momotLastJson = null; "
+                + "        }; "
                 + "        function setStatus(msg) { try { status.textContent = msg || ''; } catch(e) {} } "
                 + "        function logClear() { try { log.textContent = ''; } catch(e) {} } "
                 + "        function logAppend(txt) { "
@@ -765,21 +815,49 @@ public class BlockyUI extends Application {
                 + "        } "
                 + "        window.__dbgDrawComparisonPath = __dbgDrawComparisonPath; ";
 
-            String part2 = "        function renderSolutions(arr) { "
+            String part2 = "        function renderSolutions(data) { "
                 + "          try { "
-                + "            if (arr && arr.length) { "
-                + "              window.__momotLastData = arr; "
-                + "            } else if (!arr) { "
-                + "              arr = window.__momotLastData; "
-                + "            } else if (arr && !arr.length && window.__momotLastData && window.__momotLastData.length) { "
-                + "              arr = window.__momotLastData; "
+                + "            var arr = []; "
+                + "            var metaFirstGoalTime = null; "
+                + "            var metaFirstGoalGen = null; "
+                + "            var metaFirstGoalFormatted = null; "
+                + "            if (Array.isArray(data)) { "
+                + "              arr = data; "
+                + "            } else if (data && typeof data === 'object') { "
+                + "              arr = data.solutions || []; "
+                + "              if (data.firstGoalTimeMs !== undefined && data.firstGoalTimeMs !== null && data.firstGoalTimeMs >= 0) { "
+                + "                metaFirstGoalTime = data.firstGoalTimeMs; "
+                + "                metaFirstGoalGen = (data.firstGoalGen !== undefined && data.firstGoalGen !== null && data.firstGoalGen >= 0) ? data.firstGoalGen : null; "
+                + "                metaFirstGoalFormatted = data.firstGoalFormatted || ((metaFirstGoalTime / 1000).toFixed(2) + 's'); "
+                + "              } "
                 + "            } "
-                + "            var rawJson = JSON.stringify(arr || []); "
+                + "            if (arr && arr.length) { "
+                + "              window.__momotLastData = data; "
+                + "            } else if (!data) { "
+                + "              data = window.__momotLastData; "
+                + "              if (Array.isArray(data)) { arr = data; } "
+                + "              else if (data && typeof data === 'object') { arr = data.solutions || []; } "
+                + "            } else if (data && (!arr || !arr.length) && window.__momotLastData) { "
+                + "              data = window.__momotLastData; "
+                + "              if (Array.isArray(data)) { arr = data; } "
+                + "              else if (data && typeof data === 'object') { arr = data.solutions || []; } "
+                + "            } "
+                + "            if (metaFirstGoalTime !== null && metaFirstGoalTime >= 0) { "
+                + "              if (window.__momotFirstGoalTime === undefined || window.__momotFirstGoalTime === null || metaFirstGoalTime < window.__momotFirstGoalTime) { "
+                + "                window.__momotFirstGoalTime = metaFirstGoalTime; "
+                + "                window.__momotFirstGoalGen = metaFirstGoalGen; "
+                + "                window.__momotFirstGoalFormatted = metaFirstGoalFormatted; "
+                + "              } "
+                + "            } "
+                + "            var showNonGoal = false; "
+                + "            var cb = document.getElementById('__momotShowNonGoal'); "
+                + "            if (cb) showNonGoal = !!cb.checked; "
+                + "            var rawJson = JSON.stringify(data || []) + '_' + showNonGoal + '_' + (window.__momotFirstGoalTime || -1); "
                 + "            if (rawJson === window.__momotLastJson && list.children.length > 0) { "
                 + "              return; "
                 + "            } "
                 + "            if (!arr || !arr.length) { "
-                + "              if (!window.__momotLastData || !window.__momotLastData.length) { "
+                + "              if (!window.__momotLastData || (Array.isArray(window.__momotLastData) && !window.__momotLastData.length) || (typeof window.__momotLastData === 'object' && (!window.__momotLastData.solutions || !window.__momotLastData.solutions.length))) { "
                 + "                setStatus('No solutions found.'); "
                 + "                list.style.display = 'none'; "
                 + "                list.innerHTML = ''; "
@@ -795,12 +873,51 @@ public class BlockyUI extends Application {
                 + "              var objs = ln.trim().split(/\\s+/).filter(Boolean).map(Number); "
                 + "              if (objs.length > maxObj) maxObj = objs.length; "
                 + "              var name = (it.modelPath || \"\").split(/[\\\\\\/]/).pop(); "
-                + "              return { it: it, objs: objs, modelName: name }; "
+                + "              var isGoal = false; "
+                + "              if (objs.length > 0) { "
+                + "                isGoal = (objs[0] <= -0.5); "
+                + "              } else { "
+                + "                var match = name.match(/_(-?\\d+(?:\\.\\d+)?)/); "
+                + "                if (match) { "
+                + "                  var firstVal = parseFloat(match[1]); "
+                + "                  isGoal = (firstVal <= -0.5); "
+                + "                } "
+                + "              } "
+                + "              return { it: it, objs: objs, modelName: name, isGoal: isGoal }; "
                 + "            }); "
+                + "            var totalCount = processed.length; "
+                + "            var goalCount = 0; "
+                + "            for (var c=0; c<processed.length; c++) { "
+                + "              if (processed[c].isGoal) { "
+                + "                goalCount++; "
+                + "                var t = processed[c].it.timeToFormMs; "
+                + "                var g = processed[c].it.generationToForm; "
+                + "                if (t !== undefined && t !== null && t >= 0) { "
+                + "                  if (window.__momotFirstGoalTime === undefined || window.__momotFirstGoalTime === null || t < window.__momotFirstGoalTime) { "
+                + "                    window.__momotFirstGoalTime = t; "
+                + "                    window.__momotFirstGoalFormatted = processed[c].it.timeFormatted || ((t / 1000).toFixed(2) + 's'); "
+                + "                    if (g !== undefined && g !== null && g >= 0) { "
+                + "                      window.__momotFirstGoalGen = g; "
+                + "                    } "
+                + "                  } "
+                + "                } "
+                + "              } "
+                + "            } "
+                + "            var goalInfo = ''; "
+                + "            if (window.__momotFirstGoalTime !== undefined && window.__momotFirstGoalTime !== null && window.__momotFirstGoalTime !== Infinity) { "
+                + "              goalInfo = ' | First goal: ' + (window.__momotFirstGoalFormatted || ((window.__momotFirstGoalTime / 1000).toFixed(2) + 's')) + ' (Gen ' + (window.__momotFirstGoalGen !== undefined && window.__momotFirstGoalGen !== null && window.__momotFirstGoalGen >= 0 ? window.__momotFirstGoalGen : '-') + ')'; "
+                + "            } "
+                + "            var displayed = processed; "
+                + "            if (!showNonGoal) { "
+                + "              displayed = processed.filter(function(p) { return p.isGoal; }); "
+                + "            } "
                 + "            if (window.__momotSortCol !== -1) { "
-                + "              processed.sort(function(a, b) { "
+                + "              displayed.sort(function(a, b) { "
                 + "                var vA, vB; "
-                + "                if (window.__momotSortCol === 998) { "
+                + "                if (window.__momotSortCol === 997) { "
+                + "                  vA = (a.it.generationToForm !== undefined && a.it.generationToForm !== null && a.it.generationToForm >= 0) ? a.it.generationToForm : Infinity; "
+                + "                  vB = (b.it.generationToForm !== undefined && b.it.generationToForm !== null && b.it.generationToForm >= 0) ? b.it.generationToForm : Infinity; "
+                + "                } else if (window.__momotSortCol === 998) { "
                 + "                  vA = (a.it.timeToFormMs !== undefined && a.it.timeToFormMs !== null && a.it.timeToFormMs >= 0) ? a.it.timeToFormMs : Infinity; "
                 + "                  vB = (b.it.timeToFormMs !== undefined && b.it.timeToFormMs !== null && b.it.timeToFormMs >= 0) ? b.it.timeToFormMs : Infinity; "
                 + "                } else if (window.__momotSortCol === 999) { "
@@ -816,7 +933,17 @@ public class BlockyUI extends Application {
                 + "                return 0; "
                 + "              }); "
                 + "            } "
-                + "            setStatus(arr.length + ' solution(s) found.'); "
+                + "            if (showNonGoal) { "
+                + "              setStatus(totalCount + ' solution(s) found (' + goalCount + ' reaching goal)' + goalInfo + '.'); "
+                + "            } else { "
+                + "              if (displayed.length > 0) { "
+                + "                setStatus(displayed.length + ' goal-reaching solution(s) shown (' + (totalCount - displayed.length) + ' non-goal hidden)' + goalInfo + '.'); "
+                + "              } else if (totalCount > 0) { "
+                + "                setStatus('0 goal-reaching solutions (' + totalCount + ' non-goal hidden).'); "
+                + "              } else { "
+                + "                setStatus('No solutions found.'); "
+                + "              } "
+                + "            } "
                  + "            var table = document.createElement('table'); "
                  + "            table.style.width = '100%'; table.style.borderCollapse = 'collapse'; table.style.fontSize = '11px'; "
                  + "            table.style.border = '1px solid rgba(255,255,255,0.25)'; "
@@ -837,14 +964,24 @@ public class BlockyUI extends Application {
                  + "              }); "
                  + "              return th; "
                  + "            } "
-                + "                        var objNames = ['Goal Reached', 'Edits', 'Shortest Path', 'Closest to Goal']; "
+                + "                        var objNames = ['Goal Reached', 'Edits', 'Number of Actions', 'Closest to Goal']; "
             + "            var displayCols = Math.max(maxObj, objNames.length); "
             + "            for (var i=0; i<displayCols; i++) hRow.appendChild(mkTh(objNames[i] || ('Obj ' + (i+1)), i)); "
             + "            hRow.appendChild(mkTh('Time (s)', 998)); "
+            + "            hRow.appendChild(mkTh('Gen', 997)); "
             + "            hRow.appendChild(mkTh('Model', 999)); "
             + "            thead.appendChild(hRow); table.appendChild(thead); "
             + "            var tbody = document.createElement('tbody'); "
-            + "            processed.forEach(function(p) { "
+            + "            if (displayed.length === 0 && totalCount > 0 && !showNonGoal) { "
+            + "              var trEmpty = document.createElement('tr'); "
+            + "              var tdEmpty = document.createElement('td'); "
+            + "              tdEmpty.colSpan = displayCols + 3; "
+            + "              tdEmpty.textContent = 'No goal-reaching solutions yet (' + totalCount + ' non-goal solutions hidden).'; "
+            + "              tdEmpty.style.padding = '12px 8px'; tdEmpty.style.textAlign = 'center'; tdEmpty.style.color = '#aaa'; tdEmpty.style.fontStyle = 'italic'; "
+            + "              trEmpty.appendChild(tdEmpty); "
+            + "              tbody.appendChild(trEmpty); "
+            + "            } else { "
+            + "              displayed.forEach(function(p) { "
             + "              var tr = document.createElement('tr'); "
             + "              tr.style.cursor = 'pointer'; "
             + "              if (window.__momotSelectedPath && window.__momotSelectedPath === p.it.modelPath) { "
@@ -874,11 +1011,17 @@ public class BlockyUI extends Application {
             + "                  tText = '-'; "
             + "                } "
             + "              } "
-            + "              tdT.textContent = tText; "
-            + "              tdT.style.padding = '6px 8px'; tdT.style.textAlign = 'right'; "
-            + "              tdT.style.border = '1px solid rgba(255,255,255,0.15)'; "
-            + "              tr.appendChild(tdT); "
-            + "              var tdM = document.createElement('td'); "
+            + "                            tdT.textContent = tText; "
+              + "              tdT.style.padding = '6px 8px'; tdT.style.textAlign = 'right'; "
+              + "              tdT.style.border = '1px solid rgba(255,255,255,0.15)'; "
+              + "              tr.appendChild(tdT); "
+              + "              var tdG = document.createElement('td'); "
+              + "              var gText = (p.it.generationToForm !== undefined && p.it.generationToForm !== null && p.it.generationToForm >= 0) ? String(p.it.generationToForm) : '-'; "
+              + "              tdG.textContent = gText; "
+              + "              tdG.style.padding = '6px 8px'; tdG.style.textAlign = 'right'; "
+              + "              tdG.style.border = '1px solid rgba(255,255,255,0.15)'; "
+              + "              tr.appendChild(tdG); "
+              + "              var tdM = document.createElement('td'); "
             + "              tdM.textContent = p.modelName; tdM.style.padding = '6px 8px'; "
             + "              tdM.style.border = '1px solid rgba(255,255,255,0.15)'; "
             + "              tr.appendChild(tdM); "
@@ -909,6 +1052,7 @@ public class BlockyUI extends Application {
                 + "              }); "
                 + "              tbody.appendChild(tr); "
                 + "            }); "
+                + "            } "
                 + "            table.appendChild(tbody); "
                 + "            var prevScroll = list.scrollTop; "
                 + "            if (typeof list.replaceChildren === 'function') { "
@@ -940,6 +1084,7 @@ public class BlockyUI extends Application {
                 + "        } "
                 + "        window.__momotShowAndRefresh = function(){ try { panel.style.display = 'block'; } catch(e) {} try { refresh(true); } catch(e2) {} }; "
                 + "        refreshBtn.addEventListener('click', function(){ refresh(); }); "
+                + "        cbNonGoal.addEventListener('change', function(){ window.__momotLastJson = null; renderSolutions(); }); "
                 + "        mStopBtn.addEventListener('click', function(){ "
                 + "          try { "
                 + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
@@ -953,6 +1098,9 @@ public class BlockyUI extends Application {
                 + "          try { "
                 + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
                 + "            if (!bridge || !bridge.runMomotWithParams) { setStatus('Java bridge runMomotWithParams not available'); return; } "
+                + "            try { "
+                + "              if (window.__momotFirstGoalReset) window.__momotFirstGoalReset(); "
+                + "            } catch(eR) {} "
                 + "            try { "
                 + "              if (window.Z && typeof window.__preDmQ === 'number') { "
                 + "                window.Q = window.__preDmQ; "
@@ -1621,15 +1769,17 @@ public class BlockyUI extends Application {
             }
         }
 
-        /** Returns MoMoT solutions as a JSON array for WebView rendering. */
+        /** Returns MoMoT solutions as a JSON object for WebView rendering. */
         public String listMomotSolutions() {
             try {
                 List<MomotResultsService.SolutionEntry> sols;
+                MomotResultsService.SearchMetrics metrics = null;
                 String filterDir = momotCurrentOutputDir;
                 if (filterDir != null && !filterDir.trim().isEmpty()) {
                     File outDir = new File(filterDir.trim());
                     if (outDir.exists() && outDir.isDirectory()) {
                         sols = MomotResultsService.loadFromOutputDir(outDir);
+                        metrics = MomotResultsService.loadSearchMetrics(outDir);
                     } else {
                         // Current run directory not yet on disk or invalid; show nothing yet.
                         sols = Collections.emptyList();
@@ -1639,7 +1789,20 @@ public class BlockyUI extends Application {
                     sols = Collections.emptyList();
                 }
                 StringBuilder sb = new StringBuilder();
-                sb.append("[");
+                sb.append("{");
+                sb.append("\"firstGoalTimeMs\":").append(metrics != null && metrics.timeToFirstGoalMs != null ? metrics.timeToFirstGoalMs : -1).append(",");
+                String firstGoalFormatted = "-";
+                if (metrics != null && metrics.timeToFirstGoalMs != null && metrics.timeToFirstGoalMs >= 0) {
+                    double sec = metrics.timeToFirstGoalMs / 1000.0;
+                    if (sec < 0.01 && metrics.timeToFirstGoalMs > 0) {
+                        firstGoalFormatted = "0.01s";
+                    } else {
+                        firstGoalFormatted = String.format(java.util.Locale.US, "%.2fs", sec);
+                    }
+                }
+                sb.append("\"firstGoalFormatted\":\"").append(escapeJsonString(firstGoalFormatted)).append("\",");
+                sb.append("\"firstGoalGen\":").append(metrics != null && metrics.generationOfFirstGoal != null ? metrics.generationOfFirstGoal : -1).append(",");
+                sb.append("\"solutions\":[");
                 for (int i = 0; i < sols.size(); i++) {
                     MomotResultsService.SolutionEntry e = sols.get(i);
                     if (i > 0) sb.append(",");
@@ -1658,13 +1821,14 @@ public class BlockyUI extends Application {
                             formattedTime = String.format(java.util.Locale.US, "%.2fs", sec);
                         }
                     }
-                    sb.append("\"timeFormatted\":\"").append(escapeJsonString(formattedTime)).append("\"");
+                    sb.append("\"timeFormatted\":\"").append(escapeJsonString(formattedTime)).append("\",");
+                    sb.append("\"generationToForm\":").append(e.generationToForm != null ? e.generationToForm : -1);
                     sb.append("}");
                 }
-                sb.append("]");
+                sb.append("]}");
                 return sb.toString();
             } catch (Exception ex) {
-                return "[]";
+                return "{\"solutions\":[]}";
             }
         }
 
@@ -1876,6 +2040,7 @@ public class BlockyUI extends Application {
             pendingShowMomotPanel = true;
             webView.getEngine().executeScript(
                 "try { " +
+                "  if (window.__momotFirstGoalReset) window.__momotFirstGoalReset(); " +
                 "  if (window.__momotShowAndRefresh) window.__momotShowAndRefresh();" +
                 "  if (window.__momotLogClear) window.__momotLogClear();" +
                 "  if (window.__momotSetStatus) window.__momotSetStatus('Running MoMoT...');" +
@@ -1956,9 +2121,7 @@ public class BlockyUI extends Application {
             try {
                 webView.getEngine().executeScript(
                     "try { " +
-                    "  if (window.__momotSetStatus) window.__momotSetStatus('MoMoT finished. Refreshing solutions…');" +
                     "  if (window.__momotShowAndRefresh) window.__momotShowAndRefresh();" +
-                    "  if (window.__momotSetStatus) window.__momotSetStatus('Done.');" +
                     "} catch(e) {}"
                 );
             } catch (Exception ignored3) {

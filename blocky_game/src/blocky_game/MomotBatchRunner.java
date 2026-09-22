@@ -15,7 +15,7 @@ import java.util.Date;
  * Success condition per level (based on objectives.pf column order):
  * - GoalReached == -1.0 (maximization objective printed as negative)
  *
- * Current objective set (see blocky_custom): [GoalReached, Edits, ShortestPath]
+ * Current objective set (see blocky_custom): [GoalReached, Edits, Actions, closestToGoal]
  */
 public final class MomotBatchRunner {
     private MomotBatchRunner() {}

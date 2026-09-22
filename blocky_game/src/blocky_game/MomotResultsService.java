@@ -31,6 +31,36 @@ public final class MomotResultsService {
         public String objectiveLine; // e.g. "-1.0 15.0"
         public String summary;       // best-effort excerpt from solutions.txt
         public Long timeToFormMs;    // time in ms taken to form this solution
+        public Integer generationToForm; // generation in which this solution first appeared
+    }
+
+    public static final class SearchMetrics {
+        public Long timeToFirstGoalMs;
+        public Integer generationOfFirstGoal;
+    }
+
+    public static SearchMetrics loadSearchMetrics(File outDir) {
+        if (outDir == null || !outDir.isDirectory()) return null;
+        SearchMetrics metrics = new SearchMetrics();
+        File f = new File(outDir, "first_goal.txt");
+        if (f.exists()) {
+            List<String> lines = readLines(f);
+            for (String line : lines) {
+                String[] parts = line.split("[:=]");
+                if (parts.length == 2) {
+                    String k = parts[0].trim();
+                    String v = parts[1].trim();
+                    try {
+                        if ("timeToFirstGoalMs".equalsIgnoreCase(k)) {
+                            metrics.timeToFirstGoalMs = Long.parseLong(v);
+                        } else if ("generationOfFirstGoal".equalsIgnoreCase(k)) {
+                            metrics.generationOfFirstGoal = Integer.parseInt(v);
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+        return metrics;
     }
 
     private static final Map<String, List<SolutionEntry>> LAST_VALID_ENTRIES_CACHE = new ConcurrentHashMap<>();
@@ -72,6 +102,7 @@ public final class MomotResultsService {
 
         List<String> objectiveLines = readLines(new File(outDir, "objectives.pf"));
         List<String> timeLines = readLines(new File(outDir, "times.pf"));
+        List<String> genLines = readLines(new File(outDir, "generations.pf"));
         String solutionsTxt = readWhole(new File(outDir, "solutions.txt"));
         List<String> solutionSummaries = splitSolutionSummaries(solutionsTxt);
 
@@ -93,6 +124,15 @@ public final class MomotResultsService {
             if (!ln.isEmpty()) {
                 try {
                     idxToTime.put(i, Long.parseLong(ln));
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        Map<Integer, Integer> idxToGen = new HashMap<>();
+        for (int i = 0; i < genLines.size(); i++) {
+            String ln = genLines.get(i).trim();
+            if (!ln.isEmpty()) {
+                try {
+                    idxToGen.put(i, Integer.parseInt(ln));
                 } catch (NumberFormatException ignored) {}
             }
         }
@@ -129,10 +169,12 @@ public final class MomotResultsService {
                 e.objectiveLine = idxToObjective.get(idx);
                 e.summary = idxToSummary.get(idx);
                 e.timeToFormMs = idxToTime.get(idx);
+                e.generationToForm = idxToGen.get(idx);
                 entries.add(e);
             } else if (objectiveLines.isEmpty()) {
                 if (m < solutionSummaries.size()) e.summary = idxToSummary.get(m);
                 if (m < timeLines.size()) e.timeToFormMs = idxToTime.get(m);
+                if (m < genLines.size()) e.generationToForm = idxToGen.get(m);
                 entries.add(e);
             }
         }

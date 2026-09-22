@@ -175,6 +175,12 @@
                         <option>--add-opens</option>
                         <option>java.xml/com.sun.org.apache.xerces.internal.jaxp=ALL-UNNAMED</option>
                         <option>-Djava.util.Arrays.useLegacyMergeSort=true</option>
+                        <option>-Dprism.dirtyopts=false</option>
+                        <option>-Dprism.disableRegionCaching=true</option>
+                        <option>-Dprism.cacheshapes=false</option>
+                        <option>-Dprism.primtextures=false</option>
+                        <option>-Dprism.maxvram=1G</option>
+                        <option>-Dprism.targetvram=512M</option>
                     </options>
                 </configuration>
             </plugin>
