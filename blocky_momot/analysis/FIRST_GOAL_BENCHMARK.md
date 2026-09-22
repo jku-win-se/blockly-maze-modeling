@@ -90,7 +90,24 @@ The table below summarizes the empirical performance of MOMoT across all 10 Bloc
 
 ---
 
-## 6. Key Insights and Discussion
+## 6. Visual Overview & Charts
+
+### Combined Overview (Time & Search Effort)
+![First Goal Combined Overview](first_goal_combined_overview.png)
+
+### Synthesis Time Distributions (Seconds)
+| Box Plot (Time Distribution) | Mean $\pm$ Std Dev (Time) |
+|:----------------------------:|:-------------------------:|
+| ![Time Boxplot](first_goal_time_sec_boxplot.png) | ![Time Errorbars](first_goal_time_sec_errorbars.png) |
+
+### Search Effort Distributions (Generations)
+| Box Plot (Generation Distribution) | Mean $\pm$ Std Dev (Generations) |
+|:----------------------------------:|:-------------------------------:|
+| ![Generation Boxplot](first_goal_generation_boxplot.png) | ![Generation Errorbars](first_goal_generation_errorbars.png) |
+
+---
+
+## 7. Key Insights and Discussion
 
 ### A. Easy Levels (Levels 1–3)
 - **Extremely High Efficiency**: MOMoT achieves a **100% success rate** across all 30 runs for Levels 1, 2, and 3.
@@ -110,7 +127,7 @@ The table below summarizes the empirical performance of MOMoT across all 10 Bloc
 
 ---
 
-## 7. Output Datasets & Schema
+## 8. Output Datasets & Schema
 
 The benchmark produces two CSV files per execution session:
 
@@ -130,7 +147,7 @@ level,inputXmi,henshinModule,solutionLength,totalRuns,successCount,successRate,m
 
 ---
 
-## 8. Execution & Reproduction Instructions
+## 9. Execution & Reproduction Instructions
 
 ### Automated Script Execution
 
