@@ -32,6 +32,7 @@ public class ParetoFrontPublisherListener extends AbstractProgressListener {
     private volatile long lastNotifyTimeMs = 0;
     private volatile int populationSize = 50;
     private volatile Algorithm currentAlgorithm;
+    private volatile boolean stopOnFirstGoal = false;
 
     public ParetoFrontPublisherListener() {}
 
@@ -39,6 +40,14 @@ public class ParetoFrontPublisherListener extends AbstractProgressListener {
         if (initialSubscriber != null) {
             subscribers.add(initialSubscriber);
         }
+    }
+
+    public void setStopOnFirstGoal(boolean stopOnFirstGoal) {
+        this.stopOnFirstGoal = stopOnFirstGoal;
+    }
+
+    public boolean isStopOnFirstGoal() {
+        return stopOnFirstGoal;
     }
 
     public void setPopulationSize(int populationSize) {
@@ -189,6 +198,15 @@ public class ParetoFrontPublisherListener extends AbstractProgressListener {
                             if (isGoalSolution(s)) {
                                 firstGoalReachedTimeMs.accumulateAndGet(time, (curr, val) -> curr < 0 ? val : Math.min(curr, val));
                                 firstGoalReachedGeneration.accumulateAndGet(gen, (curr, val) -> curr < 0 ? val : Math.min(curr, val));
+
+                                boolean shouldStop = this.stopOnFirstGoal || Boolean.getBoolean("blocky.stopOnFirstGoal");
+                                blocky_momot_runner.MomotRunContext.Config ctx = blocky_momot_runner.MomotRunContext.get();
+                                if (ctx != null && ctx.stopOnFirstGoal) {
+                                    shouldStop = true;
+                                }
+                                if (shouldStop && algorithm != null && !algorithm.isTerminated()) {
+                                    algorithm.terminate();
+                                }
                             }
 
                             // Check if a solution with identical objectives already exists in globalParetoFront

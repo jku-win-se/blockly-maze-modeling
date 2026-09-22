@@ -224,6 +224,15 @@
                             <mainClass>blocky_game.MomotSimpleMinSolutionLengthRunner</mainClass>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>first-goal-benchmark</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>blocky_game.MomotFirstGoalBenchmarkRunner</mainClass>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>

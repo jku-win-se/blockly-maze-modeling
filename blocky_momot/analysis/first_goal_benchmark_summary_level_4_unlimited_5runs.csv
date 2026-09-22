@@ -1,0 +1,1 @@
+level,inputXmi,henshinModule,solutionLength,totalRuns,successCount,successRate,meanTimeMs,stdDevTimeMs,medianTimeMs,minTimeMs,maxTimeMs,q1TimeMs,q3TimeMs,iqrTimeMs,meanTimeSec,stdDevTimeSec,medianTimeSec,minTimeSec,maxTimeSec,q1TimeSec,q3TimeSec,iqrTimeSec,meanGen,stdDevGen,medianGen,minGen,maxGen,q1Gen,q3Gen,iqrGen,populationSize,maxEvaluations

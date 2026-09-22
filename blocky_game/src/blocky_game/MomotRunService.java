@@ -35,18 +35,24 @@ public final class MomotRunService {
         public final int maxEvaluations;
         public final int nrRuns;
         public final int solutionLength;
+        public final boolean stopOnFirstGoal;
 
         public RunSpec(String inputXmi, String outputBase) {
-            this(inputXmi, outputBase, -1, -1, -1, -1);
+            this(inputXmi, outputBase, -1, -1, -1, -1, false);
         }
 
         public RunSpec(String inputXmi, String outputBase, int populationSize, int maxEvaluations, int nrRuns, int solutionLength) {
+            this(inputXmi, outputBase, populationSize, maxEvaluations, nrRuns, solutionLength, false);
+        }
+
+        public RunSpec(String inputXmi, String outputBase, int populationSize, int maxEvaluations, int nrRuns, int solutionLength, boolean stopOnFirstGoal) {
             this.inputXmi = Objects.requireNonNull(inputXmi);
             this.outputBase = Objects.requireNonNull(outputBase);
             this.populationSize = populationSize;
             this.maxEvaluations = maxEvaluations;
             this.nrRuns = nrRuns;
             this.solutionLength = solutionLength;
+            this.stopOnFirstGoal = stopOnFirstGoal;
         }
     }
 
@@ -337,8 +343,14 @@ public final class MomotRunService {
                 );
             }
 
-            Object cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class, subClass)
-                    .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir, safeSubscriber);
+            Object cfg;
+            try {
+                cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class, subClass, boolean.class)
+                        .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir, safeSubscriber, spec.stopOnFirstGoal);
+            } catch (NoSuchMethodException e) {
+                cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class, subClass)
+                        .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir, safeSubscriber);
+            }
             ctxClass.getMethod("set", cfgClass).invoke(null, cfg);
         } catch (Throwable t) {
             System.err.println("[MomotRunService] Failed to install run context: " + t);

@@ -36,12 +36,18 @@ These defaults live in `MomotSimpleMinSolutionLengthRunner` and can be overridde
 
 ---
 
-## Prerequisites
+## Prerequisites & Hardware Environment
 
+### Software Prerequisites
 1. **JDK 17** (tested with Eclipse Temurin 17).
 2. **Maven 3.9+** at the repository root.
 3. **Python 3.10+** with `matplotlib` (only for regenerating charts).
 4. **Git Bash** on Windows (or any POSIX shell).
+
+### Hardware & System Specifications
+- **Processor (CPU)**: 11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz (8 Cores, 16 Threads)
+- **Memory (RAM)**: 32.0 GB Physical RAM
+- **Operating System**: Microsoft Windows 11 Pro (64-bit, Build 26200)
 
 Build once:
 

@@ -195,6 +195,9 @@ public class blocky_custom extends blocky {
 
         ParetoFrontPublisherListener pubListener = getPublisherListener();
         pubListener.setPopulationSize(getOverriddenPopulationSize());
+        MomotRunContext.Config ctx = MomotRunContext.get();
+        boolean stopOnFirstGoal = (ctx != null && ctx.stopOnFirstGoal) || Boolean.getBoolean("blocky.stopOnFirstGoal");
+        pubListener.setStopOnFirstGoal(stopOnFirstGoal);
 
         Path outputDir = getOutputDirectory();
         pubListener.addSubscriber((nfe, paretoFront) -> {
@@ -203,7 +206,6 @@ public class blocky_custom extends blocky {
             }
         });
 
-        MomotRunContext.Config ctx = MomotRunContext.get();
         if (ctx != null && ctx.paretoFrontSubscriber != null) {
             pubListener.addSubscriber(ctx.paretoFrontSubscriber);
         }
