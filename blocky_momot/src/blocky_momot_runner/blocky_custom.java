@@ -25,6 +25,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import at.ac.tuwien.big.momot.search.algorithm.operator.mutation.TransformationParameterMutation;
+import at.ac.tuwien.big.momot.search.algorithm.operator.mutation.TransformationPlaceholderMutation;
+import org.moeaframework.core.operator.OnePointCrossover;
+import org.moeaframework.core.operator.TournamentSelection;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.henshin.interpreter.EGraph;
 import org.moeaframework.algorithm.NSGAII;
@@ -109,7 +113,14 @@ public class blocky_custom extends blocky {
 
         // Clear and re-register algorithms to use the new factory
         orchestration.getAlgorithms().clear();
-        orchestration.addAlgorithm("NSGA_II", _createRegisteredAlgorithm_0(orchestration, moea, local));
+        String algName = System.getProperty("blocky.algorithm", "NSGA_II").trim();
+        if ("RandomSearch".equalsIgnoreCase(algName)) {
+            orchestration.addAlgorithm("RandomSearch", (at.ac.tuwien.big.moea.search.algorithm.provider.IRegisteredAlgorithm) (Object) moea.createRandomSearch());
+        } else if ("eMOEA".equalsIgnoreCase(algName)) {
+            orchestration.addAlgorithm("eMOEA", (at.ac.tuwien.big.moea.search.algorithm.provider.IRegisteredAlgorithm) (Object) moea.createEpsilonMOEA());
+        } else {
+            orchestration.addAlgorithm("NSGA_II", _createRegisteredAlgorithm_0(orchestration, moea, local));
+        }
 
         return orchestration;
     }
@@ -145,7 +156,20 @@ public class blocky_custom extends blocky {
             final TransformationSearchOrchestration orchestration,
             final EvolutionaryAlgorithmFactory<TransformationSolution> moea,
             final LocalSearchAlgorithmFactory<TransformationSolution> local) {
-        final IRegisteredAlgorithm<NSGAII> delegate = super._createRegisteredAlgorithm_0(orchestration, moea, local);
+        double crossoverRate = Double.parseDouble(System.getProperty("blocky.crossoverRate", "0.2"));
+        double placeholderMutationRate = Double.parseDouble(
+                System.getProperty("blocky.placeholderMutationRate", System.getProperty("blocky.mutationRate", "0.35")));
+        double parameterMutationRate = Double.parseDouble(
+                System.getProperty("blocky.parameterMutationRate", System.getProperty("blocky.mutationRate", "0.25")));
+
+        TournamentSelection selection = new TournamentSelection(2);
+        OnePointCrossover crossover = new OnePointCrossover(crossoverRate);
+        TransformationPlaceholderMutation placeholderMutation = new TransformationPlaceholderMutation(placeholderMutationRate);
+        TransformationParameterMutation parameterMutation =
+                new TransformationParameterMutation(parameterMutationRate, orchestration.getModuleManager());
+
+        final IRegisteredAlgorithm<NSGAII> delegate = moea.createNSGAII(selection, crossover, placeholderMutation, parameterMutation);
+
         return new IRegisteredAlgorithm<NSGAII>() {
             @Override
             public NSGAII createAlgorithm() {
@@ -171,14 +195,132 @@ public class blocky_custom extends blocky {
         };
     }
 
+    private ProgressListener createStagnationInjectionListener(final TransformationSearchOrchestration orchestration) {
+        final int maxStagnationGens = Integer.getInteger("blocky.stagnationGenerations", 15);
+        final double reseedRatio = Double.parseDouble(System.getProperty("blocky.reseedRatio", "0.2"));
+        final boolean stagnationEnabled = Boolean.parseBoolean(System.getProperty("blocky.stagnationEnabled", "true"));
+
+        return new AbstractProgressListener() {
+            private int lastEvaluatedGen = -1;
+            private double lastBestClosestToGoal = Double.MAX_VALUE;
+            private int stagnationCounter = 0;
+
+            @Override
+            public void update(ProgressEvent event) {
+                if (!stagnationEnabled || isStarted(event) || isFinished(event) || isSeedStarted(event)) {
+                    if (isStarted(event) || isSeedStarted(event)) {
+                        lastEvaluatedGen = -1;
+                        lastBestClosestToGoal = Double.MAX_VALUE;
+                        stagnationCounter = 0;
+                    }
+                    return;
+                }
+
+                Algorithm alg = getPublisherListener().getCurrentAlgorithm();
+                if (alg == null && event.getExecutor() instanceof SearchExecutor executor) {
+                    alg = executor.getAlgorithm();
+                }
+
+                if (alg instanceof org.moeaframework.algorithm.AbstractEvolutionaryAlgorithm ea) {
+                    Population pop = ea.getPopulation();
+                    if (pop == null || pop.isEmpty()) {
+                        return;
+                    }
+
+                    int nfe = alg.getNumberOfEvaluations();
+                    if (nfe <= 0) {
+                        nfe = event.getCurrentNFE();
+                    }
+                    int popSize = getOverriddenPopulationSize();
+                    int currentGen = nfe > 0 ? Math.max(1, (nfe + popSize - 1) / popSize) : 1;
+
+                    if (currentGen <= lastEvaluatedGen) {
+                        return;
+                    }
+                    lastEvaluatedGen = currentGen;
+
+                    double minClosest = Double.MAX_VALUE;
+                    for (Solution s : pop) {
+                        if (s != null && s.getObjectives() != null && s.getObjectives().length > 3) {
+                            double closest = s.getObjectives()[3];
+                            if (closest < minClosest) {
+                                minClosest = closest;
+                            }
+                        }
+                    }
+
+                    if (minClosest < Double.MAX_VALUE) {
+                        if (minClosest < lastBestClosestToGoal - 1e-3) {
+                            lastBestClosestToGoal = minClosest;
+                            stagnationCounter = 0;
+                        } else {
+                            stagnationCounter++;
+                        }
+                    }
+
+                    if (stagnationCounter >= maxStagnationGens) {
+                        int reseedCount = (int) Math.round(pop.size() * reseedRatio);
+                        if (reseedCount > 0 && reseedCount < pop.size()) {
+                            System.out.println("[MoMoT Stagnation] Gen " + currentGen + ": Stagnation detected ("
+                                    + stagnationCounter + " gens without improvement on closestToGoal=" + lastBestClosestToGoal
+                                    + "). Injecting diversity (re-seeding " + reseedCount + " solutions)...");
+
+                            reseedPopulation(pop, reseedCount, orchestration);
+                        }
+                        stagnationCounter = 0;
+                    }
+                }
+            }
+        };
+    }
+
+    private void reseedPopulation(Population pop, int reseedCount, TransformationSearchOrchestration orchestration) {
+        try {
+            List<Solution> sortedList = new java.util.ArrayList<>();
+            for (Solution s : pop) {
+                if (s != null) {
+                    sortedList.add(s);
+                }
+            }
+
+            sortedList.sort((s1, s2) -> {
+                double c1 = (s1.getObjectives() != null && s1.getObjectives().length > 3) ? s1.getObjectives()[3] : Double.MAX_VALUE;
+                double c2 = (s2.getObjectives() != null && s2.getObjectives().length > 3) ? s2.getObjectives()[3] : Double.MAX_VALUE;
+                return Double.compare(c2, c1);
+            });
+
+            at.ac.tuwien.big.momot.problem.TransformationProblem problem = orchestration.getProblem();
+            if (problem == null) {
+                return;
+            }
+
+            for (int i = 0; i < reseedCount && i < sortedList.size(); i++) {
+                Solution worstSol = sortedList.get(i);
+                int idx = pop.indexOf(worstSol);
+                if (idx >= 0) {
+                    TransformationSolution newSol = (TransformationSolution) problem.newSolution();
+                    problem.evaluate(newSol);
+                    pop.replace(idx, newSol);
+                }
+            }
+        } catch (Throwable t) {
+            System.err.println("[MoMoT Stagnation] Warning: Error re-seeding population: " + t.getMessage());
+        }
+    }
+
     private ProgressListener createPerRunSeedListener() {
         return new AbstractProgressListener() {
             @Override
             public void update(ProgressEvent event) {
                 if (isStarted(event) || isSeedStarted(event)) {
-                    int seed = event.getCurrentSeed();
-                    if (seed > 0) {
-                        PRNG.setSeed(seed);
+                    MomotRunContext.Config ctx = MomotRunContext.get();
+                    if (ctx != null && ctx.seed > 0) {
+                        PRNG.setSeed(ctx.seed);
+                    } else {
+                        int seed = event.getCurrentSeed();
+                        if (seed > 0) {
+                            PRNG.setSeed(seed);
+                        }
                     }
                 }
             }
@@ -187,15 +329,20 @@ public class blocky_custom extends blocky {
 
     @Override
     protected SearchExperiment<TransformationSolution> createExperiment(TransformationSearchOrchestration orchestration) {
+        MomotRunContext.Config ctx = MomotRunContext.get();
+        if (ctx != null && ctx.seed > 0) {
+            PRNG.setSeed(ctx.seed);
+        }
+
         SearchExperiment<TransformationSolution> experiment =
                 new SearchExperiment<>(orchestration, getOverriddenMaxEvaluations());
         experiment.setNumberOfRuns(getOverriddenNrRuns());
         experiment.addProgressListener(_createListener_0());
         experiment.addProgressListener(createPerRunSeedListener());
+        experiment.addProgressListener(createStagnationInjectionListener(orchestration));
 
         ParetoFrontPublisherListener pubListener = getPublisherListener();
         pubListener.setPopulationSize(getOverriddenPopulationSize());
-        MomotRunContext.Config ctx = MomotRunContext.get();
         boolean stopOnFirstGoal = (ctx != null && ctx.stopOnFirstGoal) || Boolean.getBoolean("blocky.stopOnFirstGoal");
         pubListener.setStopOnFirstGoal(stopOnFirstGoal);
 

@@ -208,9 +208,9 @@ search = {
 	algorithms = {
 		NSGA_II : moea.createNSGAII(
 			new TournamentSelection(2),
-			new OnePointCrossover(1.0),
-			new TransformationPlaceholderMutation(0.15),
-			new TransformationParameterMutation(0.1, orchestration.moduleManager))
+			new OnePointCrossover(0.2),
+			new TransformationPlaceholderMutation(0.35),
+			new TransformationParameterMutation(0.25, orchestration.moduleManager))
 	}
 }
 

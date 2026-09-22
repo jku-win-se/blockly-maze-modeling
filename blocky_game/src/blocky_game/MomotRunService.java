@@ -36,16 +36,21 @@ public final class MomotRunService {
         public final int nrRuns;
         public final int solutionLength;
         public final boolean stopOnFirstGoal;
+        public final int seed;
 
         public RunSpec(String inputXmi, String outputBase) {
-            this(inputXmi, outputBase, -1, -1, -1, -1, false);
+            this(inputXmi, outputBase, -1, -1, -1, -1, false, -1);
         }
 
         public RunSpec(String inputXmi, String outputBase, int populationSize, int maxEvaluations, int nrRuns, int solutionLength) {
-            this(inputXmi, outputBase, populationSize, maxEvaluations, nrRuns, solutionLength, false);
+            this(inputXmi, outputBase, populationSize, maxEvaluations, nrRuns, solutionLength, false, -1);
         }
 
         public RunSpec(String inputXmi, String outputBase, int populationSize, int maxEvaluations, int nrRuns, int solutionLength, boolean stopOnFirstGoal) {
+            this(inputXmi, outputBase, populationSize, maxEvaluations, nrRuns, solutionLength, stopOnFirstGoal, -1);
+        }
+
+        public RunSpec(String inputXmi, String outputBase, int populationSize, int maxEvaluations, int nrRuns, int solutionLength, boolean stopOnFirstGoal, int seed) {
             this.inputXmi = Objects.requireNonNull(inputXmi);
             this.outputBase = Objects.requireNonNull(outputBase);
             this.populationSize = populationSize;
@@ -53,6 +58,7 @@ public final class MomotRunService {
             this.nrRuns = nrRuns;
             this.solutionLength = solutionLength;
             this.stopOnFirstGoal = stopOnFirstGoal;
+            this.seed = seed;
         }
     }
 
@@ -83,9 +89,15 @@ public final class MomotRunService {
     private static volatile Class<?> cachedRunnerClass;
     private static volatile ClassLoader cachedRunnerClassLoader;
 
+    private static void ensureXmlParser() {
+        System.setProperty("javax.xml.parsers.SAXParserFactory", "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl");
+        System.setProperty("javax.xml.parsers.DocumentBuilderFactory", "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl");
+    }
+
     /** Pre-load the MoMoT runner class (required before parallel benchmark runs). */
     public static void warmupRunnerClass() {
         try {
+            ensureXmlParser();
             ensureBlockyInputForClassInit();
             resolveRunnerClass(MomotRunService.class.getClassLoader());
         } catch (ClassNotFoundException e) {
@@ -148,6 +160,7 @@ public final class MomotRunService {
     }
 
     private static String runInternalLocked(RunSpec spec, Consumer<String> logLine, Consumer<String> onOutputDirReady, Object subscriber) {
+        ensureXmlParser();
         if (logLine != null) logLine.accept("[MoMoT] Starting search logic...");
 
         File currentDir = new File(System.getProperty("user.dir"));
@@ -345,11 +358,16 @@ public final class MomotRunService {
 
             Object cfg;
             try {
-                cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class, subClass, boolean.class)
-                        .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir, safeSubscriber, spec.stopOnFirstGoal);
-            } catch (NoSuchMethodException e) {
-                cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class, subClass)
-                        .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir, safeSubscriber);
+                cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class, subClass, boolean.class, int.class)
+                        .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir, safeSubscriber, spec.stopOnFirstGoal, spec.seed);
+            } catch (NoSuchMethodException e1) {
+                try {
+                    cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class, subClass, boolean.class)
+                            .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir, safeSubscriber, spec.stopOnFirstGoal);
+                } catch (NoSuchMethodException e2) {
+                    cfg = cfgClass.getConstructor(int.class, int.class, int.class, int.class, Path.class, subClass)
+                            .newInstance(spec.populationSize, spec.maxEvaluations, spec.nrRuns, solutionLength, outputDir, safeSubscriber);
+                }
             }
             ctxClass.getMethod("set", cfgClass).invoke(null, cfg);
         } catch (Throwable t) {
