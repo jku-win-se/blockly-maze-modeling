@@ -23,12 +23,25 @@ To maximize execution efficiency and eliminate post-goal evaluation overhead, th
 4. **Immediate Exit**: Search terminates immediately without completing the remaining generation evaluations. Failed runs run up to the full budget of 15,000 evaluations.
 
 ### Expected Time to Target (ETT) Formula
+
 For a level with success rate $p = \frac{\text{successCount}}{N}$:
-- If $p = 0$, $\text{ETT} = \infty$ and $\text{EET} = \infty$.
+
+- If $p = 0$, then $\text{ETT} = \infty$ and $\text{EET} = \infty$.
 - If $p > 0$:
-  $$\text{ETT} = \left(\frac{1-p}{p}\right) \cdot \bar{t}_{\text{failed}} + \bar{t}_{\text{success}}$$
-  $$\text{EET} = \left(\frac{1-p}{p}\right) \cdot \text{maxEvaluations} + \bar{g}_{\text{success}} \cdot \text{populationSize}$$
-  where $\bar{t}_{\text{failed}}$ is the mean wall-clock time of failed trials, $\bar{t}_{\text{success}}$ is the mean time of successful trials, and $\bar{g}_{\text{success}}$ is the mean generation number at goal discovery.
+
+$$
+\text{ETT} = \left(\frac{1-p}{p}\right) \cdot \bar{t}_{\text{failed}} + \bar{t}_{\text{success}}
+$$
+
+$$
+\text{EET} = \left(\frac{1-p}{p}\right) \cdot \text{maxEvaluations} + \bar{g}_{\text{success}} \cdot \text{populationSize}
+$$
+
+where:
+- $\bar{t}_{\text{failed}}$ is the mean wall-clock time of failed trials,
+- $\bar{t}_{\text{success}}$ is the mean wall-clock time of successful trials,
+- $\bar{g}_{\text{success}}$ is the mean generation number at goal discovery,
+- $\text{populationSize} = 150$ and $\text{maxEvaluations} = 15,000$.
 
 ---
 
