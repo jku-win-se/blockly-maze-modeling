@@ -10,7 +10,7 @@ To maximize execution efficiency and eliminate post-goal evaluation overhead, th
 
 1. **RQ1 (Time Effort & ETT)**: How long (wall-clock time in seconds) does multi-objective search take on successful runs, and what is the **Expected Time to Target (ETT)** when accounting for restart overhead on failed runs?
 2. **RQ2 (Search Depth & EET)**: How many evolutionary generations (and fitness evaluations / **Expected Evaluations to Target (EET)**) are required before a goal-reaching program is generated?
-3. **RQ3 (Variance and Consistency)**: Across 30 independent stochastic runs per level with distinct random seeds ($i = 1 \dots 30$), what is the distribution and spread (mean, standard deviation, median, IQR) of synthesis effort?
+3. **RQ3 (Variance and Consistency)**: Across 10 independent stochastic runs per level with distinct random seeds ($i = 1 \dots 10$), what is the distribution and spread (mean, standard deviation, median, IQR) of synthesis effort?
 
 ---
 
@@ -143,7 +143,7 @@ level,inputXmi,henshinModule,solutionLength,totalRuns,successCount,successRate,m
 Run from repository root:
 
 ```bash
-# Execute full 10-level benchmark with 30 runs
+# Execute full 10-level benchmark with 10 runs
 ./blocky_momot/analysis/run_first_goal_benchmark.sh [session_name]
 ```
 
