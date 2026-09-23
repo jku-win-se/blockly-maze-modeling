@@ -21,10 +21,18 @@ The evaluation models stochastic restarts using the standard **Expected Running 
 Let each independent search run have a probability $p \in [0, 1]$ of finding a goal-reaching solution (`GoalReached <= -0.5`). Under repeated independent trials with restarts upon timeout/failure:
 
 1. The number of trials $K$ until the first successful synthesis follows a Geometric distribution:
-   $$K \sim \text{Geometric}(p), \quad \mathbb{E}[K] = \frac{1}{p}$$
+
+$$
+K \sim \text{Geometric}(p), \quad \mathbb{E}[K] = \frac{1}{p}
+$$
+
 2. The expected number of failed trials prior to the first success is:
-   $$\mathbb{E}[K - 1] = \frac{1-p}{p}$$
-3. By linearity of expectation over independent runs, the **Expected Time to Target (ETT)** is:
+
+$$
+\mathbb{E}[K - 1] = \frac{1-p}{p}
+$$
+
+3. By linearity of expectation over independent runs, the **Expected Time to Target (ETT)** and **Expected Evaluations to Target (EET)** are:
 
 - If $p = 0$, then $\text{ETT} = \infty$ and $\text{EET} = \infty$.
 - If $p > 0$:
@@ -38,10 +46,10 @@ $$
 $$
 
 where:
-- $p = \frac{\text{successCount}}{N}$ is the empirical success rate ($N = 10$),
-- $\bar{t}_{\text{failed}}$ is the sample mean wall-clock time of failed runs,
-- $\bar{t}_{\text{success}}$ is the sample mean wall-clock time of successful runs,
-- $\bar{e}_{\text{failed}} = \bar{e}_{\text{success}} = \text{maxEvaluations} = 15,000$ evaluations per trial ($\text{populationSize} = 150 \times 100\text{ generations}$).
+- $p = \frac{\text{successCount}}{N}$ is the empirical success rate ($N = 10$).
+- $\bar{t}_{\text{failed}}$ is the sample mean wall-clock time of failed runs (seconds).
+- $\bar{t}_{\text{success}}$ is the sample mean wall-clock time of successful runs (seconds).
+- $\bar{e}_{\text{failed}} = \bar{e}_{\text{success}} = \text{maxEvaluations} = 15{,}000$ evaluations per trial ($150\text{ population} \times 100\text{ generations}$).
 
 ---
 
@@ -112,7 +120,7 @@ The table below summarizes the empirical performance of MOMoT across all 10 Bloc
 ## 6. Key Insights and Discussion
 
 ### A. Easy Levels (Levels 1 & 3)
-- **High Convergence**: Levels 1 and 3 reach **90%–100% success rates** with minimal expected times ($\text{ETT} \le 1.81\text{s}$).
+- **High Convergence**: Levels 1 and 3 reach **90%–100% success rates** with minimal expected times ($\text{ETT} \le 1.81\text{ s}$).
 
 ### B. Intermediate Levels (Levels 2, 4, 5, 6, 7, 9)
 - **Consistent Success**: Levels 2, 4, 5, 6, 7, and 9 successfully find valid goal-reaching programs at minimal solution length.
@@ -120,7 +128,7 @@ The table below summarizes the empirical performance of MOMoT across all 10 Bloc
 
 ### C. Advanced Levels (Levels 8 and 10)
 - **Complex Control Flow**: Level 8 (solution length 12) and Level 10 (solution length 38) require intricate combinations of conditional and loop structures.
-- **Feasible Synthesis**: Both Level 8 ($\text{ETT} = 43.3\text{s}$) and Level 10 ($\text{ETT} = 163.8\text{s} \approx 2.7\text{ min}$) achieve target solutions within finite expected search budgets.
+- **Feasible Synthesis**: Both Level 8 ($\text{ETT} = 43.3\text{ s}$) and Level 10 ($\text{ETT} = 163.8\text{ s} \approx 2.7\text{ min}$) achieve target solutions within finite expected search budgets.
 
 ---
 
