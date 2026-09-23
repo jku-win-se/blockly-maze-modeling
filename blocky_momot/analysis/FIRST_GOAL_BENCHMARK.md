@@ -1,30 +1,30 @@
-# MOMoT First-Goal Benchmark and Statistical Analysis
+# MOMoT Target Solution Benchmark and Statistical Analysis
 
-This document describes the **MOMoT First-Goal Benchmark**, a statistically rigorous evaluation framework measuring the time, generation search effort, and **Expected Time to Target (ETT)** required by MOMoT to synthesize its **first goal-reaching solution** across all 10 Blockly maze levels.
+This document describes the **MOMoT Target Solution Benchmark**, a statistically rigorous evaluation framework measuring the synthesis time, search effort, and **Expected Time to Target (ETT)** required by MOMoT to synthesize goal-reaching solutions across all 10 Blockly maze levels.
 
-To maximize execution efficiency and eliminate post-goal evaluation overhead, the search employs **Early Stopping**: as soon as any candidate program achieves `GoalReached <= -0.5`, the exact formation time and generation number are recorded and the NSGA-II search terminates immediately via `algorithm.terminate()`.
+The evaluation models stochastic restarts using the standard **Expected Running Time (ERT / ETT)** methodology from evolutionary computation, accounting for the runtime and evaluation budget of both successful trials and failed restarts.
 
 ---
 
 ## 1. Purpose and Research Questions
 
 1. **RQ1 (Time Effort & ETT)**: How long (wall-clock time in seconds) does multi-objective search take on successful runs, and what is the **Expected Time to Target (ETT)** when accounting for restart overhead on failed runs?
-2. **RQ2 (Search Depth & EET)**: How many evolutionary generations (and fitness evaluations / **Expected Evaluations to Target (EET)**) are required before a goal-reaching program is generated?
+2. **RQ2 (Evaluation Effort & EET)**: What is the **Expected Evaluations to Target (EET)** required to discover a goal-reaching program under independent repeated runs?
 3. **RQ3 (Variance and Consistency)**: Across 10 independent stochastic runs per level with distinct random seeds ($i = 1 \dots 10$), what is the distribution and spread (mean, standard deviation, median, IQR) of synthesis effort?
 
 ---
 
-## 2. Early Stopping & ETT Protocol
+## 2. Statistical Framework & ETT Protocol
 
-### Early Stopping Protocol
-1. **Objective Tracking**: Solutions are continuously evaluated against MOMoT's multi-objective fitness function.
-2. **Goal Reached Condition**: `GoalReached <= -0.5` signifies that the simulation successfully guided the avatar from start to goal cell.
-3. **Event Interception**: `ParetoFrontPublisherListener` detects the first solution satisfying `GoalReached <= -0.5`, records `timeToFirstGoalMs` and `generationOfFirstGoal`, writes `first_goal.txt`, and calls `algorithm.terminate()` on the active MOEA `Algorithm` instance.
-4. **Immediate Exit**: Search terminates immediately without completing the remaining generation evaluations. Failed runs run up to the full budget of 15,000 evaluations.
+### Restart Model & Expected Time to Target (ETT)
 
-### Expected Time to Target (ETT) Formula
+Let each independent search run have a probability $p \in [0, 1]$ of finding a goal-reaching solution (`GoalReached <= -0.5`). Under repeated independent trials with restarts upon timeout/failure:
 
-For a level with success rate $p = \frac{\text{successCount}}{N}$:
+1. The number of trials $K$ until the first successful synthesis follows a Geometric distribution:
+   $$K \sim \text{Geometric}(p), \quad \mathbb{E}[K] = \frac{1}{p}$$
+2. The expected number of failed trials prior to the first success is:
+   $$\mathbb{E}[K - 1] = \frac{1-p}{p}$$
+3. By linearity of expectation over independent runs, the **Expected Time to Target (ETT)** is:
 
 - If $p = 0$, then $\text{ETT} = \infty$ and $\text{EET} = \infty$.
 - If $p > 0$:
@@ -34,14 +34,14 @@ $$
 $$
 
 $$
-\text{EET} = \left(\frac{1-p}{p}\right) \cdot \text{maxEvaluations} + \bar{g}_{\text{success}} \cdot \text{populationSize}
+\text{EET} = \left(\frac{1-p}{p}\right) \cdot \bar{e}_{\text{failed}} + \bar{e}_{\text{success}} = \frac{\text{maxEvaluations}}{p}
 $$
 
 where:
-- $\bar{t}_{\text{failed}}$ is the mean wall-clock time of failed trials,
-- $\bar{t}_{\text{success}}$ is the mean wall-clock time of successful trials,
-- $\bar{g}_{\text{success}}$ is the mean generation number at goal discovery,
-- $\text{populationSize} = 150$ and $\text{maxEvaluations} = 15,000$.
+- $p = \frac{\text{successCount}}{N}$ is the empirical success rate ($N = 10$),
+- $\bar{t}_{\text{failed}}$ is the sample mean wall-clock time of failed runs,
+- $\bar{t}_{\text{success}}$ is the sample mean wall-clock time of successful runs,
+- $\bar{e}_{\text{failed}} = \bar{e}_{\text{success}} = \text{maxEvaluations} = 15,000$ evaluations per trial ($\text{populationSize} = 150 \times 100\text{ generations}$).
 
 ---
 
@@ -79,24 +79,24 @@ Each level uses canonical minimal solution lengths and the comprehensive Henshin
 
 The table below summarizes the empirical performance of MOMoT across all 10 Blockly maze levels ($N = 10$ independent runs per level, population size = 150, max evaluations = 15,000):
 
-| Level | Henshin Rule Set | Canonical Sol. Length | Success Rate | Median Time (s) | Mean Time (s) | Median Gen. | Mean Gen. | Mean Failed Time (s) | ETT (s) | EET |
-|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **1** | `henshin_text` | 2 | **100.0%** (10/10) | 1.423 s | 1.428 s | 100.0 | 100.0 | N/A | **1.428 s** | **15,000.0** |
-| **2** | `henshin_text` | 8 | **20.0%** (2/10) | 2.556 s | 2.556 s | 100.0 | 100.0 | 2.516 s | **12.619 s** | **75,000.0** |
-| **3** | `henshin_text` | 2 | **90.0%** (9/10) | 1.633 s | 1.631 s | 100.0 | 100.0 | 1.650 s | **1.814 s** | **16,666.7** |
-| **4** | `henshin_text` | 11 | **10.0%** (1/10) | 2.977 s | 2.977 s | 100.0 | 100.0 | 3.008 s | **30.051 s** | **150,000.0** |
-| **5** | `henshin_text` | 8 | **10.0%** (1/10) | 2.543 s | 2.543 s | 100.0 | 100.0 | 2.538 s | **25.382 s** | **150,000.0** |
-| **6** | `henshin_text` | 10 | **10.0%** (1/10) | 2.631 s | 2.631 s | 100.0 | 100.0 | 2.762 s | **27.491 s** | **150,000.0** |
-| **7** | `henshin_text` | 8 | **10.0%** (1/10) | 2.941 s | 2.941 s | 100.0 | 100.0 | 2.889 s | **28.946 s** | **150,000.0** |
-| **8** | `henshin_text` | 12 | **10.0%** (1/10) | 5.627 s | 5.627 s | 100.0 | 100.0 | 4.190 s | **43.336 s** | **150,000.0** |
-| **9** | `henshin_text` | 8 | **20.0%** (2/10) | 3.976 s | 3.976 s | 100.0 | 100.0 | 3.916 s | **19.640 s** | **75,000.0** |
-| **10**| `henshin_text` | 38 | **10.0%** (1/10) | 15.542 s | 15.542 s | 100.0 | 100.0 | 16.478 s | **163.848 s** | **150,000.0** |
+| Level | Henshin Rule Set | Canonical Sol. Length | Success Rate | Median Time (s) | Mean Time (s) | Mean Failed Time (s) | ETT (s) | EET (Evaluations) |
+|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **1** | `henshin_text` | 2 | **100.0%** (10/10) | 1.423 s | 1.428 s | N/A | **1.428 s** | **15,000.0** |
+| **2** | `henshin_text` | 8 | **20.0%** (2/10) | 2.556 s | 2.556 s | 2.516 s | **12.619 s** | **75,000.0** |
+| **3** | `henshin_text` | 2 | **90.0%** (9/10) | 1.633 s | 1.631 s | 1.650 s | **1.814 s** | **16,666.7** |
+| **4** | `henshin_text` | 11 | **10.0%** (1/10) | 2.977 s | 2.977 s | 3.008 s | **30.051 s** | **150,000.0** |
+| **5** | `henshin_text` | 8 | **10.0%** (1/10) | 2.543 s | 2.543 s | 2.538 s | **25.382 s** | **150,000.0** |
+| **6** | `henshin_text` | 10 | **10.0%** (1/10) | 2.631 s | 2.631 s | 2.762 s | **27.491 s** | **150,000.0** |
+| **7** | `henshin_text` | 8 | **10.0%** (1/10) | 2.941 s | 2.941 s | 2.889 s | **28.946 s** | **150,000.0** |
+| **8** | `henshin_text` | 12 | **10.0%** (1/10) | 5.627 s | 5.627 s | 4.190 s | **43.336 s** | **150,000.0** |
+| **9** | `henshin_text` | 8 | **20.0%** (2/10) | 3.976 s | 3.976 s | 3.916 s | **19.640 s** | **75,000.0** |
+| **10**| `henshin_text` | 38 | **10.0%** (1/10) | 15.542 s | 15.542 s | 16.478 s | **163.848 s** | **150,000.0** |
 
 ---
 
 ## 5. Visual Overview & Charts
 
-### Combined Overview (Time & Search Effort)
+### Combined Overview (Time & Expected Time to Target)
 ![First Goal Combined Overview](first_goal_combined_overview.png)
 
 ### Naive Mean Time vs. Expected Time to Target (ETT)
@@ -106,11 +106,6 @@ The table below summarizes the empirical performance of MOMoT across all 10 Bloc
 | Box Plot (Time Distribution) | Mean $\pm$ Std Dev (Time) |
 |:----------------------------:|:-------------------------:|
 | ![Time Boxplot](first_goal_time_sec_boxplot.png) | ![Time Errorbars](first_goal_time_sec_errorbars.png) |
-
-### Search Effort Distributions (Generations)
-| Box Plot (Generation Distribution) | Mean $\pm$ Std Dev (Generations) |
-|:----------------------------------:|:-------------------------------:|
-| ![Generation Boxplot](first_goal_generation_boxplot.png) | ![Generation Errorbars](first_goal_generation_errorbars.png) |
 
 ---
 
@@ -172,7 +167,5 @@ python plot_first_goal_benchmark.py [session_name]
 Generated charts include:
 1. `first_goal_time_sec_boxplot.{png,pdf,svg}`: Box plots of time to goal.
 2. `first_goal_time_sec_errorbars.{png,pdf,svg}`: Mean $\pm$ Std Dev time plot.
-3. `first_goal_generation_boxplot.{png,pdf,svg}`: Box plots of generation to goal.
-4. `first_goal_generation_errorbars.{png,pdf,svg}`: Mean $\pm$ Std Dev generation plot.
-5. `first_goal_ett_comparison.{png,pdf,svg}`: Comparison of naive mean time vs. Expected Time to Target (ETT).
-6. `first_goal_combined_overview.{png,pdf,svg}`: Side-by-side time and generation overview figure.
+3. `first_goal_ett_comparison.{png,pdf,svg}`: Comparison of naive mean time vs. Expected Time to Target (ETT).
+4. `first_goal_combined_overview.{png,pdf,svg}`: Side-by-side single-run time and ETT overview figure.

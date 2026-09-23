@@ -217,24 +217,22 @@ def plot_combined_overview(summary_data, output_dir):
 
     ax1.errorbar(levels, time_means, yerr=time_stds, fmt='-o', color='#1f77b4', ecolor='#d62728',
                  elinewidth=1.8, capsize=4, capthick=1.2)
-    ax1.set_title("(A) Time to First Goal (sec)", fontsize=11, fontweight='bold')
+    ax1.set_title("(A) Successful Single-Run Time (sec)", fontsize=11, fontweight='bold')
     ax1.set_xlabel("Maze Level", fontsize=10)
-    ax1.set_ylabel("Seconds", fontsize=10)
+    ax1.set_ylabel("Wall-Clock Time (seconds)", fontsize=10)
     ax1.set_xticks(levels)
     ax1.grid(True, linestyle=':', alpha=0.6)
 
-    gen_means = [summary_data.get(lvl, {}).get('meanGen', 0.0) for lvl in levels]
-    gen_stds = [summary_data.get(lvl, {}).get('stdDevGen', 0.0) for lvl in levels]
-
-    ax2.errorbar(levels, gen_means, yerr=gen_stds, fmt='-s', color='#2ca02c', ecolor='#ff7f0e',
-                 elinewidth=1.8, capsize=4, capthick=1.2)
-    ax2.set_title("(B) Generation of First Goal", fontsize=11, fontweight='bold')
+    ett_vals = [summary_data.get(lvl, {}).get('ettSec', 0.0) for lvl in levels]
+    ax2.plot(levels, ett_vals, '-s', color='#d62728', linewidth=2, markersize=6)
+    ax2.set_title("(B) Expected Time to Target (ETT)", fontsize=11, fontweight='bold')
     ax2.set_xlabel("Maze Level", fontsize=10)
-    ax2.set_ylabel("Generation Number", fontsize=10)
+    ax2.set_ylabel("ETT in Seconds (log scale)", fontsize=10)
+    ax2.set_yscale('log')
     ax2.set_xticks(levels)
-    ax2.grid(True, linestyle=':', alpha=0.6)
+    ax2.grid(True, which='both', linestyle=':', alpha=0.6)
 
-    fig.suptitle("MOMoT First-Goal Benchmark Search Effort Overview Across Levels 1–10", fontsize=13, fontweight='bold', y=0.98)
+    fig.suptitle("MOMoT Benchmark Search Time & Expected Time to Target Across Levels 1–10", fontsize=13, fontweight='bold', y=0.98)
     plt.tight_layout(rect=[0, 0, 1, 0.95])
 
     save_figure(fig, "first_goal_combined_overview", output_dir)
