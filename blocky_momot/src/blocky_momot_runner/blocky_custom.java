@@ -120,6 +120,13 @@ public class blocky_custom extends blocky {
             if (root instanceof Game game) {
                 Level level = game.getLevels().isEmpty() ? null : game.getLevels().get(0);
                 if (level == null) return 1000000.0;
+                if (Boolean.getBoolean("blocky.shortestPathObjective")) {
+                    double distance = BlockySimulator.distanceToGoalOrPenalty(level);
+                    if (distance > 0.0) {
+                        return 1000.0 + distance;
+                    }
+                    return BlockySimulator.stepsToGoalOrPenalty(level);
+                }
                 return (double) BlockySimulator.simulationSteps(level);
             }
         } catch (Throwable t) {
@@ -176,9 +183,28 @@ public class blocky_custom extends blocky {
             @Override
             public void update(ProgressEvent event) {
                 if (isStarted(event) || isSeedStarted(event)) {
-                    int seed = event.getCurrentSeed();
-                    if (seed > 0) {
-                        PRNG.setSeed(seed);
+                    if (event.getTotalSeeds() > 1) {
+                        int seed = event.getCurrentSeed();
+                        if (seed > 0) {
+                            PRNG.setSeed(seed);
+                        }
+                    } else {
+                        // A one-run trial already applied blocky.seed before the initial
+                        // population was built. Resetting here restarts that stream.
+                        String blockySeedProp = System.getProperty("blocky.seed");
+                        long configuredSeed = -1;
+                        if (blockySeedProp != null && !blockySeedProp.isBlank()) {
+                            try {
+                                configuredSeed = Long.parseLong(blockySeedProp.trim());
+                            } catch (Exception ignored) {
+                            }
+                        }
+                        if (configuredSeed <= 0) {
+                            int seed = event.getCurrentSeed();
+                            if (seed > 0) {
+                                PRNG.setSeed(seed);
+                            }
+                        }
                     }
                 }
             }
@@ -193,6 +219,7 @@ public class blocky_custom extends blocky {
         experiment.addProgressListener(_createListener_0());
         experiment.addProgressListener(createPerRunSeedListener());
 
+        if (!Boolean.getBoolean("blocky.disableLivePublisher")) {
         ParetoFrontPublisherListener pubListener = getPublisherListener();
         pubListener.setPopulationSize(getOverriddenPopulationSize());
         MomotRunContext.Config ctx = MomotRunContext.get();
@@ -231,6 +258,7 @@ public class blocky_custom extends blocky {
         });
 
         experiment.addProgressListener(pubListener);
+        }
 
         // Force-stop the experiment if the thread is interrupted
         experiment.addProgressListener(new ProgressListener() {

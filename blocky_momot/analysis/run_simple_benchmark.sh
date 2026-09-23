@@ -11,6 +11,12 @@ cd "$ROOT"
 SESSION="${1:-paper_simple_$(date +%Y%m%d_%H%M%S)}"
 FROM_LEVEL="${BLOCKY_FROM_LEVEL:-1}"
 TO_LEVEL="${BLOCKY_TO_LEVEL:-10}"
+MIN_ATTEMPT_LENGTH="${BLOCKY_MIN_ATTEMPT_LENGTH:-1}"
+MAX_ATTEMPT_LENGTH="${BLOCKY_MAX_ATTEMPT_LENGTH:-0}"
+NR_RUNS="${BLOCKY_NR_RUNS:-10}"
+POP_SIZE="${BLOCKY_POP_SIZE:-150}"
+ITERATIONS="${BLOCKY_ITERATIONS:-100}"
+MAX_EVAL="${BLOCKY_MAX_EVAL:-$((POP_SIZE * ITERATIONS))}"
 LOG="$ROOT/blocky_momot/analysis/simple_benchmark_${SESSION}.log"
 CP_FILE="$ROOT/blocky_game/target/simple-benchmark.cp"
 
@@ -31,6 +37,14 @@ java \
   -Dblocky.benchmarkSession="$SESSION" \
   -Dblocky.fromLevel="$FROM_LEVEL" \
   -Dblocky.toLevel="$TO_LEVEL" \
+  -Dblocky.minAttemptLength="$MIN_ATTEMPT_LENGTH" \
+  -Dblocky.maxAttemptLength="$MAX_ATTEMPT_LENGTH" \
+  -Dblocky.nrRuns="$NR_RUNS" \
+  -Dblocky.populationSize="$POP_SIZE" \
+  -Dblocky.iterations="$ITERATIONS" \
+  -Dblocky.maxEvaluations="$MAX_EVAL" \
+  -Dblocky.shortestPathObjective=true \
+  -Dblocky.disableLivePublisher="${BLOCKY_DISABLE_LIVE_PUBLISHER:-false}" \
   blocky_game.MomotSimpleMinSolutionLengthRunner \
   2>&1 | tee "$LOG"
 

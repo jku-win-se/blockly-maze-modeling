@@ -96,7 +96,12 @@ public final class MomotSimpleMinSolutionLengthRunner {
         int lengthsTried = 0;
         int lastSuccesses = 0;
 
-        for (int attemptLen = 1; attemptLen <= maxLenCap; attemptLen++) {
+        int minAttemptLength = parseIntProperty("blocky.minAttemptLength", 1);
+        int maxAttemptLength = parseIntProperty("blocky.maxAttemptLength", maxLenCap);
+        if (maxAttemptLength <= 0) {
+            maxAttemptLength = maxLenCap;
+        }
+        for (int attemptLen = minAttemptLength; attemptLen <= maxAttemptLength && attemptLen <= maxLenCap; attemptLen++) {
             lengthsTried++;
             System.out.println("[SimpleMinSolutionLength] Level " + level
                     + " trying solutionLength=" + attemptLen + " (" + nrRuns + " runs)...");

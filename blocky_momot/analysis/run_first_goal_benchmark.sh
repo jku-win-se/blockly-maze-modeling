@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # First-Goal Benchmark Runner Script for MoMoT across all 10 Blockly maze levels.
 # Measures time to first goal and generation number with early stopping on goal discovery.
-# Default parameters: 30 runs, pop=100, 100 iterations (10,000 max evals).
+# Default parameters: 30 runs, pop=150, 100 iterations (15,000 max evals).
 # Overrides supported via BLOCKY_* environment variables.
 
 set -euo pipefail
@@ -13,7 +13,7 @@ SESSION="${1:-first_goal_$(date +%Y%m%d_%H%M%S)}"
 FROM_LEVEL="${BLOCKY_FROM_LEVEL:-1}"
 TO_LEVEL="${BLOCKY_TO_LEVEL:-10}"
 RUNS="${BLOCKY_RUNS:-30}"
-POP_SIZE="${BLOCKY_POP_SIZE:-100}"
+POP_SIZE="${BLOCKY_POP_SIZE:-150}"
 ITERATIONS="${BLOCKY_ITERATIONS:-100}"
 MAX_EVAL="${BLOCKY_MAX_EVAL:-$((POP_SIZE * ITERATIONS))}"
 

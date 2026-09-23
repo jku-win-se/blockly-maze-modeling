@@ -26,7 +26,7 @@ public final class MomotFirstGoalBenchmarkRunner {
 
     public static final int[] CANONICAL_MIN_SOLUTION_LENGTHS = { 2, 8, 2, 11, 8, 10, 8, 12, 8, 38 };
 
-    static final int DEFAULT_POPULATION_SIZE = 100;
+    static final int DEFAULT_POPULATION_SIZE = 150;
     static final int DEFAULT_ITERATIONS = 100;
     static final int DEFAULT_RUNS = 30;
 
@@ -81,7 +81,7 @@ public final class MomotFirstGoalBenchmarkRunner {
     private static void initRawCsvHeader(File file) throws IOException {
         try (FileWriter fw = new FileWriter(file, StandardCharsets.UTF_8, false)) {
             fw.write("level,runIndex,seed,inputXmi,henshinModule,solutionLength,populationSize,maxEvaluations,"
-                    + "solved,timeToFirstGoalMs,timeToFirstGoalSec,generationOfFirstGoal,evaluationsAtFirstGoal,outputDir\n");
+                    + "solved,timeToFirstGoalMs,timeToFirstGoalSec,generationOfFirstGoal,evaluationsAtFirstGoal,wallTimeMs,wallTimeSec,outputDir\n");
         }
     }
 
@@ -91,6 +91,7 @@ public final class MomotFirstGoalBenchmarkRunner {
                     + "meanTimeMs,stdDevTimeMs,medianTimeMs,minTimeMs,maxTimeMs,q1TimeMs,q3TimeMs,iqrTimeMs,"
                     + "meanTimeSec,stdDevTimeSec,medianTimeSec,minTimeSec,maxTimeSec,q1TimeSec,q3TimeSec,iqrTimeSec,"
                     + "meanGen,stdDevGen,medianGen,minGen,maxGen,q1Gen,q3Gen,iqrGen,"
+                    + "meanFailedTimeSec,ettSec,eet,"
                     + "populationSize,maxEvaluations\n");
         }
     }
@@ -133,14 +134,16 @@ public final class MomotFirstGoalBenchmarkRunner {
                         "[FirstGoalBenchmark] Level %d Run %d SOLVED: time=%.3fs (%d ms), gen=%d",
                         level, runIdx, res.timeToGoalSec, res.timeToGoalMs, res.genToGoal));
             } else {
-                System.out.println("[FirstGoalBenchmark] Level " + level + " Run " + runIdx + " UNSOLVED");
+                System.out.println("[FirstGoalBenchmark] Level " + level + " Run " + runIdx + " UNSOLVED (wallTime="
+                        + String.format(Locale.US, "%.3fs", res.wallTimeSec) + ")");
             }
         }
 
-        LevelSummary summary = calculateSummary(level, absInput, henshinName, solLen, totalRuns, runResults);
+        LevelSummary summary = calculateSummary(level, absInput, henshinName, solLen, totalRuns, runResults, popSize, maxEval);
         System.out.println(String.format(Locale.US,
-                "[FirstGoalBenchmark] Level %d SUMMARY: SuccessRate=%.1f%% (%d/%d), MeanTime=%.3fs, MedianTime=%.3fs, MeanGen=%.1f",
-                level, summary.successRate * 100.0, summary.successCount, totalRuns, summary.timeSecStats.mean, summary.timeSecStats.median, summary.genStats.mean));
+                "[FirstGoalBenchmark] Level %d SUMMARY: SuccessRate=%.1f%% (%d/%d), MeanTime=%.3fs, MedianTime=%.3fs, MeanGen=%.1f, ETT=%.3fs, EET=%.1f",
+                level, summary.successRate * 100.0, summary.successCount, totalRuns, summary.timeSecStats.mean, summary.timeSecStats.median, summary.genStats.mean,
+                summary.ettSec, summary.eet));
 
         return summary;
     }
@@ -152,6 +155,7 @@ public final class MomotFirstGoalBenchmarkRunner {
 
         System.setProperty("blocky.henshin", "../blocky_model/transformations/" + henshinModule);
         System.setProperty("blocky.stopOnFirstGoal", "true");
+        System.setProperty("blocky.seed", String.valueOf(seed));
 
         // Force seed for PRNG
         org.moeaframework.core.PRNG.setSeed(seed);
@@ -162,10 +166,11 @@ public final class MomotFirstGoalBenchmarkRunner {
         long startWallMs = System.currentTimeMillis();
         String outDirStr = MomotRunService.runSync(spec, null, null);
         long elapsedWallMs = Math.max(1, System.currentTimeMillis() - startWallMs);
+        double wallSec = elapsedWallMs / 1000.0;
 
         if (outDirStr == null) {
             return new RunResult(level, runIdx, seed, inputXmi, henshinModule, solutionLength, popSize, maxEval,
-                    false, null, null, null, null, "");
+                    false, null, null, null, null, elapsedWallMs, wallSec, "");
         }
 
         File outDir = new File(outDirStr);
@@ -201,7 +206,7 @@ public final class MomotFirstGoalBenchmarkRunner {
         Double timeSec = timeMs != null ? timeMs / 1000.0 : null;
 
         return new RunResult(level, runIdx, seed, inputXmi, henshinModule, solutionLength, popSize, maxEval,
-                solved, timeMs, timeSec, gen, evals, outDir.getAbsolutePath());
+                solved, timeMs, timeSec, gen, evals, elapsedWallMs, wallSec, outDir.getAbsolutePath());
     }
 
     private static ParsedFirstGoal parseFirstGoalFile(File file) {
@@ -263,13 +268,14 @@ public final class MomotFirstGoalBenchmarkRunner {
     private static void appendRawCsvRow(File file, RunResult r) throws IOException {
         try (FileWriter fw = new FileWriter(file, StandardCharsets.UTF_8, true)) {
             fw.write(String.format(Locale.US,
-                    "%d,%d,%d,%s,%s,%d,%d,%d,%b,%s,%s,%s,%s,%s\n",
+                    "%d,%d,%d,%s,%s,%d,%d,%d,%b,%s,%s,%s,%s,%d,%.3f,%s\n",
                     r.level, r.runIdx, r.seed, escapeCsv(r.inputXmi), escapeCsv(r.henshinModule),
                     r.solutionLength, r.populationSize, r.maxEvaluations, r.solved,
                     r.timeToGoalMs != null ? String.valueOf(r.timeToGoalMs) : "",
                     r.timeToGoalSec != null ? String.format(Locale.US, "%.3f", r.timeToGoalSec) : "",
                     r.genToGoal != null ? String.valueOf(r.genToGoal) : "",
                     r.evalsToGoal != null ? String.valueOf(r.evalsToGoal) : "",
+                    r.wallTimeMs, r.wallTimeSec,
                     escapeCsv(r.outputDir)));
         }
     }
@@ -281,22 +287,25 @@ public final class MomotFirstGoalBenchmarkRunner {
                     + "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,"
                     + "%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,"
                     + "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,"
+                    + "%.4f,%.4f,%.4f,"
                     + "%d,%d\n",
                     s.level, escapeCsv(s.inputXmi), escapeCsv(s.henshinModule), s.solutionLength,
                     s.totalRuns, s.successCount, s.successRate,
                     s.timeMsStats.mean, s.timeMsStats.stdDev, s.timeMsStats.median, s.timeMsStats.min, s.timeMsStats.max, s.timeMsStats.q1, s.timeMsStats.q3, s.timeMsStats.iqr,
                     s.timeSecStats.mean, s.timeSecStats.stdDev, s.timeSecStats.median, s.timeSecStats.min, s.timeSecStats.max, s.timeSecStats.q1, s.timeSecStats.q3, s.timeSecStats.iqr,
                     s.genStats.mean, s.genStats.stdDev, s.genStats.median, s.genStats.min, s.genStats.max, s.genStats.q1, s.genStats.q3, s.genStats.iqr,
+                    s.meanFailedTimeSec, s.ettSec, s.eet,
                     popSize, maxEval));
         }
     }
 
     private static LevelSummary calculateSummary(int level, String inputXmi, String henshinModule, int solutionLength,
-            int totalRuns, List<RunResult> runResults) {
+            int totalRuns, List<RunResult> runResults, int popSize, int maxEval) {
 
         List<Double> timeMsList = new ArrayList<>();
         List<Double> timeSecList = new ArrayList<>();
         List<Double> genList = new ArrayList<>();
+        List<Double> failedWallSecList = new ArrayList<>();
         int successCount = 0;
 
         for (RunResult r : runResults) {
@@ -305,6 +314,10 @@ public final class MomotFirstGoalBenchmarkRunner {
                 timeMsList.add((double) r.timeToGoalMs);
                 timeSecList.add(r.timeToGoalSec);
                 genList.add((double) r.genToGoal);
+            } else {
+                if (r.wallTimeSec != null) {
+                    failedWallSecList.add(r.wallTimeSec);
+                }
             }
         }
 
@@ -314,8 +327,29 @@ public final class MomotFirstGoalBenchmarkRunner {
         Stats timeSecStats = computeStats(timeSecList);
         Stats genStats = computeStats(genList);
 
+        double meanFailedTimeSec = 0.0;
+        if (!failedWallSecList.isEmpty()) {
+            double sumFailedSec = 0.0;
+            for (double fSec : failedWallSecList) {
+                sumFailedSec += fSec;
+            }
+            meanFailedTimeSec = sumFailedSec / failedWallSecList.size();
+        }
+
+        double ettSec;
+        double eet;
+
+        if (successCount == 0) {
+            ettSec = Double.POSITIVE_INFINITY;
+            eet = Double.POSITIVE_INFINITY;
+        } else {
+            double failureFactor = (1.0 - successRate) / successRate;
+            ettSec = failureFactor * meanFailedTimeSec + timeSecStats.mean;
+            eet = failureFactor * maxEval + genStats.mean * popSize;
+        }
+
         return new LevelSummary(level, inputXmi, henshinModule, solutionLength, totalRuns, successCount, successRate,
-                timeMsStats, timeSecStats, genStats);
+                timeMsStats, timeSecStats, genStats, meanFailedTimeSec, ettSec, eet);
     }
 
     private static Stats computeStats(List<Double> data) {
@@ -371,7 +405,7 @@ public final class MomotFirstGoalBenchmarkRunner {
             return "statement_insertions_atomic_only.henshin";
         } else if (level <= 5) {
             return "statement_insertions_no_conds.henshin";
-        } else if (level <= 8) {
+        } else if (level <= 7) {
             return "statement_insertions_no_else.henshin";
         } else {
             return "statement_insertions_henshin_text.henshin";
@@ -460,11 +494,13 @@ public final class MomotFirstGoalBenchmarkRunner {
         final Double timeToGoalSec;
         final Integer genToGoal;
         final Integer evalsToGoal;
+        final long wallTimeMs;
+        final Double wallTimeSec;
         final String outputDir;
 
         RunResult(int level, int runIdx, int seed, String inputXmi, String henshinModule, int solutionLength,
                 int populationSize, int maxEvaluations, boolean solved, Long timeToGoalMs, Double timeToGoalSec,
-                Integer genToGoal, Integer evalsToGoal, String outputDir) {
+                Integer genToGoal, Integer evalsToGoal, long wallTimeMs, Double wallTimeSec, String outputDir) {
             this.level = level;
             this.runIdx = runIdx;
             this.seed = seed;
@@ -478,6 +514,8 @@ public final class MomotFirstGoalBenchmarkRunner {
             this.timeToGoalSec = timeToGoalSec;
             this.genToGoal = genToGoal;
             this.evalsToGoal = evalsToGoal;
+            this.wallTimeMs = wallTimeMs;
+            this.wallTimeSec = wallTimeSec;
             this.outputDir = outputDir;
         }
     }
@@ -515,9 +553,13 @@ public final class MomotFirstGoalBenchmarkRunner {
         final Stats timeMsStats;
         final Stats timeSecStats;
         final Stats genStats;
+        final double meanFailedTimeSec;
+        final double ettSec;
+        final double eet;
 
         LevelSummary(int level, String inputXmi, String henshinModule, int solutionLength, int totalRuns, int successCount,
-                double successRate, Stats timeMsStats, Stats timeSecStats, Stats genStats) {
+                double successRate, Stats timeMsStats, Stats timeSecStats, Stats genStats,
+                double meanFailedTimeSec, double ettSec, double eet) {
             this.level = level;
             this.inputXmi = inputXmi;
             this.henshinModule = henshinModule;
@@ -528,6 +570,9 @@ public final class MomotFirstGoalBenchmarkRunner {
             this.timeMsStats = timeMsStats;
             this.timeSecStats = timeSecStats;
             this.genStats = genStats;
+            this.meanFailedTimeSec = meanFailedTimeSec;
+            this.ettSec = ettSec;
+            this.eet = eet;
         }
     }
 }

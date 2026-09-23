@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Plots visualization charts for the MOMoT First-Goal Benchmark across Blockly maze levels 1..10.
-Generates Box plots, Mean +/- StdDev error bar plots, and combined overview charts
+Generates Box plots, Mean +/- StdDev error bar plots, ETT comparison plots, and combined overview charts
 for both Time to First Goal (seconds) and Generation Number to First Goal.
 
 Exports figures to PNG, PDF, and SVG formats.
@@ -49,6 +49,17 @@ def load_raw_data(raw_csv_path):
     return level_runs
 
 
+def parse_float(val, default=0.0):
+    if val is None or val == '':
+        return default
+    try:
+        return float(val)
+    except ValueError:
+        if 'inf' in str(val).lower():
+            return float('inf')
+        return default
+
+
 def load_summary_data(summary_csv_path):
     by_level = {}
     with open(summary_csv_path, newline='', encoding='utf-8') as f:
@@ -56,13 +67,16 @@ def load_summary_data(summary_csv_path):
         for row in reader:
             lvl = int(row['level'])
             by_level[lvl] = {
-                'successRate': float(row['successRate']),
-                'meanTimeSec': float(row['meanTimeSec']),
-                'stdDevTimeSec': float(row['stdDevTimeSec']),
-                'medianTimeSec': float(row['medianTimeSec']),
-                'meanGen': float(row['meanGen']),
-                'stdDevGen': float(row['stdDevGen']),
-                'medianGen': float(row['medianGen']),
+                'successRate': parse_float(row.get('successRate')),
+                'meanTimeSec': parse_float(row.get('meanTimeSec')),
+                'stdDevTimeSec': parse_float(row.get('stdDevTimeSec')),
+                'medianTimeSec': parse_float(row.get('medianTimeSec')),
+                'meanGen': parse_float(row.get('meanGen')),
+                'stdDevGen': parse_float(row.get('stdDevGen')),
+                'medianGen': parse_float(row.get('medianGen')),
+                'meanFailedTimeSec': parse_float(row.get('meanFailedTimeSec')),
+                'ettSec': parse_float(row.get('ettSec')),
+                'eet': parse_float(row.get('eet')),
             }
     return by_level
 
@@ -159,6 +173,41 @@ def plot_gen_errorbars(summary_data, output_dir):
     plt.close(fig)
 
 
+def plot_ett_comparison(summary_data, output_dir):
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=300)
+    levels = list(range(1, 11))
+
+    naive_means = [summary_data.get(lvl, {}).get('meanTimeSec', 0.0) for lvl in levels]
+    ett_raw = [summary_data.get(lvl, {}).get('ettSec', 0.0) for lvl in levels]
+
+    # Convert non-finite / inf to NaN for plotting points, but mark infinite levels
+    plot_ett = [v if np.isfinite(v) else np.nan for v in ett_raw]
+
+    ax.plot(levels, naive_means, '-o', color='#1f77b4', linewidth=2, markersize=7, label='Naive Mean Time (Successful Runs Only)')
+    ax.plot(levels, plot_ett, '-s', color='#d62728', linewidth=2, markersize=7, label='Expected Time to Target (ETT)')
+
+    # Check value spread for log scale
+    valid_ett = [v for v in plot_ett if not np.isnan(v) and v > 0]
+    if valid_ett and max(valid_ett) / max(min(valid_ett), 1e-4) > 20:
+        ax.set_yscale('log')
+
+    ax.set_title("Naive Mean Time vs. Expected Time to Target (ETT) Across Levels", fontsize=12, fontweight='bold', pad=15)
+    ax.set_xlabel("Maze Level", fontsize=11, labelpad=8)
+    ax.set_ylabel("Time in Seconds (log scale)" if ax.get_yscale() == 'log' else "Time in Seconds", fontsize=11, labelpad=8)
+    ax.set_xticks(levels)
+    ax.grid(True, which='both', linestyle=':', alpha=0.6)
+    ax.legend(frameon=True, facecolor='white', framealpha=0.95, loc='upper left')
+
+    # Annotate infinite values
+    for idx, (lvl, val) in enumerate(zip(levels, ett_raw)):
+        if not np.isfinite(val):
+            ax.annotate("∞ (0% success)", (lvl, naive_means[idx]), textcoords="offset points",
+                        xytext=(0, 15), ha='center', color='#d62728', fontweight='bold', fontsize=9)
+
+    save_figure(fig, "first_goal_ett_comparison", output_dir)
+    plt.close(fig)
+
+
 def plot_combined_overview(summary_data, output_dir):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5), dpi=300)
     levels = list(range(1, 11))
@@ -209,6 +258,7 @@ def main():
     plot_time_errorbars(summary_data, analysis_dir)
     plot_gen_boxplot(level_runs, analysis_dir)
     plot_gen_errorbars(summary_data, analysis_dir)
+    plot_ett_comparison(summary_data, analysis_dir)
     plot_combined_overview(summary_data, analysis_dir)
 
 
