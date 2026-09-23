@@ -46,10 +46,11 @@ $$
 $$
 
 where:
-- $p = \frac{\text{successCount}}{N}$ is the empirical success rate ($N = 10$).
-- $\bar{t}_{\text{failed}}$ is the sample mean wall-clock time of failed runs (seconds).
-- $\bar{t}_{\text{success}}$ is the sample mean wall-clock time of successful runs (seconds).
-- $\bar{e}_{\text{failed}} = \bar{e}_{\text{success}} = \text{maxEvaluations} = 15{,}000$ evaluations per trial ($150\text{ population} \times 100\text{ generations}$).
+- $p$: empirical success rate ($p = \text{successCount} / N$, with $N = 10$).
+- $\bar{t}_{\text{failed}}$: sample mean wall-clock time of failed runs in seconds.
+- $\bar{t}_{\text{success}}$: sample mean wall-clock time of successful runs in seconds.
+- $\bar{e}_{\text{failed}}$: evaluation budget of failed runs ($15{,}000$ evaluations).
+- $\bar{e}_{\text{success}}$: evaluation budget of successful runs ($15{,}000$ evaluations, corresponding to $\text{populationSize} \times \text{generations} = 150 \times 100$).
 
 ---
 
