@@ -49,10 +49,6 @@ java \
   -Dblocky.populationSize="$POP_SIZE" \
   -Dblocky.iterations="$ITERATIONS" \
   -Dblocky.maxEvaluations="$MAX_EVAL" \
-  ${BLOCKY_ALGORITHM:+-Dblocky.algorithm="$BLOCKY_ALGORITHM"} \
-  ${BLOCKY_SEED_OFFSET:+-Dblocky.seedOffset="$BLOCKY_SEED_OFFSET"} \
-  ${BLOCKY_SOLUTION_LENGTH:+-Dblocky.solutionLength="$BLOCKY_SOLUTION_LENGTH"} \
-  ${BLOCKY_HENSHIN_MODULE:+-Dblocky.henshinModule="$BLOCKY_HENSHIN_MODULE"} \
   blocky_game.MomotFirstGoalBenchmarkRunner \
   2>&1 | tee "$LOG"
 

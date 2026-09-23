@@ -57,59 +57,40 @@ Each level uses canonical minimal solution lengths and tailored Henshin transfor
 
 ## 4. Statistical Analysis Metrics
 
-For each level across $N = 30$ runs, standard descriptive statistics are calculated over successful runs:
+For each level across $N = 30$ runs, metrics are calculated over successful runs:
 
-- **Mean ($\bar{x}$)**: Sample mean over successful runs.
-- **Sample Standard Deviation ($s$)**: Spread of successful run durations.
-- **Median ($50^{\text{th}}$ percentile)**: Linear interpolation rank $0.50(N-1)$.
-- **Min / Max**: Minimum and maximum observed values.
-- **$Q_1$ and $Q_3$**: $25^{\text{th}}$ and $75^{\text{th}}$ percentiles.
-- **Interquartile Range ($IQR$)**: $IQR = Q_3 - Q_1$.
-- **Success Rate ($p$)**: $p = \frac{S}{N}$ (ratio of successful runs $S$ to total runs $N$).
-
-### Expected Time to Target (ETT) and Survival Bias
-When the empirical success rate $p < 100\%$, reporting only the average time of successful runs ($\bar{T}_{\text{success}}$) causes **survival bias** (optimistic distortion), ignoring the computation time wasted on failed attempts.
-
-In Search-Based Software Engineering (SBSE), the realistic search cost when running independent random restarts until discovering a target solution follows a Geometric Distribution:
-
-- **Expected Number of Failures Before First Success**:
-  $$E[\text{Failures}] = \frac{1 - p}{p}$$
-
-- **Expected Time to Target ($ETT$)**:
-  $$ETT = \frac{1 - p}{p} \cdot T_{\text{failed}} + \bar{T}_{\text{success}}$$
-  where $T_{\text{failed}}$ is the mean wall-clock duration of failed search attempts (e.g., executing the full 10,000 evaluation budget).
-
-- **Expected Evaluations to Target ($EET$)**:
-  $$EET = \frac{1 - p}{p} \cdot \text{MaxEvaluations} + \bar{E}_{\text{success}}$$
-  where $\bar{E}_{\text{success}}$ is the mean evaluations required by successful runs.
+- **Mean**:
+  $$\bar{x} = \frac{1}{N}\sum_{i=1}^{N} x_i$$
+- **Sample Standard Deviation**:
+  $$s = \sqrt{\frac{1}{N-1}\sum_{i=1}^{N} (x_i - \bar{x})^2}$$
+- **Median ($50^{\text{th}}$ percentile)**: Linear interpolation rank $0.50(N-1)$
+- **Min / Max**: Minimum and maximum observed values
+- **$Q_1$ ($25^{\text{th}}$ percentile) and $Q_3$ ($75^{\text{th}}$ percentile)**
+- **Interquartile Range ($IQR$)**: $IQR = Q_3 - Q_1$
+- **Success Rate**: $\text{Success Rate} = \frac{\text{Success Count}}{N}$
 
 ---
 
 ## 5. Empirical Benchmark Results (Levels 1–10)
 
-The table below summarizes both the naive performance ($\bar{T}_{\text{success}}$) and the realistic restart-inclusive metrics ($ETT$ and $EET$) of MOMoT across all 10 Blockly maze levels ($N = 30$ independent runs per level, population size = 100, max evaluations = 10,000):
+The table below summarizes the empirical performance of MOMoT across all 10 Blockly maze levels ($N = 30$ independent runs per level, population size = 100, max evaluations = 10,000):
 
-| Level | Henshin Rule Set | Sol. Len. | Success Rate ($p$) | Naive Mean ($\bar{T}_{\text{success}}$) | Mean Failed ($T_{\text{failed}}$) | Expected Time to Target ($ETT$) | Expected Evals to Target ($EET$) |
-|:-----:|:-----------------|:---------:|:------------------:|:---------------------------------------:|:---------------------------------:|:-------------------------------:|:--------------------------------:|
-| **1** | `atomic_only` | 2 | **100.0%** (30/30) | 0.001 s | N/A | **0.001 s** | **100** |
-| **2** | `atomic_only` | 8 | **100.0%** (30/30) | 0.055 s | N/A | **0.055 s** | **167** |
-| **3** | `no_conds` | 2 | **100.0%** (30/30) | 0.038 s | N/A | **0.038 s** | **220** |
-| **4** | `no_conds` | 11 | 6.7% (2/30) | 0.583 s | 3.044 s | **43.192 s** | **140,850** |
-| **5** | `no_conds` | 8 | 33.3% (10/30) | 0.647 s | 2.489 s | **5.625 s** | **22,140** |
-| **6** | `no_else` | 10 | 3.3% (1/30) | 0.087 s | 2.680 s | **77.820 s** | **290,200** |
-| **7** | `no_else` | 8 | 3.3% (1/30) | 0.073 s | 2.417 s | **70.164 s** | **290,200** |
-| **8** | `no_else` | 12 | **0.0%** (0/30)* | N/A | 3.067 s | **$\ge 88.930\text{ s}$** | **$\ge 290,000$** |
-| **9** | `henshin_text` | 8 | **0.0%** (0/30)* | N/A | 2.349 s | **$\ge 68.120\text{ s}$** | **$\ge 290,000$** |
-| **10**| `henshin_text` | 38 | **0.0%** (0/30)* | N/A | 12.721 s | **$\ge 368.900\text{ s}$** / **$1,687.6\text{ s}$** (Seed 124) | **$\ge 290,000$** / **$1,498,700$** |
-
-*\*Note for Unsolved Levels:* For levels with $0\%$ success in the standard 30-run benchmark baseline, lower bounds for $ETT$ and $EET$ are calculated using the 1-failure statistical minimum threshold ($p \le 1/30$). For **Level 10**, an extended sweep across 150 random seeds under the refactored NSGA-II setup successfully solved the maze on **Seed 124** at generation 87 ($18.81\text{s}$), yielding an empirical $p = 1/150 = 0.67\%$ and a finite Expected Time to Target of $ETT = 1,687.6\text{ seconds}$ ($\approx 28.1\text{ minutes}$).
+| Level | Henshin Rule Set | Canonical Sol. Length | Success Rate | Median Time (s) | Mean Time (s) | Median Gen. | Mean Gen. |
+|:-----:|:-----------------|:---------------------:|:------------:|:---------------:|:-------------:|:-----------:|:---------:|
+| **1** | `atomic_only` | 2 | **100.0%** (30/30) | < 0.001 s | 0.001 s | 1 | 1.0 |
+| **2** | `atomic_only` | 8 | **100.0%** (30/30) | 0.001 s | 0.061 s | 1 | 1.8 |
+| **3** | `no_conds` | 2 | **100.0%** (30/30) | 0.001 s | 0.027 s | 1 | 1.5 |
+| **4** | `no_conds` | 11 | 3.3% (1/30) | 0.090 s | 0.090 s | 2 | 2.0 |
+| **5** | `no_conds` | 8 | 10.0% (3/30) | 0.442 s | 0.502 s | 8 | 9.3 |
+| **6** | `no_else` | 10 | 13.3% (4/30) | 0.486 s | 0.551 s | 7.5 | 8.8 |
+| **7** | `no_else` | 8 | 3.3% (1/30) | 0.132 s | 0.132 s | 3 | 3.0 |
+| **8** | `no_else` | 12 | 3.3% (1/30) | 0.426 s | 0.426 s | 6 | 6.0 |
+| **9** | `henshin_text` | 8 | 6.7% (2/30) | 0.410 s | 0.410 s | 8 | 8.0 |
+| **10**| `henshin_text` | 38 | **0.0%** (0/30) | N/A | N/A | N/A | N/A |
 
 ---
 
 ## 6. Visual Overview & Charts
-
-### Realistic Search Effort Comparison (Naive Mean Time vs. ETT)
-![First Goal ETT Comparison](first_goal_ett_comparison.png)
 
 ### Combined Overview (Time & Search Effort)
 ![First Goal Combined Overview](first_goal_combined_overview.png)
@@ -128,26 +109,21 @@ The table below summarizes both the naive performance ($\bar{T}_{\text{success}}
 
 ## 7. Key Insights and Discussion
 
-### A. Survival Bias and Naive vs. Expected Time to Target (ETT)
-- **The Survival Bias Trap**: Reporting only the mean duration of successful runs ($\bar{T}_{\text{success}}$) creates an illusion that search on intermediate levels takes less than $0.65$ seconds.
-- **The True Cost of Restarts**: Accounting for failed attempts via $ETT$ reveals that finding a solution expects **$5.6\text{s}$ to $77.8\text{s}$** (and **22,000 to 290,000 evaluations**) on intermediate levels (Levels 4–7).
+### A. Easy Levels (Levels 1–3)
+- **Extremely High Efficiency**: MOMoT achieves a **100% success rate** across all 30 runs for Levels 1, 2, and 3.
+- **Rapid Convergence**: First goal-reaching solutions are found almost instantaneously (median time $\le 0.001$ seconds, usually within generation 1 or 2).
 
-### B. Easy Levels (Levels 1–3)
-- **Extremely High Efficiency**: MOMoT achieves a **100% success rate** ($p = 1.0$) across all 30 runs for Levels 1, 2, and 3.
-- **Identical Naive and ETT Metrics**: Because $p = 100\%$, $ETT = \bar{T}_{\text{success}} \le 0.055\text{s}$, and solutions are found within $100 - 220$ evaluations.
+### B. Intermediate Levels (Levels 4–9)
+- **Fast When Solved**: When a goal solution is found, synthesis is very fast (median time $0.09\text{s} - 0.49\text{s}$, generation $2 - 8$).
+- **Success Rate vs. Budget**: Under a budget of 10,000 evaluations, success rates range from $3.3\%$ to $13.3\%$. The search space contains many local optima, meaning some seeds require larger evaluation budgets or targeted search operators.
 
-### C. Intermediate Levels (Levels 4–7)
-- **Search Efficiency Gains**: Refactoring NSGA-II operator probabilities (lowering crossover to $0.20$, increasing mutation) and adding stagnation-triggered re-seeding boosted Level 5 success rate from $10\%$ to **$33.3\%$** ($ETT$ dropped from $27.6\text{s}$ to **$5.6\text{s}$**) and Level 4 success rate from $3.3\%$ to **$6.7\%$** ($ETT$ dropped from $87.4\text{s}$ to **$43.2\text{s}$**).
-- **Restart Overhead**: For levels with $p \approx 3.3\%$, $ETT$ quantifies practitioner wait time as $70\text{s} - 78\text{s}$.
-
-### D. Hard Level (Level 10) Search Space Breakthrough
+### C. Hard Level (Level 10) Search Space Explosion
 - **Massive Solution Space**: Level 10 requires a solution AST length of 38 transformation steps, incorporating nested loops (`whilePathAhead`), conditional checks (`if`, `ifElse`), and turn actions.
-- **Breakthrough via Refactored Search**: While standard NSGA-II previously yielded $0\%$ success across 190+ seeds ($ETT = \infty$), the refactored NSGA-II search setup with stagnation re-seeding successfully solved Level 10 on **Seed 124** at generation 87 ($18.81\text{s}$ time to goal).
-- **Realistic Search Cost**: Across 150 evaluated random seeds, $p = 1/150 = 0.67\%$, giving an empirical Expected Time to Target of **$ETT = 1,687.6\text{ seconds}$** ($\approx \mathbf{28.1\text{ minutes}}$) or $\approx \mathbf{1.5\text{ million evaluations}}$.
+- **Combinatorial Explosion**: The search space grows exponentially ($O(B^L)$ where $B$ is the number of applicable transformation rules and $L=38$). Under a 10,000 evaluation budget (and even with higher search thresholds), unguided multi-objective genetic algorithms fail to reach a first goal solution within reasonable time frames.
 
-### E. Human vs. Automated Synthesis Trade-Off
-- **High Utility for Easy/Intermediate Levels**: For straightforward mazes (Levels 1–3) and moderately complex levels (Levels 4–7), automated MOMoT search with random restarts is **highly effective**. It generates correct, minimal AST structures in sub-minute expected time without manual coding.
-- **Feasible But Resource-Intensive for Hard Levels**: For highly complex levels (like Level 10), automated search is capable of discovering goal-reaching ASTs ($18.81\text{s}$ single-run synthesis time), but requires a multi-minute budget ($\approx 28\text{ minutes}$ ETT) due to the $O(B^L)$ combinatorial explosion of search space.
+### D. Human vs. Automated Synthesis Trade-Off
+- **High Utility for Easy/Intermediate Levels**: For straightforward mazes (Levels 1–3) and moderately complex levels (Levels 4–9), automated MOMoT search is **highly effective**. It generates correct, minimal AST structures in sub-second to second time frames without requiring manual coding or rule design.
+- **Limited Utility for Hard Levels**: For highly complex levels (like Level 10), automated search is **far less effective**. The combinatorial explosion makes evolutionary search search-heavy and slow, whereas a human user can inspect the visual layout of Level 10, identify the spatial/repetitive wall-following pattern, and construct the solution blocks in significantly less time than an unguided search process.
 
 ---
 
@@ -159,14 +135,14 @@ The benchmark produces two CSV files per execution session:
 Tracks every individual run execution:
 
 ```
-level,runIndex,seed,inputXmi,henshinModule,solutionLength,populationSize,maxEvaluations,solved,timeToFirstGoalMs,timeToFirstGoalSec,generationOfFirstGoal,evaluationsAtFirstGoal,elapsedWallMs,elapsedWallSec,outputDir
+level,runIndex,seed,inputXmi,henshinModule,solutionLength,populationSize,maxEvaluations,solved,timeToFirstGoalMs,timeToFirstGoalSec,generationOfFirstGoal,evaluationsAtFirstGoal,outputDir
 ```
 
 ### B. Summary Dataset (`first_goal_benchmark_summary_<session>.csv`)
-Contains aggregated statistical metrics per level, including restart-inclusive $ETT$ and $EET$:
+Contains aggregated statistical metrics per level:
 
 ```
-level,inputXmi,henshinModule,solutionLength,totalRuns,successCount,successRate,meanTimeMs,stdDevTimeMs,medianTimeMs,minTimeMs,maxTimeMs,q1TimeMs,q3TimeMs,iqrTimeMs,meanTimeSec,stdDevTimeSec,medianTimeSec,minTimeSec,maxTimeSec,q1TimeSec,q3TimeSec,iqrTimeSec,meanGen,stdDevGen,medianGen,minGen,maxGen,q1Gen,q3Gen,iqrGen,meanFailedTimeMs,meanFailedTimeSec,ettMs,ettSec,eet,populationSize,maxEvaluations
+level,inputXmi,henshinModule,solutionLength,totalRuns,successCount,successRate,meanTimeMs,stdDevTimeMs,medianTimeMs,minTimeMs,maxTimeMs,q1TimeMs,q3TimeMs,iqrTimeMs,meanTimeSec,stdDevTimeSec,medianTimeSec,minTimeSec,maxTimeSec,q1TimeSec,q3TimeSec,iqrTimeSec,meanGen,stdDevGen,medianGen,minGen,maxGen,q1Gen,q3Gen,iqrGen,populationSize,maxEvaluations
 ```
 
 ---

@@ -605,10 +605,10 @@ public class blocky {
 
   protected IRegisteredAlgorithm<NSGAII> _createRegisteredAlgorithm_0(final TransformationSearchOrchestration orchestration, final EvolutionaryAlgorithmFactory<TransformationSolution> moea, final LocalSearchAlgorithmFactory<TransformationSolution> local) {
     TournamentSelection _tournamentSelection = new TournamentSelection(2);
-    OnePointCrossover _onePointCrossover = new OnePointCrossover(0.2);
-    TransformationPlaceholderMutation _transformationPlaceholderMutation = new TransformationPlaceholderMutation(0.35);
+    OnePointCrossover _onePointCrossover = new OnePointCrossover(1.0);
+    TransformationPlaceholderMutation _transformationPlaceholderMutation = new TransformationPlaceholderMutation(0.15);
     ModuleManager _moduleManager = orchestration.getModuleManager();
-    TransformationParameterMutation _transformationParameterMutation = new TransformationParameterMutation(0.25, _moduleManager);
+    TransformationParameterMutation _transformationParameterMutation = new TransformationParameterMutation(0.1, _moduleManager);
     IRegisteredAlgorithm<NSGAII> _createNSGAII = moea.createNSGAII(_tournamentSelection, _onePointCrossover, _transformationPlaceholderMutation, _transformationParameterMutation);
     return _createNSGAII;
   }

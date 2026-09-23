@@ -55,42 +55,14 @@ def load_summary_data(summary_csv_path):
         reader = csv.DictReader(f)
         for row in reader:
             lvl = int(row['level'])
-            p = float(row['successRate'])
-            mean_time_sec = float(row['meanTimeSec'])
-
-            failed_time_sec = float(row['meanFailedTimeSec']) if row.get('meanFailedTimeSec') else 3.0
-
-            if row.get('ettSec') and row['ettSec'].strip().lower() not in ('infinity', 'inf', 'nan'):
-                ett_sec = float(row['ettSec'])
-            else:
-                if p <= 0:
-                    ett_sec = float('inf')
-                else:
-                    ett_sec = ((1.0 - p) / p) * failed_time_sec + mean_time_sec
-
-            max_eval = float(row.get('maxEvaluations', 10000))
-            pop_size = float(row.get('populationSize', 100))
-            mean_gen = float(row['meanGen'])
-
-            if row.get('eet') and row['eet'].strip().lower() not in ('infinity', 'inf', 'nan'):
-                eet = float(row['eet'])
-            else:
-                if p <= 0:
-                    eet = float('inf')
-                else:
-                    eet = ((1.0 - p) / p) * max_eval + (mean_gen * pop_size)
-
             by_level[lvl] = {
-                'successRate': p,
-                'meanTimeSec': mean_time_sec,
+                'successRate': float(row['successRate']),
+                'meanTimeSec': float(row['meanTimeSec']),
                 'stdDevTimeSec': float(row['stdDevTimeSec']),
                 'medianTimeSec': float(row['medianTimeSec']),
-                'meanGen': mean_gen,
+                'meanGen': float(row['meanGen']),
                 'stdDevGen': float(row['stdDevGen']),
                 'medianGen': float(row['medianGen']),
-                'meanFailedTimeSec': failed_time_sec,
-                'ettSec': ett_sec,
-                'eet': eet,
             }
     return by_level
 
@@ -220,39 +192,6 @@ def plot_combined_overview(summary_data, output_dir):
     plt.close(fig)
 
 
-def plot_ett_comparison(summary_data, output_dir):
-    fig, ax = plt.subplots(figsize=(10, 5), dpi=300)
-    levels = list(range(1, 11))
-
-    naive_means = [summary_data.get(lvl, {}).get('meanTimeSec', 0.0) for lvl in levels]
-    ett_values = [summary_data.get(lvl, {}).get('ettSec', float('inf')) for lvl in levels]
-
-    x = np.arange(len(levels))
-    width = 0.35
-
-    ett_plot_vals = [v if not np.isinf(v) else 0.0 for v in ett_values]
-
-    rects1 = ax.bar(x - width/2, naive_means, width, label='Naive Mean Time (Successful Runs Only)', color='#1f77b4', alpha=0.85)
-    rects2 = ax.bar(x + width/2, ett_plot_vals, width, label='Expected Time to Target (ETT, Restarts Included)', color='#d62728', alpha=0.85)
-
-    ax.set_title("Naive Synthesis Time vs. Expected Time to Target (ETT) Across Levels 1–10", fontsize=12, fontweight='bold', pad=15)
-    ax.set_xlabel("Maze Level", fontsize=11, labelpad=8)
-    ax.set_ylabel("Time in Seconds (Log Scale)", fontsize=11, labelpad=8)
-    ax.set_xticks(x)
-    ax.set_xticklabels([str(lvl) for lvl in levels])
-    ax.set_yscale('log')
-    ax.grid(True, which='both', linestyle=':', alpha=0.5)
-    ax.legend(frameon=True, facecolor='white', framealpha=0.95, loc='upper left')
-
-    if np.isinf(ett_values[9]):
-        ax.annotate('∞ (p=0%)', xy=(x[9] + width/2, 1e-1), xytext=(x[9] + width/2, 1e0),
-                    ha='center', fontsize=9, fontweight='bold', color='#d62728',
-                    arrowprops=dict(arrowstyle='->', color='#d62728', lw=1.2))
-
-    save_figure(fig, "first_goal_ett_comparison", output_dir)
-    plt.close(fig)
-
-
 def main():
     session = sys.argv[1] if len(sys.argv) > 1 else None
     analysis_dir = os.path.dirname(os.path.abspath(__file__))
@@ -271,7 +210,6 @@ def main():
     plot_gen_boxplot(level_runs, analysis_dir)
     plot_gen_errorbars(summary_data, analysis_dir)
     plot_combined_overview(summary_data, analysis_dir)
-    plot_ett_comparison(summary_data, analysis_dir)
 
 
 if __name__ == "__main__":

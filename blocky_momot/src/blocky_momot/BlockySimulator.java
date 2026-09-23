@@ -254,8 +254,6 @@ public final class BlockySimulator {
             return penalty;
         }
 
-        annotateCells(level);
-
         GridMap map = level.getMap();
         Cell startCell = null;
         for (Cell c : map.getCells()) {
