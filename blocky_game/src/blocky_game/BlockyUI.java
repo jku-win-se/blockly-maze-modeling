@@ -713,6 +713,15 @@ public class BlockyUI extends Application {
                 + "        var inpRuns = mkInput('__momotInpRuns', '10', 'Number of algorithm runs', '25px'); "
                 + "        var labSolLen = document.createElement('span'); labSolLen.textContent = 'SolLen:'; "
                 + "        var inpSolLen = mkInput('__momotInpSolLen', '10', 'Solution length (number of transformation steps)', '25px'); "
+                + "        var labAlg = document.createElement('span'); labAlg.textContent = 'Alg:'; "
+                + "        var selAlg = document.createElement('select'); selAlg.id = '__momotSelAlg'; "
+                + "        selAlg.title = 'Search algorithm (Memetic = NSGA-II + short hill climb on the best candidates each generation)'; "
+                + "        selAlg.style.fontSize = '11px'; selAlg.style.background = 'rgba(0,0,0,0.3)'; selAlg.style.color = '#fff'; "
+                + "        selAlg.style.border = '1px solid rgba(255,255,255,0.2)'; selAlg.style.borderRadius = '3px'; "
+                + "        [['NSGA_II', 'NSGA-II'], ['MEMETIC_NSGA_II', 'Memetic NSGA-II']].forEach(function(o) { "
+                + "          var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; op.style.color = '#000'; "
+                + "          selAlg.appendChild(op); "
+                + "        }); "
                 + "        var btnCont = document.createElement('div'); btnCont.style.display = 'flex'; btnCont.style.gap = '4px'; "
                 + "        var mRunBtn = mkBtn('__momotRunBtn', 'Run', 'Execute MOMoT search'); "
                 + "        mRunBtn.style.background = 'rgba(70, 150, 70, 0.6)'; "
@@ -724,6 +733,7 @@ public class BlockyUI extends Application {
                 + "        settings.appendChild(labIter); settings.appendChild(inpIter); "
                 + "        settings.appendChild(labRuns); settings.appendChild(inpRuns); "
                 + "        settings.appendChild(labSolLen); settings.appendChild(inpSolLen); "
+                + "        settings.appendChild(labAlg); settings.appendChild(selAlg); "
                 + "        settings.appendChild(btnCont); "
                 + "        var refreshBtn = mkBtn('__momotRefreshBtn', 'Refresh', 'Reload solutions from output folders'); "
                 + "        right.appendChild(refreshBtn); "
@@ -1116,7 +1126,10 @@ public class BlockyUI extends Application {
                 + "            var e = p * it; "
                 + "            var r = parseInt(document.getElementById('__momotInpRuns').value) || 10; "
                 + "            var sl = parseInt(document.getElementById('__momotInpSolLen').value) || 10; "
-                + "            setStatus('Starting MoMoT (seed=' + s + ', pop=' + p + ', iter=' + it + ' (eval=' + e + '), runs=' + r + ', solLen=' + sl + ')...'); "
+                + "            var algSel = document.getElementById('__momotSelAlg'); "
+                + "            var alg = (algSel && algSel.value) || 'NSGA_II'; "
+                + "            if (bridge.setMomotAlgorithm) bridge.setMomotAlgorithm(alg); "
+                + "            setStatus('Starting MoMoT (alg=' + alg + ', seed=' + s + ', pop=' + p + ', iter=' + it + ' (eval=' + e + '), runs=' + r + ', solLen=' + sl + ')...'); "
                 + "            try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {} "
                 + "            bridge.runMomotWithParams(s, p, e, r, sl); "
                 + "          } catch(e) { setStatus('Run failed: ' + e); } "
@@ -1841,6 +1854,13 @@ public class BlockyUI extends Application {
             Platform.runLater(() -> loadMomotSolutionInPlace(xmiPath.trim()));
         }
 
+        /** Search algorithm for the next MOMoT run: "NSGA_II" (default) or "MEMETIC_NSGA_II" (read by blocky_custom). */
+        public void setMomotAlgorithm(String algorithm) {
+            String value = "MEMETIC_NSGA_II".equals(algorithm) ? "MEMETIC_NSGA_II" : "NSGA_II";
+            System.out.println("[JSBridge] setMomotAlgorithm " + value);
+            System.setProperty("blocky.algorithm", value);
+        }
+
         public void runMomotWithParams(int seed, int populationSize, int maxEvaluations, int nrRuns, int solutionLength) {
             System.out.println("[JSBridge] runMomotWithParams seed=" + seed + " pop=" + populationSize + " eval=" + maxEvaluations + " runs=" + nrRuns + " solLen=" + solutionLength);
             Platform.runLater(() -> {
@@ -2057,7 +2077,9 @@ public class BlockyUI extends Application {
         System.setProperty("blocky.solutionLength", String.valueOf(solutionLength));
 
         // Determine correct Henshin file based on level constraints
-        String henshin = "statement_insertions_henshin_text.henshin";
+        // PROTOTYPE: *_edit_anywhere.henshin = original rules + modify/delete of user-placed blocks, exposed as one
+        // combined search move EditAnywhere (tools/henshin-prototype)
+        String henshin = "statement_insertions_henshin_text_edit_anywhere.henshin";
         Level lvl = engine.getCurrentLevel();
         if (lvl != null) {
             boolean loops = lvl.isAllowLoops();
@@ -2066,13 +2088,13 @@ public class BlockyUI extends Application {
             System.setProperty("blocky.allowIfElse", String.valueOf(ifElse));
             
             if (!loops && !conds) {
-                henshin = "statement_insertions_atomic_only.henshin";
+                henshin = "statement_insertions_atomic_only_edit_anywhere.henshin";
             } else if (!conds) {
-                henshin = "statement_insertions_no_conds.henshin";
+                henshin = "statement_insertions_no_conds_edit_anywhere.henshin";
             } else if (!ifElse) {
-                henshin = "statement_insertions_no_else.henshin";
+                henshin = "statement_insertions_no_else_edit_anywhere.henshin";
             } else {
-                henshin = "statement_insertions_henshin_text.henshin";
+                henshin = "statement_insertions_henshin_text_edit_anywhere.henshin";
             }
         }
         System.setProperty("blocky.henshin", "../blocky_model/transformations/" + henshin);

@@ -84,6 +84,35 @@ public class blocky_custom extends blocky {
         return ctx != null ? ctx.outputDirectory : null;
     }
 
+    // *_edit_anywhere.henshin (see tools/henshin-prototype): the only search move is EditAnywhere, which
+    // applies whichever of insert / delete (user-placed blocks) / modify (user-placed blocks) fits.
+    // Done here instead of blocky.momot so src-gen does not need regenerating: MOMoT qualifies unit
+    // names by module file name, which the generated ignore list and parameter keys do not know for the
+    // *_edit_anywhere files. Modules without EditAnywhere keep the generated configuration.
+    private static final String EDIT_ANYWHERE = "EditAnywhere";
+
+    @Override
+    protected at.ac.tuwien.big.momot.ModuleManager createModuleManager() {
+        at.ac.tuwien.big.momot.ModuleManager manager = super.createModuleManager();
+        if (manager.getUnits().stream().noneMatch(u -> EDIT_ANYWHERE.equals(u.getName()))) {
+            return manager;
+        }
+        for (org.eclipse.emf.henshin.model.Unit unit : new java.util.ArrayList<>(manager.getUnits())) {
+            if (!EDIT_ANYWHERE.equals(unit.getName())) {
+                manager.removeUnit(unit);
+                continue;
+            }
+            for (org.eclipse.emf.henshin.model.Parameter p : unit.getParameters()) {
+                if ("k".equals(p.getName())) {
+                    manager.setParameterValue(p, new blocky_momot.RandomAtomicKindLiteralValue());
+                } else if ("cnd".equals(p.getName())) {
+                    manager.setParameterValue(p, new blocky_momot.RandomConditionKindLiteralValue());
+                }
+            }
+        }
+        return manager;
+    }
+
     @Override
     protected TransformationSearchOrchestration createOrchestration(String initialGraph, int solutionLength) {
         TransformationSearchOrchestration orchestration = super.createOrchestration(initialGraph, solutionLength);
@@ -153,27 +182,24 @@ public class blocky_custom extends blocky {
             final EvolutionaryAlgorithmFactory<TransformationSolution> moea,
             final LocalSearchAlgorithmFactory<TransformationSolution> local) {
         final IRegisteredAlgorithm<NSGAII> delegate = super._createRegisteredAlgorithm_0(orchestration, moea, local);
-        return new IRegisteredAlgorithm<NSGAII>() {
+        // Extends AbstractRegisteredAlgorithm so that register() registers THIS wrapper: MOMoT instantiates
+        // algorithms through the registry, so a wrapper that forwarded register() to the delegate was
+        // never asked to createAlgorithm().
+        return new at.ac.tuwien.big.moea.search.algorithm.provider.AbstractRegisteredAlgorithm<NSGAII>() {
             @Override
             public NSGAII createAlgorithm() {
+                // blocky.algorithm (set by the game's "Alg" dropdown): NSGA_II (default) or MEMETIC_NSGA_II
+                // (NSGA-II + short hill climb on the best candidates after each generation).
                 NSGAII alg = delegate.createAlgorithm();
+                blocky_momot.MemeticNSGAII.resetLastRunStats();
+                if ("MEMETIC_NSGA_II".equals(System.getProperty("blocky.algorithm", "NSGA_II"))) {
+                    alg = new blocky_momot.MemeticNSGAII(alg,
+                            orchestration.getSearchHelper(), orchestration.getModuleManager(),
+                            new blocky_momot.GoalFirstFitnessComparator(orchestration.getFitnessFunction().getObjectiveNames()));
+                }
+                System.out.println("[MoMoT] Algorithm: " + alg.getClass().getSimpleName());
                 getPublisherListener().setCurrentAlgorithm(alg);
                 return alg;
-            }
-
-            @Override
-            public String getRegisteredName() {
-                return delegate.getRegisteredName();
-            }
-
-            @Override
-            public boolean isRegistered() {
-                return delegate.isRegistered();
-            }
-
-            @Override
-            public String register() {
-                return delegate.register();
             }
         };
     }
@@ -358,6 +384,9 @@ public class blocky_custom extends blocky {
         experiment.run();
 
         System.out.println("[MoMoT] Search finished. Handling results...");
+        if (blocky_momot.MemeticNSGAII.lastRunStats() != null) {
+            System.out.println(blocky_momot.MemeticNSGAII.lastRunStats());
+        }
         handleResults(experiment);
     }
 
