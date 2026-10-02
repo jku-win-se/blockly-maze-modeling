@@ -414,6 +414,46 @@
         } catch (e) {}
     }
 
+    function confirmNextTask() {
+        injectStyles();
+        var modal = document.getElementById('levelTimerConfirmModal');
+        if (!modal && document.body) {
+            modal = document.createElement('div');
+            modal.id = 'levelTimerConfirmModal';
+            modal.style.display = 'flex';
+            modal.innerHTML = [
+                '<div class="level-timer-modal-box">',
+                '  <h3>Go to the next task?</h3>',
+                '  <p>Time on this task will be saved and the page will move to the next level.</p>',
+                '  <div class="level-timer-actions">',
+                '    <button type="button" class="timer-btn-secondary" id="levelTimerConfirmStayBtn">Stay</button>',
+                '    <button type="button" class="timer-btn-primary" id="levelTimerConfirmNextBtn">Next task</button>',
+                '  </div>',
+                '</div>'
+            ].join('');
+            document.body.appendChild(modal);
+
+            var stayBtn = document.getElementById('levelTimerConfirmStayBtn');
+            if (stayBtn) {
+                stayBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    modal.style.display = 'none';
+                });
+            }
+
+            var nextBtn = document.getElementById('levelTimerConfirmNextBtn');
+            if (nextBtn) {
+                nextBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    modal.style.display = 'none';
+                    goToNextTask();
+                });
+            }
+        } else if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
     function goToNextTask() {
         saveSessionData();
         sendLevelTime(true);
@@ -507,7 +547,7 @@
             '#levelTimerWidget .timer-finish-btn:hover {',
             '  background: #6e40c9 !important;',
             '}',
-            '#levelTimerModal, #levelTimerReportModal {',
+            '#levelTimerModal, #levelTimerReportModal, #levelTimerConfirmModal {',
             '  position: fixed;',
             '  top: 0; left: 0; right: 0; bottom: 0;',
             '  background: rgba(0, 0, 0, 0.55);',
@@ -636,7 +676,7 @@
             if (nextBtn) {
                 nextBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    goToNextTask();
+                    confirmNextTask();
                 });
             }
 
@@ -694,7 +734,7 @@
                     nextB.textContent = 'Next task';
                     nextB.addEventListener('click', function(e) {
                         e.stopPropagation();
-                        goToNextTask();
+                        confirmNextTask();
                     });
                     widget.insertBefore(nextB, newBtnRef);
                 }

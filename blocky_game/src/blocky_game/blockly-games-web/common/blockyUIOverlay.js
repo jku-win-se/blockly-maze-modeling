@@ -466,7 +466,7 @@
                 }
 
                 var settings = document.createElement('div'); settings.id = '__momotSettings';
-                settings.style.display = 'flex'; settings.style.flexWrap = 'wrap'; settings.style.gap = '6px';
+                settings.style.display = 'none'; settings.style.flexWrap = 'wrap'; settings.style.gap = '6px';
                 settings.style.padding = '6px 8px'; settings.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
                 settings.style.alignItems = 'center'; settings.style.fontSize = '11px'; settings.style.color = '#fff';
 
@@ -481,21 +481,23 @@
                 var labSolLen = document.createElement('span'); labSolLen.textContent = 'SolLen:';
                 var inpSolLen = mkInput('__momotInpSolLen', '10', 'Solution length (number of transformation steps)', '25px');
 
-                var btnCont = document.createElement('div'); btnCont.style.display = 'flex'; btnCont.style.gap = '4px';
                 var mRunBtn = mkBtn('__momotRunBtn', 'Run', 'Execute MOMoT search');
                 mRunBtn.style.background = 'rgba(70, 150, 70, 0.6)';
                 var mStopBtn = mkBtn('__momotStopBtn', 'Stop', 'Stop current MOMoT search');
                 mStopBtn.style.background = 'rgba(180, 50, 50, 0.6)';
-                btnCont.appendChild(mRunBtn); btnCont.appendChild(mStopBtn);
 
                 settings.appendChild(labSeed); settings.appendChild(inpSeed);
                 settings.appendChild(labPop); settings.appendChild(inpPop);
                 settings.appendChild(labIter); settings.appendChild(inpIter);
                 settings.appendChild(labRuns); settings.appendChild(inpRuns);
                 settings.appendChild(labSolLen); settings.appendChild(inpSolLen);
-                settings.appendChild(btnCont);
 
                 var refreshBtn = mkBtn('__momotRefreshBtn', 'Refresh', 'Reload solutions from output folders');
+                var gearBtn = mkBtn('__momotGearBtn', '⚙', 'Advanced settings');
+                gearBtn.addEventListener('click', function() {
+                    var cur = settings.style.display;
+                    settings.style.display = (cur === 'none' || !cur) ? 'flex' : 'none';
+                });
                 var mCloseBtn = mkBtn('__momotCloseBtn', '✕', 'Close / Hide MoMoT Panel');
                 mCloseBtn.addEventListener('click', function() {
                     try {
@@ -503,7 +505,10 @@
                         if (p) p.style.display = 'none';
                     } catch(e) {}
                 });
+                right.appendChild(mRunBtn);
+                right.appendChild(mStopBtn);
                 right.appendChild(refreshBtn);
+                right.appendChild(gearBtn);
                 right.appendChild(mCloseBtn);
                 header.appendChild(title); header.appendChild(right);
 

@@ -216,7 +216,7 @@ describe('Level Timer and Activity Headers Test Suite', () => {
         assert.strictEqual(goalNote.style.display, 'inline-block');
     });
 
-    it('provides Next task button on levels 1-9 that increments stored level', () => {
+    it('provides Next task button on levels 1-9 that confirms before incrementing stored level', () => {
         let navigatedUrl = null;
         window.__levelTimerNavigate = (url) => { navigatedUrl = url; };
 
@@ -230,11 +230,51 @@ describe('Level Timer and Activity Headers Test Suite', () => {
         const finishBtn = window.document.getElementById('timerFinishSessionBtn');
         assert.strictEqual(finishBtn, null, 'Finish task button should not exist on level 3');
 
+        // First click must show the dialog and must not change the stored level or navigate
         nextBtn.click();
 
+        const confirmModal = window.document.getElementById('levelTimerConfirmModal');
+        assert.ok(confirmModal, 'Confirm modal should exist');
+        assert.strictEqual(confirmModal.style.display, 'flex', 'Confirm modal should be visible');
+        assert.ok(confirmModal.textContent.includes('Go to the next task?'));
+
+        let storedLevel = window.sessionStorage.getItem('blocky_level_timer_current_level');
+        assert.strictEqual(storedLevel, '3', 'First click must not change stored level');
+        assert.strictEqual(navigatedUrl, null, 'First click must not navigate');
+
+        // Confirming must store level 4 and navigate to level=4
+        const confirmNextBtn = window.document.getElementById('levelTimerConfirmNextBtn');
+        assert.ok(confirmNextBtn, 'Confirm Next task button should exist');
+        confirmNextBtn.click();
+
+        assert.strictEqual(confirmModal.style.display, 'none', 'Confirm modal should close upon confirming');
+        storedLevel = window.sessionStorage.getItem('blocky_level_timer_current_level');
+        assert.strictEqual(storedLevel, '4', 'Confirming Next task must store level 4');
+        assert.ok(navigatedUrl && navigatedUrl.includes('level=4'), 'Confirming Next task must navigate to level 4');
+    });
+
+    it('closes dialog and does not navigate when Stay is clicked', () => {
+        let navigatedUrl = null;
+        window.__levelTimerNavigate = (url) => { navigatedUrl = url; };
+
+        const timerScript = fs.readFileSync(path.join(__dirname, '../common/levelTimer.js'), 'utf8');
+        window.eval(timerScript);
+
+        const nextBtn = window.document.getElementById('timerNextTaskBtn');
+        nextBtn.click();
+
+        const confirmModal = window.document.getElementById('levelTimerConfirmModal');
+        assert.ok(confirmModal);
+        assert.strictEqual(confirmModal.style.display, 'flex');
+
+        const stayBtn = window.document.getElementById('levelTimerConfirmStayBtn');
+        assert.ok(stayBtn, 'Stay button should exist');
+        stayBtn.click();
+
+        assert.strictEqual(confirmModal.style.display, 'none', 'Stay must close the dialog');
         const storedLevel = window.sessionStorage.getItem('blocky_level_timer_current_level');
-        assert.strictEqual(storedLevel, '4', 'Clicking Next task should increment stored level to 4');
-        assert.ok(navigatedUrl && navigatedUrl.includes('level=4'), 'Should navigate to level 4');
+        assert.strictEqual(storedLevel, '3', 'Stored level must remain 3 after Stay');
+        assert.strictEqual(navigatedUrl, null, 'Stay must not navigate');
     });
 
     it('provides Finish task button on level 10 that opens session report', () => {

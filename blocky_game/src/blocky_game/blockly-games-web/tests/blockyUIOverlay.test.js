@@ -114,4 +114,52 @@ describe('blockyUIOverlay.js Test Suite', () => {
         tr.click();
         assert.strictEqual(loadedPath, 'models/sol_test.xmi', 'Single click must immediately call loadMomotSolution');
     });
+
+    it('collapses MoMoT parameters behind gear button on header', async () => {
+        await new Promise(r => setTimeout(r, 150));
+        const settings = window.document.getElementById('__momotSettings');
+        assert.ok(settings, '#__momotSettings should exist');
+        assert.strictEqual(settings.style.display, 'none', 'Parameters row should be hidden on load');
+
+        const runBtn = window.document.getElementById('__momotRunBtn');
+        const stopBtn = window.document.getElementById('__momotStopBtn');
+        const refreshBtn = window.document.getElementById('__momotRefreshBtn');
+        const gearBtn = window.document.getElementById('__momotGearBtn');
+        const closeBtn = window.document.getElementById('__momotCloseBtn');
+
+        assert.ok(runBtn, '#__momotRunBtn should exist');
+        assert.ok(stopBtn, '#__momotStopBtn should exist');
+        assert.ok(refreshBtn, '#__momotRefreshBtn should exist');
+        assert.ok(gearBtn, '#__momotGearBtn should exist');
+        assert.ok(closeBtn, '#__momotCloseBtn should exist');
+
+        assert.notStrictEqual(runBtn.style.display, 'none', 'Run button should be visible');
+        assert.notStrictEqual(stopBtn.style.display, 'none', 'Stop button should be visible');
+
+        // Inputs should be in the DOM with defaults
+        const inpSeed = window.document.getElementById('__momotInpSeed');
+        const inpPop = window.document.getElementById('__momotInpPop');
+        const inpIter = window.document.getElementById('__momotInpIter');
+        const inpRuns = window.document.getElementById('__momotInpRuns');
+        const inpSolLen = window.document.getElementById('__momotInpSolLen');
+
+        assert.ok(inpSeed, 'inpSeed should exist in DOM');
+        assert.strictEqual(inpSeed.value, '0');
+        assert.ok(inpPop, 'inpPop should exist in DOM');
+        assert.strictEqual(inpPop.value, '50');
+        assert.ok(inpIter, 'inpIter should exist in DOM');
+        assert.strictEqual(inpIter.value, '40');
+        assert.ok(inpRuns, 'inpRuns should exist in DOM');
+        assert.strictEqual(inpRuns.value, '10');
+        assert.ok(inpSolLen, 'inpSolLen should exist in DOM');
+        assert.strictEqual(inpSolLen.value, '10');
+
+        // Clicking gear shows inputs
+        gearBtn.click();
+        assert.strictEqual(settings.style.display, 'flex', 'Gear click should show parameters row');
+
+        // Clicking gear again collapses inputs
+        gearBtn.click();
+        assert.strictEqual(settings.style.display, 'none', 'Second gear click should collapse parameters row');
+    });
 });
