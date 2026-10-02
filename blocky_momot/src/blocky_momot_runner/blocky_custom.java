@@ -15,6 +15,7 @@ import at.ac.tuwien.big.momot.problem.solution.TransformationSolution;
 import at.ac.tuwien.big.momot.search.fitness.dimension.AbstractEGraphFitnessDimension;
 import at.ac.tuwien.big.momot.util.MomotUtil;
 import blocky.Game;
+import blocky.GameStatus;
 import blocky.Level;
 import blocky_momot.BlockySimulator;
 import blocky_momot.listener.IParetoFrontSubscriber;
@@ -143,12 +144,78 @@ public class blocky_custom extends blocky {
         return orchestration;
     }
 
+    // blocky.objectives=GATED (default, Exploration-Proposal.md): Edits, Actions and the extra Blocks objective
+    // only count for candidates that reach the goal; every other candidate gets GATED_WORST, so a small or
+    // early-crashing program gains nothing from being small. CURRENT keeps the objectives as they were.
+    private static final double GATED_WORST = 100000.0;
+
+    private static boolean gatedObjectives() {
+        return "GATED".equals(System.getProperty("blocky.objectives", "GATED"));
+    }
+
+    private static boolean reachesGoal(final EObject root) {
+        if (root instanceof Game game && !game.getLevels().isEmpty() && game.getLevels().get(0) != null) {
+            return BlockySimulator.run(game.getLevels().get(0)) == GameStatus.WON;
+        }
+        return false;
+    }
+
+    @Override
+    protected double _createObjectiveHelper_1(final TransformationSolution solution, final EGraph graph, final EObject root) {
+        try {
+            if (gatedObjectives() && !reachesGoal(root)) return GATED_WORST;
+        } catch (Throwable t) {
+            return 1000000.0;
+        }
+        return super._createObjectiveHelper_1(solution, graph, root);
+    }
+
+    // closestToGoal: the generated version reads Cell.distanceToGoal, which is only annotated for the one input
+    // file known when the runner class was loaded (static blocky.input). For any other input every cell is
+    // unannotated and the objective was the constant penalty 100000. Computing the distance field per
+    // evaluation gives the same value (smallest distance over the visited cells) for every input.
+    @Override
+    protected double _createObjectiveHelper_3(final TransformationSolution solution, final EGraph graph, final EObject root) {
+        try {
+            if (root instanceof Game game && !game.getLevels().isEmpty() && game.getLevels().get(0) != null) {
+                return (double) BlockySimulator.distanceToGoalOrPenalty(game.getLevels().get(0), 100000);
+            }
+        } catch (Throwable t) {
+            return 1000000.0;
+        }
+        return 1000000.0;
+    }
+
+    @Override
+    protected at.ac.tuwien.big.momot.search.fitness.IEGraphMultiDimensionalFitnessFunction createFitnessFunction(
+            final TransformationSearchOrchestration orchestration) {
+        at.ac.tuwien.big.momot.search.fitness.IEGraphMultiDimensionalFitnessFunction function =
+                super.createFitnessFunction(orchestration);
+        if (gatedObjectives()) {
+            // Added last so the positions of the existing objectives (GoalReached first) stay as the tools expect.
+            function.addObjective(new AbstractEGraphFitnessDimension("Blocks", IFitnessDimension.FunctionType.Minimum) {
+                @Override
+                protected double internalEvaluate(TransformationSolution solution) {
+                    try {
+                        EObject root = MomotUtil.getRoot(solution.execute());
+                        if (!reachesGoal(root)) return GATED_WORST;
+                        return blocky_momot.BlockyProgramMetrics.countStatements((Game) root);
+                    } catch (Throwable t) {
+                        return 1000000.0;
+                    }
+                }
+            });
+        }
+        return function;
+    }
+
     @Override
     protected double _createObjectiveHelper_2(final TransformationSolution solution, final EGraph graph, final EObject root) {
         try {
             if (root instanceof Game game) {
                 Level level = game.getLevels().isEmpty() ? null : game.getLevels().get(0);
                 if (level == null) return 1000000.0;
+                if (gatedObjectives() && !reachesGoal(root)) return GATED_WORST;
                 if (Boolean.getBoolean("blocky.shortestPathObjective")) {
                     double distance = BlockySimulator.distanceToGoalOrPenalty(level);
                     if (distance > 0.0) {
@@ -190,12 +257,19 @@ public class blocky_custom extends blocky {
             public NSGAII createAlgorithm() {
                 // blocky.algorithm (set by the game's "Alg" dropdown): NSGA_II (default) or MEMETIC_NSGA_II
                 // (NSGA-II + short hill climb on the best candidates after each generation).
+                // Benchmarks only, not in the dropdown: RANDOM_SEARCH (baseline without selection) and
+                // IMMIGRANTS_NSGA_II (NSGA-II + new random candidates every generation).
                 NSGAII alg = delegate.createAlgorithm();
                 blocky_momot.MemeticNSGAII.resetLastRunStats();
-                if ("MEMETIC_NSGA_II".equals(System.getProperty("blocky.algorithm", "NSGA_II"))) {
+                String algorithmName = System.getProperty("blocky.algorithm", "NSGA_II");
+                if ("MEMETIC_NSGA_II".equals(algorithmName)) {
                     alg = new blocky_momot.MemeticNSGAII(alg,
                             orchestration.getSearchHelper(), orchestration.getModuleManager(),
                             new blocky_momot.GoalFirstFitnessComparator(orchestration.getFitnessFunction().getObjectiveNames()));
+                } else if ("RANDOM_SEARCH".equals(algorithmName)) {
+                    alg = new blocky_momot.RandomSearchNSGAII(alg);
+                } else if ("IMMIGRANTS_NSGA_II".equals(algorithmName)) {
+                    alg = new blocky_momot.RandomImmigrantsNSGAII(alg);
                 }
                 System.out.println("[MoMoT] Algorithm: " + alg.getClass().getSimpleName());
                 getPublisherListener().setCurrentAlgorithm(alg);
