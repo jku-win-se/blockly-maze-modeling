@@ -750,15 +750,7 @@ public class BlockyUI extends Application {
                 + "        var actions = document.createElement('div'); actions.id = '__momotActions'; "
                 + "        actions.style.display = 'flex'; actions.style.alignItems = 'center'; actions.style.justifyContent = 'space-between'; actions.style.marginTop = '8px'; "
                 + "        var loadBtn = mkBtn('__momotLoadBtn', 'Load', 'Load selected model into the game'); "
-                + "        var cbLabel = document.createElement('label'); cbLabel.id = '__momotShowNonGoalLabel'; "
-                + "        cbLabel.style.display = 'flex'; cbLabel.style.alignItems = 'center'; cbLabel.style.gap = '4px'; "
-                + "        cbLabel.style.cursor = 'pointer'; cbLabel.style.fontSize = '11px'; cbLabel.style.color = '#ccc'; cbLabel.style.userSelect = 'none'; "
-                + "        var cbNonGoal = document.createElement('input'); cbNonGoal.type = 'checkbox'; cbNonGoal.id = '__momotShowNonGoal'; "
-                + "        cbNonGoal.checked = false; "
-                + "        cbLabel.appendChild(cbNonGoal); "
-                + "        var cbSpan = document.createElement('span'); cbSpan.textContent = 'Show non-goal solutions'; "
-                + "        cbLabel.appendChild(cbSpan); "
-                + "        actions.appendChild(loadBtn); actions.appendChild(cbLabel); "
+                + "        actions.appendChild(loadBtn); "
                 + "        var status = document.createElement('div'); status.id = '__momotStatus'; status.style.marginTop = '6px'; "
                 + "        status.style.color = '#0f0'; status.style.fontWeight = 'bold'; "
                 + "        status.textContent = 'Click Refresh or Run to see solutions.'; "
@@ -859,10 +851,7 @@ public class BlockyUI extends Application {
                 + "                window.__momotFirstGoalFormatted = metaFirstGoalFormatted; "
                 + "              } "
                 + "            } "
-                + "            var showNonGoal = false; "
-                + "            var cb = document.getElementById('__momotShowNonGoal'); "
-                + "            if (cb) showNonGoal = !!cb.checked; "
-                + "            var rawJson = JSON.stringify(data || []) + '_' + showNonGoal + '_' + (window.__momotFirstGoalTime || -1); "
+                + "            var rawJson = JSON.stringify(data || []) + '_' + (window.__momotFirstGoalTime || -1); "
                 + "            if (rawJson === window.__momotLastJson && list.children.length > 0) { "
                 + "              return; "
                 + "            } "
@@ -917,16 +906,14 @@ public class BlockyUI extends Application {
                 + "            if (window.__momotFirstGoalTime !== undefined && window.__momotFirstGoalTime !== null && window.__momotFirstGoalTime !== Infinity) { "
                 + "              goalInfo = ' | First goal: ' + (window.__momotFirstGoalFormatted || ((window.__momotFirstGoalTime / 1000).toFixed(2) + 's')) + ' (Gen ' + (window.__momotFirstGoalGen !== undefined && window.__momotFirstGoalGen !== null && window.__momotFirstGoalGen >= 0 ? window.__momotFirstGoalGen : '-') + ')'; "
                 + "            } "
+                // Candidates that do not reach the goal are always listed (sorted after the goal-reaching ones).
                 + "            var displayed = processed; "
-                + "            if (!showNonGoal) { "
-                + "              displayed = processed.filter(function(p) { return p.isGoal; }); "
-                + "            } "
                 + "            if (window.__momotSortCol !== -1) { "
                 + "              displayed.sort(function(a, b) { "
                 + "                var vA, vB; "
-                + "                if (window.__momotSortCol === 997) { "
-                + "                  vA = (a.it.generationToForm !== undefined && a.it.generationToForm !== null && a.it.generationToForm >= 0) ? a.it.generationToForm : Infinity; "
-                + "                  vB = (b.it.generationToForm !== undefined && b.it.generationToForm !== null && b.it.generationToForm >= 0) ? b.it.generationToForm : Infinity; "
+                + "                if (window.__momotSortCol === 996) { "
+                + "                  vA = (a.it.blocks !== undefined && a.it.blocks !== null && a.it.blocks >= 0) ? a.it.blocks : Infinity; "
+                + "                  vB = (b.it.blocks !== undefined && b.it.blocks !== null && b.it.blocks >= 0) ? b.it.blocks : Infinity; "
                 + "                } else if (window.__momotSortCol === 998) { "
                 + "                  vA = (a.it.timeToFormMs !== undefined && a.it.timeToFormMs !== null && a.it.timeToFormMs >= 0) ? a.it.timeToFormMs : Infinity; "
                 + "                  vB = (b.it.timeToFormMs !== undefined && b.it.timeToFormMs !== null && b.it.timeToFormMs >= 0) ? b.it.timeToFormMs : Infinity; "
@@ -943,17 +930,7 @@ public class BlockyUI extends Application {
                 + "                return 0; "
                 + "              }); "
                 + "            } "
-                + "            if (showNonGoal) { "
-                + "              setStatus(totalCount + ' solution(s) found (' + goalCount + ' reaching goal)' + goalInfo + '.'); "
-                + "            } else { "
-                + "              if (displayed.length > 0) { "
-                + "                setStatus(displayed.length + ' goal-reaching solution(s) shown (' + (totalCount - displayed.length) + ' non-goal hidden)' + goalInfo + '.'); "
-                + "              } else if (totalCount > 0) { "
-                + "                setStatus('0 goal-reaching solutions (' + totalCount + ' non-goal hidden).'); "
-                + "              } else { "
-                + "                setStatus('No solutions found.'); "
-                + "              } "
-                + "            } "
+                + "            setStatus(totalCount + ' candidate(s), ' + goalCount + ' reaching the goal' + goalInfo + '.'); "
                  + "            var table = document.createElement('table'); "
                  + "            table.style.width = '100%'; table.style.borderCollapse = 'collapse'; table.style.fontSize = '11px'; "
                  + "            table.style.border = '1px solid rgba(255,255,255,0.25)'; "
@@ -975,25 +952,19 @@ public class BlockyUI extends Application {
                  + "              return th; "
                  + "            } "
                 + "                        var objNames = ['Goal Reached', 'Edits', 'Number of Actions', 'Closest to Goal']; "
-            + "            var displayCols = Math.max(maxObj, objNames.length); "
+            // Only the four named objectives get a column; the block count comes from the model itself,
+            // so it is shown for every solution and with any objective set.
+            + "            var displayCols = objNames.length; "
             + "            for (var i=0; i<displayCols; i++) hRow.appendChild(mkTh(objNames[i] || ('Obj ' + (i+1)), i)); "
+            + "            hRow.appendChild(mkTh('Number of blocks', 996)); "
             + "            hRow.appendChild(mkTh('Time (s)', 998)); "
-            + "            hRow.appendChild(mkTh('Gen', 997)); "
-            + "            hRow.appendChild(mkTh('Model', 999)); "
             + "            thead.appendChild(hRow); table.appendChild(thead); "
             + "            var tbody = document.createElement('tbody'); "
-            + "            if (displayed.length === 0 && totalCount > 0 && !showNonGoal) { "
-            + "              var trEmpty = document.createElement('tr'); "
-            + "              var tdEmpty = document.createElement('td'); "
-            + "              tdEmpty.colSpan = displayCols + 3; "
-            + "              tdEmpty.textContent = 'No goal-reaching solutions yet (' + totalCount + ' non-goal solutions hidden).'; "
-            + "              tdEmpty.style.padding = '12px 8px'; tdEmpty.style.textAlign = 'center'; tdEmpty.style.color = '#aaa'; tdEmpty.style.fontStyle = 'italic'; "
-            + "              trEmpty.appendChild(tdEmpty); "
-            + "              tbody.appendChild(trEmpty); "
-            + "            } else { "
+            + "            { "
             + "              displayed.forEach(function(p) { "
             + "              var tr = document.createElement('tr'); "
             + "              tr.style.cursor = 'pointer'; "
+            + "              if (!p.isGoal) tr.style.opacity = '0.65'; "
             + "              if (window.__momotSelectedPath && window.__momotSelectedPath === p.it.modelPath) { "
             + "                tr.style.background = 'rgba(255,255,255,0.15)'; "
             + "              } "
@@ -1004,13 +975,19 @@ public class BlockyUI extends Application {
             + "                  if (val === -1) td.textContent = 'TRUE'; "
             + "                  else if (val === 0) td.textContent = 'FALSE'; "
             + "                  else td.textContent = (val !== undefined && !isNaN(val)) ? val : '-'; "
+            // 100000 and above is the penalty for "no value" (gated objectives, or no route): show it as '-'
             + "                } else { "
-            + "                  td.textContent = (val !== undefined && !isNaN(val)) ? val : '-'; "
+            + "                  td.textContent = (val !== undefined && !isNaN(val) && val < 100000) ? val : '-'; "
             + "                } "
             + "                td.style.padding = '6px 8px'; td.style.textAlign = 'right'; "
             + "                td.style.border = '1px solid rgba(255,255,255,0.15)'; "
             + "                tr.appendChild(td); "
             + "              } "
+            + "              var tdB = document.createElement('td'); "
+            + "              tdB.textContent = (p.it.blocks !== undefined && p.it.blocks !== null && p.it.blocks >= 0) ? String(p.it.blocks) : '-'; "
+            + "              tdB.style.padding = '6px 8px'; tdB.style.textAlign = 'right'; "
+            + "              tdB.style.border = '1px solid rgba(255,255,255,0.15)'; "
+            + "              tr.appendChild(tdB); "
             + "              var tdT = document.createElement('td'); "
             + "              var tText = p.it.timeFormatted; "
             + "              if (!tText || tText === '-') { "
@@ -1025,16 +1002,6 @@ public class BlockyUI extends Application {
               + "              tdT.style.padding = '6px 8px'; tdT.style.textAlign = 'right'; "
               + "              tdT.style.border = '1px solid rgba(255,255,255,0.15)'; "
               + "              tr.appendChild(tdT); "
-              + "              var tdG = document.createElement('td'); "
-              + "              var gText = (p.it.generationToForm !== undefined && p.it.generationToForm !== null && p.it.generationToForm >= 0) ? String(p.it.generationToForm) : '-'; "
-              + "              tdG.textContent = gText; "
-              + "              tdG.style.padding = '6px 8px'; tdG.style.textAlign = 'right'; "
-              + "              tdG.style.border = '1px solid rgba(255,255,255,0.15)'; "
-              + "              tr.appendChild(tdG); "
-              + "              var tdM = document.createElement('td'); "
-            + "              tdM.textContent = p.modelName; tdM.style.padding = '6px 8px'; "
-            + "              tdM.style.border = '1px solid rgba(255,255,255,0.15)'; "
-            + "              tr.appendChild(tdM); "
                  + "              tr.addEventListener('mouseenter', function() { if (window.__momotSelectedPath !== p.it.modelPath) tr.style.background = 'rgba(255,255,255,0.05)'; }); "
                  + "              tr.addEventListener('mouseleave', function() { if (window.__momotSelectedPath !== p.it.modelPath) tr.style.background = 'transparent'; }); "
 
@@ -1094,7 +1061,6 @@ public class BlockyUI extends Application {
                 + "        } "
                 + "        window.__momotShowAndRefresh = function(){ try { panel.style.display = 'block'; } catch(e) {} try { refresh(true); } catch(e2) {} }; "
                 + "        refreshBtn.addEventListener('click', function(){ refresh(); }); "
-                + "        cbNonGoal.addEventListener('change', function(){ window.__momotLastJson = null; renderSolutions(); }); "
                 + "        mStopBtn.addEventListener('click', function(){ "
                 + "          try { "
                 + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
@@ -1835,13 +1801,40 @@ public class BlockyUI extends Application {
                         }
                     }
                     sb.append("\"timeFormatted\":\"").append(escapeJsonString(formattedTime)).append("\",");
-                    sb.append("\"generationToForm\":").append(e.generationToForm != null ? e.generationToForm : -1);
+                    sb.append("\"generationToForm\":").append(e.generationToForm != null ? e.generationToForm : -1).append(",");
+                    sb.append("\"blocks\":").append(blockCountOf(e.modelPath));
                     sb.append("}");
                 }
                 sb.append("]}");
                 return sb.toString();
             } catch (Exception ex) {
                 return "{\"solutions\":[]}";
+            }
+        }
+
+        /** Block counts per solution model; the table is polled, so each model file is only read once. */
+        private final java.util.Map<String, Integer> blockCountCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+        private int blockCountOf(String modelPath) {
+            // Never let this extra column break the whole listing: any failure shows as "-" in the table.
+            try {
+                if (modelPath == null || modelPath.isBlank() || !new File(modelPath).isFile()) return -1;
+                Integer cached = blockCountCache.get(modelPath);
+                if (cached != null) return cached;
+                // Loaded with the game's own model classes, as getSolutionPath does: blocky_momot classes are
+                // not visible to this class at runtime (NoClassDefFoundError under javafx:run).
+                Resource res = new ResourceSetImpl().createResource(URI.createFileURI(new File(modelPath).getAbsolutePath()));
+                res.load(null);
+                Object root = res.getContents().isEmpty() ? null : res.getContents().get(0);
+                Level level = null;
+                if (root instanceof Game && !((Game) root).getLevels().isEmpty()) level = ((Game) root).getLevels().get(0);
+                else if (root instanceof Level) level = (Level) root;
+                int count = level == null ? -1 : SimUtils.countStatements(level.getSolution());
+                blockCountCache.put(modelPath, count);
+                return count;
+            } catch (Throwable t) {
+                System.err.println("[JSBridge] block count failed for " + modelPath + ": " + t);
+                return -1;
             }
         }
 
@@ -2097,6 +2090,8 @@ public class BlockyUI extends Application {
                 henshin = "statement_insertions_henshin_text_edit_anywhere.henshin";
             }
         }
+        // PROTOTYPE: -Dblocky.rules.wrap=true switches to the *_wrap.henshin variant (adds wrap/unwrap moves)
+        henshin = MomotFirstGoalBenchmarkRunner.withWrapMoves(henshin);
         System.setProperty("blocky.henshin", "../blocky_model/transformations/" + henshin);
 
         MomotRunService.RunSpec baseSpec = MomotRunService.defaultDirectManipulationSpec();
