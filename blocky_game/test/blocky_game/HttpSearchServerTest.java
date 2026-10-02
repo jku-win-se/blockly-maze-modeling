@@ -470,4 +470,72 @@ class HttpSearchServerTest {
         assertTrue(adminBody.contains("\"totalDirectManipulations\":1"));
         assertTrue(adminBody.contains("\"programRuns\":2"));
     }
+    @Test
+    void testSnapshotAndEpochHandling() throws Exception {
+        HttpRequest reqNew = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/session/new"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+        HttpResponse<String> respNew = client.send(reqNew, HttpResponse.BodyHandlers.ofString());
+        String sid = respNew.body().replaceAll(".*\"sessionId\":\"([^\"]+)\".*", "$1");
+
+        // 1. Snapshot with epoch 1 and 1 block
+        String snap1 = "{"
+                + "\"epoch\":1,"
+                + "\"map\":\"[[0,0,0],[2,1,3],[0,0,0]]\","
+                + "\"meta\":\"{\\\"level\\\":1,\\\"maxBlocks\\\":10,\\\"startDirection\\\":1}\","
+                + "\"xml\":\"<xml><block type=\\\"maze_moveForward\\\"></block></xml>\","
+                + "\"allowEmpty\":false"
+                + "}";
+        HttpRequest reqSnap1 = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/session/snapshot"))
+                .header("Content-Type", "application/json")
+                .header("X-Session-ID", sid)
+                .POST(HttpRequest.BodyPublishers.ofString(snap1))
+                .build();
+        HttpResponse<String> respSnap1 = client.send(reqSnap1, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respSnap1.statusCode());
+        assertTrue(respSnap1.body().contains("\"applied\":true"));
+
+        // 2. Snapshot with epoch 2 (next level, allowed empty)
+        String snap2 = "{"
+                + "\"epoch\":2,"
+                + "\"map\":\"[[0,0,0],[2,1,3],[0,0,0]]\","
+                + "\"meta\":\"{\\\"level\\\":2,\\\"maxBlocks\\\":10,\\\"startDirection\\\":1}\","
+                + "\"xml\":\"<xml></xml>\","
+                + "\"allowEmpty\":true"
+                + "}";
+        HttpRequest reqSnap2 = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/session/snapshot"))
+                .header("Content-Type", "application/json")
+                .header("X-Session-ID", sid)
+                .POST(HttpRequest.BodyPublishers.ofString(snap2))
+                .build();
+        HttpResponse<String> respSnap2 = client.send(reqSnap2, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respSnap2.statusCode());
+        assertTrue(respSnap2.body().contains("\"applied\":true"));
+
+        // 3. Stale snapshot from epoch 1 arrives late -> rejected
+        HttpRequest reqSnapStale = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/session/snapshot"))
+                .header("Content-Type", "application/json")
+                .header("X-Session-ID", sid)
+                .POST(HttpRequest.BodyPublishers.ofString(snap1))
+                .build();
+        HttpResponse<String> respSnapStale = client.send(reqSnapStale, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respSnapStale.statusCode());
+        assertTrue(respSnapStale.body().contains("\"applied\":false"));
+
+        // 4. Verify session state reflects epoch 2 and level 2
+        HttpRequest reqState = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/session/state"))
+                .header("X-Session-ID", sid)
+                .GET()
+                .build();
+        HttpResponse<String> respState = client.send(reqState, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respState.statusCode());
+        assertTrue(respState.body().contains("\"levelId\":2"));
+    }
+
+
 }

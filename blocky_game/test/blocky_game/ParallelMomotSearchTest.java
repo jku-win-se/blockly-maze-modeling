@@ -735,4 +735,89 @@ class ParallelMomotSearchTest {
         if (left == null || right == null) return false;
         return new File(left).getCanonicalPath().equals(new File(right).getCanonicalPath());
     }
+
+    @Test
+    void testAllowedEmptySyncClearsStatements() {
+        SessionContext session = new SessionContext("empty-sync-" + System.nanoTime());
+        session.syncModel(1, "<xml><block type=\"maze_moveForward\"></block></xml>", false);
+        Body sol = session.getEngine().getCurrentLevel().getSolution();
+        assertNotNull(sol);
+        assertEquals(1, BlockyProgramMetrics.countStatements(sol));
+
+        // When allowEmpty is false, empty XML is ignored and solution remains
+        boolean ignored = session.syncModel(1, "<xml></xml>", false);
+        assertTrue(ignored);
+        assertEquals(1, BlockyProgramMetrics.countStatements(session.getEngine().getCurrentLevel().getSolution()),
+                "Ignored empty sync must not clear solution");
+
+        // When allowEmpty is true, empty XML clears the solution
+        boolean cleared = session.syncModel(1, "<xml></xml>", true);
+        assertTrue(cleared);
+        Body clearedSol = session.getEngine().getCurrentLevel().getSolution();
+        assertTrue(clearedSol == null || BlockyProgramMetrics.countStatements(clearedSol) == 0,
+                "Allowed empty sync must leave no statements");
+    }
+
+    @Test
+    void testLevelChangePlusRunWritesCleanInputXmi() throws Exception {
+        SessionContext session = new SessionContext("clean-run-" + System.nanoTime());
+        // Level 1 has a statement
+        session.syncModel(1, "<xml><block type=\"maze_moveForward\"></block></xml>", false);
+        assertEquals(1, BlockyProgramMetrics.countStatements(session.getEngine().getCurrentLevel().getSolution()));
+
+        // Next level (level 2) with new map, meta, and empty XML snapshot on run
+        String map2 = "[[0,0,0],[2,1,3],[0,0,0]]";
+        String meta2 = "{\"level\":2,\"maxBlocks\":10,\"startDirection\":1}";
+        String emptyXml = "<xml></xml>";
+        long epoch2 = 2;
+
+        session.runMomotWithParams(epoch2, map2, meta2, emptyXml, 1, 20, 100, 1, 4);
+
+        String runDir = session.getMomotCurrentOutputDir();
+        assertNotNull(runDir);
+        File inputXmi = new File(new File(runDir).getParentFile(), "input.xmi");
+        assertTrue(inputXmi.isFile(), "input.xmi must exist for level 2 run");
+        String content = java.nio.file.Files.readString(inputXmi.toPath());
+        assertFalse(content.contains("kind=\"moveForward\""),
+                "input.xmi for level 2 run must not contain previous level statements");
+
+        assertEquals(2, session.getEngine().getCurrentLevel().getId());
+        Body sol2 = session.getEngine().getCurrentLevel().getSolution();
+        assertTrue(sol2 == null || BlockyProgramMetrics.countStatements(sol2) == 0,
+                "Level 2 solution must have 0 statements");
+
+        session.stopMomotRun();
+    }
+
+    @Test
+    void testOlderEpochDoesNotRestoreOldProgram() {
+        SessionContext session = new SessionContext("epoch-test-" + System.nanoTime());
+        String prog1Xml = "<xml><block type=\"maze_moveForward\"></block></xml>";
+
+        // Page load 1 (epoch 1)
+        assertTrue(session.syncModel(1, prog1Xml, false));
+        assertEquals(1, session.getLastAppliedEpoch());
+        assertEquals(1, BlockyProgramMetrics.countStatements(session.getEngine().getCurrentLevel().getSolution()));
+
+        // Page load 2 (epoch 2) clears workspace
+        assertTrue(session.syncModel(2, "<xml></xml>", true));
+        assertEquals(2, session.getLastAppliedEpoch());
+        Body sol = session.getEngine().getCurrentLevel().getSolution();
+        assertTrue(sol == null || BlockyProgramMetrics.countStatements(sol) == 0);
+
+        // Stale sync from page load 1 (epoch 1) arrives late
+        assertFalse(session.syncModel(1, prog1Xml, false), "Stale epoch sync must be rejected");
+        assertEquals(2, session.getLastAppliedEpoch());
+        Body afterStaleSync = session.getEngine().getCurrentLevel().getSolution();
+        assertTrue(afterStaleSync == null || BlockyProgramMetrics.countStatements(afterStaleSync) == 0,
+                "Stale sync must not restore statements");
+
+        // Stale snapshot from epoch 1 arrives late
+        assertFalse(session.applySnapshot(1, "[[2,3]]", "{\"level\":1}", prog1Xml, false),
+                "Stale epoch snapshot must be rejected");
+
+        // Stale run from epoch 1 arrives late
+        session.runMomotWithParams(1, "[[2,3]]", "{\"level\":1}", prog1Xml, 1, 20, 100, 1, 4);
+        assertFalse(session.isMomotRunning(), "Stale epoch run must not start search");
+    }
 }

@@ -27,6 +27,11 @@ public class SessionContext {
     /** Level id that {@link #momotCurrentOutputDir} belongs to. -1 means no active results. */
     private volatile int momotCurrentLevelId = -1;
     /**
+     * Last applied page epoch. Monotonically increasing per page load in the web client.
+     * Requests with an epoch older than this value are rejected.
+     */
+    private long lastAppliedEpoch = 0;
+    /**
      * Bumped when a search starts or the level changes so a finishing search from a
      * previous level cannot overwrite this session's output directory or status.
      */
@@ -69,9 +74,46 @@ public class SessionContext {
         return sessionDir;
     }
 
-    public synchronized void syncModel(String xml) {
+    public synchronized long getLastAppliedEpoch() {
+        return lastAppliedEpoch;
+    }
+
+    private boolean checkAndUpdateEpoch(long epoch) {
+        if (epoch > 0) {
+            if (epoch < lastAppliedEpoch) {
+                return false;
+            }
+            lastAppliedEpoch = epoch;
+        }
+        return true;
+    }
+
+    public synchronized boolean syncModel(String xml) {
+        return syncModel(0, xml, false);
+    }
+
+    public synchronized boolean syncModel(long epoch, String xml, boolean allowEmpty) {
         touch();
-        if (xml == null || xml.indexOf("<block") < 0) return;
+        if (!checkAndUpdateEpoch(epoch)) {
+            return false;
+        }
+        applyModelXml(xml, allowEmpty);
+        return true;
+    }
+
+    private void applyModelXml(String xml, boolean allowEmpty) {
+        if (xml == null) return;
+        boolean hasBlocks = xml.indexOf("<block") >= 0;
+        if (!hasBlocks) {
+            if (allowEmpty) {
+                try {
+                    engine.rebuildProgram(Collections.emptyList());
+                } catch (Exception e) {
+                    System.err.println("[SessionContext " + sessionId + "] syncModel clear error: " + e.getMessage());
+                }
+            }
+            return;
+        }
         try {
             List<Map<String, Object>> data = BlocklyXmlParser.parseBlocklyXml(xml);
             engine.rebuildProgram(data);
@@ -80,20 +122,35 @@ public class SessionContext {
         }
     }
 
-    public synchronized void syncMap(String mapJson) {
+    public synchronized boolean syncMap(String mapJson) {
+        return syncMap(0, mapJson);
+    }
+
+    public synchronized boolean syncMap(long epoch, String mapJson) {
         touch();
-        if (mapJson == null || mapJson.trim().isEmpty()) return;
+        if (!checkAndUpdateEpoch(epoch)) {
+            return false;
+        }
+        if (mapJson == null || mapJson.trim().isEmpty()) return true;
         try {
             engine.setMapFromJson(mapJson);
             clearMomotState();
         } catch (Exception e) {
             System.err.println("[SessionContext " + sessionId + "] syncMap error: " + e.getMessage());
         }
+        return true;
     }
 
-    public synchronized void syncLevelMeta(String metaJson) {
+    public synchronized boolean syncLevelMeta(String metaJson) {
+        return syncLevelMeta(0, metaJson);
+    }
+
+    public synchronized boolean syncLevelMeta(long epoch, String metaJson) {
         touch();
-        if (metaJson == null || metaJson.trim().isEmpty()) return;
+        if (!checkAndUpdateEpoch(epoch)) {
+            return false;
+        }
+        if (metaJson == null || metaJson.trim().isEmpty()) return true;
         try {
             int oldLevelId = (engine.getCurrentLevel() != null) ? engine.getCurrentLevel().getId() : -1;
             engine.syncLevelMeta(metaJson);
@@ -104,6 +161,38 @@ public class SessionContext {
         } catch (Exception e) {
             System.err.println("[SessionContext " + sessionId + "] syncLevelMeta error: " + e.getMessage());
         }
+        return true;
+    }
+
+    public synchronized boolean applySnapshot(long epoch, String mapJson, String metaJson, String xml, boolean allowEmpty) {
+        touch();
+        if (!checkAndUpdateEpoch(epoch)) {
+            return false;
+        }
+        if (mapJson != null && !mapJson.trim().isEmpty()) {
+            try {
+                engine.setMapFromJson(mapJson);
+                clearMomotState();
+            } catch (Exception e) {
+                System.err.println("[SessionContext " + sessionId + "] syncMap error: " + e.getMessage());
+            }
+        }
+        if (metaJson != null && !metaJson.trim().isEmpty()) {
+            try {
+                int oldLevelId = (engine.getCurrentLevel() != null) ? engine.getCurrentLevel().getId() : -1;
+                engine.syncLevelMeta(metaJson);
+                int newLevelId = (engine.getCurrentLevel() != null) ? engine.getCurrentLevel().getId() : -1;
+                if (oldLevelId != newLevelId) {
+                    clearMomotState();
+                }
+            } catch (Exception e) {
+                System.err.println("[SessionContext " + sessionId + "] syncLevelMeta error: " + e.getMessage());
+            }
+        }
+        if (xml != null) {
+            applyModelXml(xml, allowEmpty);
+        }
+        return true;
     }
 
     public synchronized void clearMomotState() {
@@ -120,7 +209,22 @@ public class SessionContext {
     }
 
     public synchronized void runMomotWithParams(int seed, int pop, int eval, int runs, int solLen) {
+        runMomotWithParams(0, null, null, null, seed, pop, eval, runs, solLen);
+    }
+
+    public synchronized void runMomotWithParams(long epoch, String mapJson, String metaJson, String xml,
+                                                int seed, int pop, int eval, int runs, int solLen) {
         touch();
+        if (epoch > 0 && epoch < lastAppliedEpoch) {
+            momotLogBuffer.add("[Session] Stale epoch ignored: " + epoch + " < " + lastAppliedEpoch);
+            return;
+        }
+        if (mapJson != null || metaJson != null || xml != null || epoch > 0) {
+            boolean applied = applySnapshot(epoch, mapJson, metaJson, xml, true);
+            if (!applied) {
+                return;
+            }
+        }
         if (isMomotRunning) {
             momotLogBuffer.add("[Session] MoMoT run already in progress.");
             return;

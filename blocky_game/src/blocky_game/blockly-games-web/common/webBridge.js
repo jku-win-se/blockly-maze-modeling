@@ -7,7 +7,55 @@
     console.log('[webBridge] Initializing browser REST adapter for Blockly Maze...');
 
     var apiBase = '';
-    var sessionId = localStorage.getItem('blocky_session_id');
+    var sessionId = null;
+    try {
+        if (window.localStorage) {
+            sessionId = window.localStorage.getItem('blocky_session_id');
+        }
+    } catch(e) {}
+
+    function getSyncEpoch() {
+        var epoch = 1;
+        try {
+            if (window.sessionStorage) {
+                var raw = window.sessionStorage.getItem('blocky_sync_epoch');
+                if (raw) {
+                    epoch = parseInt(raw, 10);
+                    if (isNaN(epoch) || epoch < 1) epoch = 1;
+                }
+            }
+        } catch(e) {}
+        return epoch;
+    }
+
+    function incrementSyncEpoch() {
+        var epoch = 1;
+        try {
+            if (window.sessionStorage) {
+                var raw = window.sessionStorage.getItem('blocky_sync_epoch');
+                if (raw) {
+                    epoch = parseInt(raw, 10);
+                    if (isNaN(epoch) || epoch < 0) epoch = 0;
+                }
+                epoch++;
+                window.sessionStorage.setItem('blocky_sync_epoch', String(epoch));
+            }
+        } catch(e) {}
+        return epoch;
+    }
+
+    // Bump epoch once per page load/initialization
+    incrementSyncEpoch();
+
+    function clearWorkspaceBlocks() {
+        try {
+            var ws = (window.BlocklyInterface && window.BlocklyInterface.getWorkspace && window.BlocklyInterface.getWorkspace()) ||
+                     (window.Blockly && window.Blockly.getMainWorkspace && window.Blockly.getMainWorkspace());
+            if (ws && typeof ws.clear === 'function') {
+                ws.clear();
+            }
+        } catch(e) {}
+    }
 
     function initSessionState(sid) {
         if (!sid) return;
@@ -81,7 +129,23 @@
                     window.__injectNewPath = data.newPath || [];
                     window.__injectPastPath = data.pastPath || [];
 
-                    if (data.xml) {
+                    var isCleared = false;
+                    try {
+                        if (window.sessionStorage) {
+                            isCleared = !!window.sessionStorage.getItem('blocky_cleared_' + frontendK);
+                        }
+                    } catch (eC) {}
+
+                    if (isCleared) {
+                        console.log('[webBridge] Level ' + frontendK + ' is marked as intentionally cleared; sending empty snapshot.');
+                        try {
+                            if (window.localStorage) {
+                                window.localStorage.removeItem('maze' + frontendK);
+                            }
+                        } catch (eL) {}
+                        clearWorkspaceBlocks();
+                        bridge.syncModel('', true);
+                    } else if (data.xml) {
                         applyXmlToWorkspace(data.xml);
                     }
                 } else {
@@ -740,21 +804,14 @@
         var activeGrid = getActiveGrid();
         var frontendK = (typeof window.K === 'number') ? window.K : 1;
         var currentXml = getCurrentWorkspaceXml();
-
-        if (activeGrid) {
-            bridge.syncMap(JSON.stringify(activeGrid));
-        }
-        bridge.syncLevelMeta(JSON.stringify({
+        var mapJson = activeGrid ? JSON.stringify(activeGrid) : null;
+        var metaJson = JSON.stringify({
             level: frontendK,
             maxBlocks: window.Od || 10,
             startDirection: window.T || 1
-        }));
-        if (currentXml) {
-            bridge.syncModel(currentXml);
-        }
-        if (typeof callback === 'function') {
-            setTimeout(callback, 150);
-        }
+        });
+
+        bridge.syncSnapshot(mapJson, metaJson, currentXml, false, callback);
     }
     window.__syncCurrentLevelStateToBackend = syncCurrentLevelStateToBackend;
 
@@ -794,21 +851,34 @@
             console.log('[JS Log]', msg);
         },
 
-        syncModel: function(xml) {
-            if (!xml) return;
-            window.__lastSyncedXml = xml;
+        syncModel: function(xml, allowEmpty) {
+            var hasBlocks = xml && xml.indexOf('<block') >= 0;
+            if (!hasBlocks && !allowEmpty) return;
+            window.__lastSyncedXml = xml || '';
+            var epoch = getSyncEpoch();
+            var info = getTimerSessionInfo();
             getSessionId(function(sid) {
                 if (!sid) return;
                 fetch(apiBase + '/api/session/sync', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Session-ID': sid },
-                    body: JSON.stringify({ xml: xml })
+                    headers: attachTimerHeaders({ 'Content-Type': 'application/json', 'X-Session-ID': sid }),
+                    body: JSON.stringify({
+                        xml: xml || '',
+                        allowEmpty: !!allowEmpty,
+                        epoch: epoch,
+                        timerSessionId: info.timerSessionId,
+                        level: info.level
+                    })
                 })
                 .then(function() {
                     // Update simulation trace and immediate feedback path overlay
                     return fetch(apiBase + '/api/simulation/run', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-Session-ID': sid }
+                        headers: attachTimerHeaders({ 'Content-Type': 'application/json', 'X-Session-ID': sid }),
+                        body: JSON.stringify({
+                            timerSessionId: info.timerSessionId,
+                            level: info.level
+                        })
                     });
                 })
                 .then(function(r) { return r.json(); })
@@ -828,24 +898,58 @@
         },
 
         syncMap: function(mapJson) {
+            var epoch = getSyncEpoch();
             getSessionId(function(sid) {
                 if (!sid) return;
                 fetch(apiBase + '/api/session/map', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Session-ID': sid },
-                    body: JSON.stringify({ map: mapJson })
+                    body: JSON.stringify({ map: mapJson, epoch: epoch })
                 }).catch(function(e) { console.error('[webBridge] syncMap error', e); });
             });
         },
 
         syncLevelMeta: function(metaJson) {
+            var epoch = getSyncEpoch();
             getSessionId(function(sid) {
                 if (!sid) return;
                 fetch(apiBase + '/api/session/meta', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Session-ID': sid },
-                    body: JSON.stringify({ meta: metaJson })
+                    body: JSON.stringify({ meta: metaJson, epoch: epoch })
                 }).catch(function(e) { console.error('[webBridge] syncLevelMeta error', e); });
+            });
+        },
+
+        syncSnapshot: function(mapJson, metaJson, xml, allowEmpty, callback) {
+            var epoch = getSyncEpoch();
+            var info = getTimerSessionInfo();
+            getSessionId(function(sid) {
+                if (!sid) {
+                    if (typeof callback === 'function') callback();
+                    return;
+                }
+                fetch(apiBase + '/api/session/snapshot', {
+                    method: 'POST',
+                    headers: attachTimerHeaders({ 'Content-Type': 'application/json', 'X-Session-ID': sid }),
+                    body: JSON.stringify({
+                        epoch: epoch,
+                        map: mapJson,
+                        meta: metaJson,
+                        xml: xml || '',
+                        allowEmpty: !!allowEmpty,
+                        timerSessionId: info.timerSessionId,
+                        level: info.level
+                    })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function() {
+                    if (typeof callback === 'function') callback();
+                })
+                .catch(function(e) {
+                    console.error('[webBridge] syncSnapshot error', e);
+                    if (typeof callback === 'function') callback();
+                });
             });
         },
 
@@ -890,28 +994,42 @@
                 window.__momotClearSolutions();
             }
             var info = getTimerSessionInfo();
-            syncCurrentLevelStateToBackend(function() {
-                getSessionId(function(sid) {
-                    if (!sid) return;
-                    fetch(apiBase + '/api/momot/run', {
-                        method: 'POST',
-                        headers: attachTimerHeaders({ 'Content-Type': 'application/json', 'X-Session-ID': sid }),
-                        body: JSON.stringify({
-                            seed: seed,
-                            populationSize: pop,
-                            maxEvaluations: eval,
-                            nrRuns: runs,
-                            solutionLength: solLen,
-                            timerSessionId: info.timerSessionId,
-                            level: info.level
-                        })
-                    }).then(function(r) { return r.json(); })
-                    .then(function(data) {
-                        console.log('[webBridge] MOMoT run started:', data);
-                        startStatusPolling();
+            var activeGrid = getActiveGrid();
+            var frontendK = (typeof window.K === 'number') ? window.K : info.level;
+            var currentXml = getCurrentWorkspaceXml() || '';
+            var epoch = getSyncEpoch();
+
+            var mapJson = activeGrid ? JSON.stringify(activeGrid) : null;
+            var metaJson = JSON.stringify({
+                level: frontendK,
+                maxBlocks: window.Od || 10,
+                startDirection: window.T || 1
+            });
+
+            getSessionId(function(sid) {
+                if (!sid) return;
+                fetch(apiBase + '/api/momot/run', {
+                    method: 'POST',
+                    headers: attachTimerHeaders({ 'Content-Type': 'application/json', 'X-Session-ID': sid }),
+                    body: JSON.stringify({
+                        seed: seed,
+                        populationSize: pop,
+                        maxEvaluations: eval,
+                        nrRuns: runs,
+                        solutionLength: solLen,
+                        timerSessionId: info.timerSessionId,
+                        level: info.level,
+                        epoch: epoch,
+                        map: mapJson,
+                        meta: metaJson,
+                        xml: currentXml
                     })
-                    .catch(function(e) { console.error('[webBridge] runMomot error', e); });
-                });
+                }).then(function(r) { return r.json(); })
+                .then(function(data) {
+                    console.log('[webBridge] MOMoT run started:', data);
+                    startStatusPolling();
+                })
+                .catch(function(e) { console.error('[webBridge] runMomot error', e); });
             });
         },
 
@@ -1326,8 +1444,14 @@
         }
     };
 
+    var suppressSyncUntil = 0;
+
     function applyXmlToWorkspace(xmlStr) {
         if (!xmlStr) return;
+        suppressSyncUntil = Date.now() + 500;
+        window.__lastObservedXml = xmlStr;
+        window.__lastSyncedXml = xmlStr;
+        emptyWorkspacePollCount = 0;
         try {
             if (window.BlocklyInterface && typeof window.BlocklyInterface.setCode === 'function') {
                 window.BlocklyInterface.setCode(xmlStr);
@@ -1363,10 +1487,15 @@
         try {
             var ws = (window.BlocklyInterface && window.BlocklyInterface.getWorkspace && window.BlocklyInterface.getWorkspace()) ||
                      (window.Blockly && window.Blockly.getMainWorkspace && window.Blockly.getMainWorkspace());
-            if (ws && window.Blockly && window.Blockly.Xml) {
-                var dom = window.Blockly.Xml.workspaceToDom(ws);
-                if (dom) {
-                    return new XMLSerializer().serializeToString(dom);
+            if (ws) {
+                if (typeof ws.getAllBlocks === 'function' && ws.getAllBlocks().length === 0) {
+                    return '<xml></xml>';
+                }
+                if (window.Blockly && window.Blockly.Xml) {
+                    var dom = window.Blockly.Xml.workspaceToDom(ws);
+                    if (dom) {
+                        return new XMLSerializer().serializeToString(dom);
+                    }
                 }
             }
         } catch(e) {}
@@ -1374,9 +1503,28 @@
         return window.__lastSyncedXml || '';
     }
 
+    var emptyWorkspacePollCount = 0;
+
     function updateWorkspaceAndTrace() {
         try {
+            if (Date.now() < suppressSyncUntil) {
+                return;
+            }
             var xmlStr = getCurrentWorkspaceXml();
+            var hasBlocks = xmlStr && xmlStr.indexOf('<block') >= 0;
+            var frontendK = (typeof window.K === 'number') ? window.K : 1;
+
+            if (hasBlocks) {
+                emptyWorkspacePollCount = 0;
+                try {
+                    if (window.sessionStorage) {
+                        window.sessionStorage.removeItem('blocky_cleared_' + frontendK);
+                    }
+                } catch(e) {}
+            } else {
+                emptyWorkspacePollCount++;
+            }
+
             if (xmlStr && xmlStr !== window.__lastObservedXml) {
                 window.__lastObservedXml = xmlStr;
 
@@ -1407,10 +1555,35 @@
                 if (typeof window.__ifRender === 'function') {
                     window.__ifRender();
                 }
+            } else if (!hasBlocks && window.__lastObservedXml && window.__lastObservedXml.indexOf('<block') >= 0) {
+                window.__lastObservedXml = xmlStr;
+                window.__injectNewPath = [];
+                if (typeof window.__ifRender === 'function') {
+                    window.__ifRender();
+                }
+            }
 
-                if (window.javaBridge && typeof window.javaBridge.syncModel === 'function' && xmlStr.indexOf('<block') >= 0 && xmlStr !== window.__lastSyncedXml) {
+            if (hasBlocks) {
+                if (xmlStr !== window.__lastSyncedXml) {
                     window.__lastSyncedXml = xmlStr;
-                    window.javaBridge.syncModel(xmlStr);
+                    if (window.javaBridge && typeof window.javaBridge.syncModel === 'function') {
+                        window.javaBridge.syncModel(xmlStr, false);
+                    }
+                }
+            } else if (emptyWorkspacePollCount >= 2
+                    && window.__lastSyncedXml
+                    && String(window.__lastSyncedXml).indexOf('<block') >= 0) {
+                window.__lastSyncedXml = '';
+                try {
+                    if (window.localStorage) {
+                        window.localStorage.removeItem('maze' + frontendK);
+                    }
+                    if (window.sessionStorage) {
+                        window.sessionStorage.setItem('blocky_cleared_' + frontendK, '1');
+                    }
+                } catch(e) {}
+                if (window.javaBridge && typeof window.javaBridge.syncModel === 'function') {
+                    window.javaBridge.syncModel('', true);
                 }
             }
         } catch(e) {}

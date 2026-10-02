@@ -175,4 +175,146 @@ describe('webBridge.js Test Suite', () => {
         await new Promise(r => realSetTimeout(r, 30));
         assert.ok(rendered.length > afterFinish, 'the delayed fetch renders the final solutions');
     });
+
+    it('runMomotWithParams includes current XML, map, meta, and epoch in the run body', async () => {
+        let runBody = null;
+        window.BlocklyInterface = {
+            getCode: () => '<xml><block type="maze_moveForward"></block></xml>'
+        };
+
+        const origFetch = window.fetch;
+        window.fetch = async (url, options = {}) => {
+            if (url.includes('/api/momot/run')) {
+                runBody = JSON.parse(options.body);
+                return { json: async () => ({ status: 'ok', running: true }) };
+            }
+            return origFetch(url, options);
+        };
+        global.fetch = window.fetch;
+
+        window.javaBridge.runMomotWithParams(7, 30, 500, 1, 6);
+        await new Promise(r => setTimeout(r, 50));
+
+        assert.ok(runBody, 'MOMoT run request should have been made');
+        assert.strictEqual(runBody.seed, 7);
+        assert.strictEqual(runBody.populationSize, 30);
+        assert.ok(runBody.epoch >= 1, 'Run body should contain sync epoch');
+        assert.ok(runBody.xml.includes('maze_moveForward'), 'Run body should contain current workspace XML');
+        assert.ok(runBody.map, 'Run body should contain active map');
+        assert.ok(runBody.meta, 'Run body should contain level metadata');
+    });
+
+    it('sends empty workspace with allowEmpty only after the workspace stays empty', async () => {
+        const syncCalls = [];
+        window.K = 1;
+        window.localStorage.setItem('maze1', '<xml><block type="maze_moveForward"></block></xml>');
+
+        const origFetch = window.fetch;
+        window.fetch = async (url, options = {}) => {
+            if (url.includes('/api/session/sync')) {
+                syncCalls.push(JSON.parse(options.body));
+                return { json: async () => ({ status: 'ok' }) };
+            }
+            return origFetch(url, options);
+        };
+        global.fetch = window.fetch;
+
+        // Simulate having had a program previously
+        window.__lastSyncedXml = '<xml><block type="maze_moveForward"></block></xml>';
+        window.__lastObservedXml = '<xml><block type="maze_moveForward"></block></xml>';
+
+        // User empties the workspace
+        window.BlocklyInterface = {
+            getCode: () => '<xml></xml>'
+        };
+
+        // First poll: single empty check should be ignored as a possible transient snapshot
+        window.__updateWorkspaceAndTrace();
+        await new Promise(r => setTimeout(r, 20));
+        assert.strictEqual(syncCalls.length, 0, 'First empty check must not trigger clear sync');
+
+        // Second poll: workspace stays empty, so it is an intentional clear
+        window.__updateWorkspaceAndTrace();
+        await new Promise(r => setTimeout(r, 20));
+        assert.ok(syncCalls.length > 0, 'Second empty check must trigger clear sync');
+        const lastCall = syncCalls[syncCalls.length - 1];
+        assert.strictEqual(lastCall.allowEmpty, true);
+        assert.strictEqual(lastCall.xml, '');
+        assert.strictEqual(window.localStorage.getItem('maze1'), null, 'localStorage maze cache must be removed');
+        assert.strictEqual(window.sessionStorage.getItem('blocky_cleared_1'), '1', 'sessionStorage cleared flag must be set');
+    });
+
+    it('does not treat a workspace that has not loaded yet as an intentional clear', async () => {
+        const syncCalls = [];
+        window.K = 1;
+        window.localStorage.setItem('maze1', '<xml><block type="maze_moveForward"></block></xml>');
+        window.__lastSyncedXml = '';
+        window.__lastObservedXml = '';
+        delete window.BlocklyInterface;
+
+        const origFetch = window.fetch;
+        window.fetch = async (url, options = {}) => {
+            if (url.includes('/api/session/sync')) {
+                syncCalls.push(JSON.parse(options.body));
+                return { json: async () => ({ status: 'ok' }) };
+            }
+            return origFetch(url, options);
+        };
+        global.fetch = window.fetch;
+
+        window.__updateWorkspaceAndTrace();
+        window.__updateWorkspaceAndTrace();
+        window.__updateWorkspaceAndTrace();
+        await new Promise(r => setTimeout(r, 20));
+
+        assert.strictEqual(syncCalls.length, 0, 'Unloaded workspace must not send an empty sync');
+        assert.strictEqual(window.localStorage.getItem('maze1'), '<xml><block type="maze_moveForward"></block></xml>');
+        assert.strictEqual(window.sessionStorage.getItem('blocky_cleared_1'), null);
+    });
+
+    it('on load does not restore session state XML if blocky_cleared flag is set', async () => {
+        let appliedXml = null;
+        window.K = 1;
+        window.sessionStorage.setItem('blocky_cleared_1', '1');
+        window.localStorage.setItem('maze1', 'stale_maze_cache');
+
+        window.BlocklyInterface = {
+            setCode: (xml) => { appliedXml = xml; },
+            getCode: () => ''
+        };
+
+        const syncCalls = [];
+        const origFetch = window.fetch;
+        window.fetch = async (url, options = {}) => {
+            if (url.includes('/api/session/state')) {
+                return {
+                    json: async () => ({
+                        status: 'ok',
+                        levelId: 1,
+                        grid: [[2, 1, 3]],
+                        xml: '<xml><block type="maze_moveForward"></block></xml>'
+                    })
+                };
+            }
+            if (url.includes('/api/session/sync')) {
+                syncCalls.push(JSON.parse(options.body));
+                return { json: async () => ({ status: 'ok' }) };
+            }
+            return origFetch(url, options);
+        };
+        global.fetch = window.fetch;
+
+        // Reload bridge script with session ID present
+        window.localStorage.setItem('blocky_session_id', 'test-session-cleared');
+        delete window.javaBridge;
+        const bridgeScript = fs.readFileSync(path.join(__dirname, '../common/webBridge.js'), 'utf8');
+        window.eval(bridgeScript);
+
+        await new Promise(r => setTimeout(r, 50));
+
+        assert.strictEqual(appliedXml, null, 'Session state XML must not be applied when cleared flag is set');
+        assert.strictEqual(window.localStorage.getItem('maze1'), null, 'localStorage maze cache must be cleared');
+        const emptySync = syncCalls.find(c => c.allowEmpty === true);
+        assert.ok(emptySync, 'An empty sync with allowEmpty must be sent instead');
+    });
 });

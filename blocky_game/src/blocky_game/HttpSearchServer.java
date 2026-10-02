@@ -64,6 +64,7 @@ public class HttpSearchServer {
         server.createContext("/api/session/sync", new SyncModelHandler());
         server.createContext("/api/session/map", new SyncMapHandler());
         server.createContext("/api/session/meta", new SyncMetaHandler());
+        server.createContext("/api/session/snapshot", new SyncSnapshotHandler());
 
         server.createContext("/api/momot/run", new MomotRunHandler());
         server.createContext("/api/momot/stop", new MomotStopHandler());
@@ -202,6 +203,28 @@ public class HttpSearchServer {
         return defaultVal;
     }
 
+    private static boolean parseJsonBooleanField(String json, String field, boolean defaultVal) {
+        if (json == null || json.trim().isEmpty()) return defaultVal;
+        Pattern pBool = Pattern.compile("\"" + field + "\"\\s*:\\s*\"?(true|false)\"?", Pattern.CASE_INSENSITIVE);
+        Matcher m = pBool.matcher(json);
+        if (m.find()) {
+            return Boolean.parseBoolean(m.group(1));
+        }
+        return defaultVal;
+    }
+
+    private static String parseJsonObjectOrString(String json, String field) {
+        if (json == null || json.trim().isEmpty()) return null;
+        String val = parseJsonField(json, field);
+        if (val != null) return val;
+        Pattern pRaw = Pattern.compile("\"" + field + "\"\\s*:\\s*(\\[.*?\\]|\\{.*?\\})", Pattern.DOTALL);
+        Matcher m = pRaw.matcher(json);
+        if (m.find()) {
+            return m.group(1);
+        }
+        return null;
+    }
+
     private static File resolveLevelSessionsDir() {
         File dir = new File("blocky_game/level_sessions");
         if (!dir.exists()) {
@@ -335,9 +358,11 @@ public class HttpSearchServer {
             if (xml == null && !body.startsWith("{")) {
                 xml = body; // fallback to raw XML body
             }
+            long epoch = parseJsonLongField(body, "epoch", 0);
+            boolean allowEmpty = parseJsonBooleanField(body, "allowEmpty", false);
 
-            session.syncModel(xml);
-            sendJson(exchange, 200, "{\"status\":\"ok\"}");
+            boolean applied = session.syncModel(epoch, xml, allowEmpty);
+            sendJson(exchange, 200, "{\"status\":\"ok\",\"applied\":" + applied + "}");
         }
     }
 
@@ -351,13 +376,14 @@ public class HttpSearchServer {
             String body = readRequestBody(exchange);
             SessionContext session = getSession(exchange, body);
 
-            String mapJson = parseJsonField(body, "map");
+            long epoch = parseJsonLongField(body, "epoch", 0);
+            String mapJson = parseJsonObjectOrString(body, "map");
             if (mapJson == null && body.trim().startsWith("[")) {
                 mapJson = body;
             }
 
-            session.syncMap(mapJson);
-            sendJson(exchange, 200, "{\"status\":\"ok\"}");
+            boolean applied = session.syncMap(epoch, mapJson);
+            sendJson(exchange, 200, "{\"status\":\"ok\",\"applied\":" + applied + "}");
         }
     }
 
@@ -371,13 +397,35 @@ public class HttpSearchServer {
             String body = readRequestBody(exchange);
             SessionContext session = getSession(exchange, body);
 
-            String metaJson = parseJsonField(body, "meta");
+            long epoch = parseJsonLongField(body, "epoch", 0);
+            String metaJson = parseJsonObjectOrString(body, "meta");
             if (metaJson == null && body.trim().startsWith("{")) {
                 metaJson = body;
             }
 
-            session.syncLevelMeta(metaJson);
-            sendJson(exchange, 200, "{\"status\":\"ok\"}");
+            boolean applied = session.syncLevelMeta(epoch, metaJson);
+            sendJson(exchange, 200, "{\"status\":\"ok\",\"applied\":" + applied + "}");
+        }
+    }
+
+    private static class SyncSnapshotHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendCorsAndNoContent(exchange);
+                return;
+            }
+            String body = readRequestBody(exchange);
+            SessionContext session = getSession(exchange, body);
+
+            long epoch = parseJsonLongField(body, "epoch", 0);
+            String mapJson = parseJsonObjectOrString(body, "map");
+            String metaJson = parseJsonObjectOrString(body, "meta");
+            String xml = parseJsonField(body, "xml");
+            boolean allowEmpty = parseJsonBooleanField(body, "allowEmpty", false);
+
+            boolean applied = session.applySnapshot(epoch, mapJson, metaJson, xml, allowEmpty);
+            sendJson(exchange, 200, "{\"status\":\"ok\",\"applied\":" + applied + "}");
         }
     }
 
@@ -397,15 +445,20 @@ public class HttpSearchServer {
             int runs = parseJsonIntField(body, "nrRuns", 1);
             int solLen = parseJsonIntField(body, "solutionLength", 10);
 
+            long epoch = parseJsonLongField(body, "epoch", 0);
+            String mapJson = parseJsonObjectOrString(body, "map");
+            String metaJson = parseJsonObjectOrString(body, "meta");
+            String xml = parseJsonField(body, "xml");
+
             boolean wasRunning = session.isMomotRunning();
-            session.runMomotWithParams(seed, pop, eval, runs, solLen);
+            session.runMomotWithParams(epoch, mapJson, metaJson, xml, seed, pop, eval, runs, solLen);
             if (!wasRunning && session.isMomotRunning()) {
                 String timerSid = extractTimerSessionId(exchange, body);
                 int levelId = extractLevelId(exchange, body, session);
                 recordActivity(timerSid, levelId, ActivityType.MOMOT_SEARCH);
             }
 
-            String json = "{\"status\":\"ok\",\"running\":true,\"outputDir\":\"" + escapeJson(session.getMomotCurrentOutputDir()) + "\"}";
+            String json = "{\"status\":\"ok\",\"running\":" + session.isMomotRunning() + ",\"outputDir\":\"" + escapeJson(session.getMomotCurrentOutputDir()) + "\"}";
             sendJson(exchange, 200, json);
         }
     }
