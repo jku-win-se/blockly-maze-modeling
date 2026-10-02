@@ -34,6 +34,24 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        Application.launch(BlockyUI.class, args);
+        boolean isServer = Boolean.getBoolean("server.mode") || Boolean.getBoolean("http.server");
+        for (String arg : args) {
+            if ("--server".equalsIgnoreCase(arg) || "-server".equalsIgnoreCase(arg)) {
+                isServer = true;
+                break;
+            }
+        }
+
+        if (isServer) {
+            try {
+                System.out.println("[Main] Starting in Server REST API mode...");
+                HttpSearchServer.main(args);
+            } catch (Exception e) {
+                System.err.println("[Main] Failed to start HttpSearchServer: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            Application.launch(BlockyUI.class, args);
+        }
     }
 }

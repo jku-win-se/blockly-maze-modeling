@@ -93,6 +93,11 @@ public class BlockyUI extends Application {
     private volatile boolean pendingShowMomotPanel;
     /** When set, MoMoT panel only shows solutions from this output directory (current run). */
     private volatile String momotCurrentOutputDir;
+    /** Level id that {@link #momotCurrentOutputDir} belongs to. -1 means no active results. */
+    private volatile int momotRunLevelId = -1;
+    /** Bumped on a new search or a level change so a previous run cannot publish its results. */
+    private final java.util.concurrent.atomic.AtomicLong momotRunGeneration = new java.util.concurrent.atomic.AtomicLong();
+    private volatile Thread momotRunThread;
     /** Monotonically increasing generation id for each successful page load. */
     private final java.util.concurrent.atomic.AtomicInteger pageGen = new java.util.concurrent.atomic.AtomicInteger(0);
     /** Current generation id for the currently loaded page. */
@@ -801,9 +806,25 @@ public class BlockyUI extends Application {
                 + "            log.scrollTop = log.scrollHeight + 1000; "
                 + "          } catch(e) {} "
                 + "        } "
+                + "        function clearSolutions() { "
+                + "          try { "
+                + "            window.__momotLastData = []; "
+                + "            window.__momotLastJson = null; "
+                + "            window.__momotSelectedPath = null; "
+                + "            window.__momotFirstGoalTime = null; "
+                + "            window.__momotFirstGoalGen = null; "
+                + "            window.__momotFirstGoalFormatted = null; "
+                + "            list.innerHTML = ''; "
+                + "            list.style.display = 'none'; "
+                + "            logClear(); "
+                + "            setStatus('No solutions for this level yet. Click Run to start search.'); "
+                + "            if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); "
+                + "          } catch(e) {} "
+                + "        } "
                 + "        window.__momotSetStatus = setStatus; "
                 + "        window.__momotLogClear = logClear; "
                 + "        window.__momotLogAppend = logAppend; "
+                + "        window.__momotClearSolutions = clearSolutions; "
                 + "        function __dbgDrawComparisonPath(path) { "
                 + "          try { "
                 + "            window.__injectDmEnabled = !!(path && path.length >= 2); "
@@ -831,16 +852,13 @@ public class BlockyUI extends Application {
                 + "                metaFirstGoalFormatted = data.firstGoalFormatted || ((metaFirstGoalTime / 1000).toFixed(2) + 's'); "
                 + "              } "
                 + "            } "
-                + "            if (arr && arr.length) { "
+                + "            if (arguments.length === 0 || data === undefined) { "
+                + "              data = window.__momotLastData; "
+                + "              arr = []; "
+                + "              if (Array.isArray(data)) { arr = data; } "
+                + "              else if (data && typeof data === 'object') { arr = data.solutions || []; } "
+                + "            } else if (arr && arr.length) { "
                 + "              window.__momotLastData = data; "
-                + "            } else if (!data) { "
-                + "              data = window.__momotLastData; "
-                + "              if (Array.isArray(data)) { arr = data; } "
-                + "              else if (data && typeof data === 'object') { arr = data.solutions || []; } "
-                + "            } else if (data && (!arr || !arr.length) && window.__momotLastData) { "
-                + "              data = window.__momotLastData; "
-                + "              if (Array.isArray(data)) { arr = data; } "
-                + "              else if (data && typeof data === 'object') { arr = data.solutions || []; } "
                 + "            } "
                 + "            if (metaFirstGoalTime !== null && metaFirstGoalTime >= 0) { "
                 + "              if (window.__momotFirstGoalTime === undefined || window.__momotFirstGoalTime === null || metaFirstGoalTime < window.__momotFirstGoalTime) { "
@@ -857,11 +875,12 @@ public class BlockyUI extends Application {
                 + "              return; "
                 + "            } "
                 + "            if (!arr || !arr.length) { "
-                + "              if (!window.__momotLastData || (Array.isArray(window.__momotLastData) && !window.__momotLastData.length) || (typeof window.__momotLastData === 'object' && (!window.__momotLastData.solutions || !window.__momotLastData.solutions.length))) { "
-                + "                setStatus('No solutions found.'); "
-                + "                list.style.display = 'none'; "
-                + "                list.innerHTML = ''; "
-                + "              } "
+                + "              window.__momotLastData = []; "
+                + "              window.__momotLastJson = null; "
+                + "              window.__momotSelectedPath = null; "
+                + "              setStatus('No solutions found.'); "
+                + "              list.style.display = 'none'; "
+                + "              list.innerHTML = ''; "
                 + "              return; "
                 + "            } "
                 + "            list.style.display = 'block'; "
@@ -1774,7 +1793,18 @@ public class BlockyUI extends Application {
             try {
                 List<MomotResultsService.SolutionEntry> sols;
                 MomotResultsService.SearchMetrics metrics = null;
-                String filterDir = momotCurrentOutputDir;
+                String filterDir;
+                int runLevelId;
+                int currentLevelId;
+                synchronized (BlockyUI.this) {
+                    filterDir = momotCurrentOutputDir;
+                    runLevelId = momotRunLevelId;
+                    Level current = engine.getCurrentLevel();
+                    currentLevelId = current != null ? current.getId() : -1;
+                }
+                if (runLevelId != currentLevelId) {
+                    filterDir = null;
+                }
                 if (filterDir != null && !filterDir.trim().isEmpty()) {
                     File outDir = new File(filterDir.trim());
                     if (outDir.exists() && outDir.isDirectory()) {
@@ -1850,7 +1880,15 @@ public class BlockyUI extends Application {
 
         public void stopMomotRun() {
             System.out.println("[JSBridge] stopMomotRun");
-            MomotRunService.stopCurrentRun();
+            synchronized (BlockyUI.this) {
+                momotRunGeneration.incrementAndGet();
+                Thread t = momotRunThread;
+                momotRunThread = null;
+                if (t != null && t.isAlive()) {
+                    MomotRunService.stopRun(t);
+                }
+            }
+            MomotRunService.stopMomotSearch("desktop");
         }
 
         // --- Debugger controls (Java-driven stepping) ---
@@ -1926,11 +1964,51 @@ public class BlockyUI extends Application {
         public void syncLevelMeta(String metaJson) {
             if (suppressSync) return;
             System.out.println("[JSBridge] Received level metadata: " + metaJson);
-            
-            // Stop MoMoT if level changed
-            MomotRunService.stopCurrentRun();
+
+            int oldLevelId = -1;
+            try {
+                if (engine.getCurrentLevel() != null) {
+                    oldLevelId = engine.getCurrentLevel().getId();
+                }
+            } catch (Exception ignored) {
+            }
 
             engine.syncLevelMeta(metaJson);
+
+            int newLevelId = -1;
+            try {
+                if (engine.getCurrentLevel() != null) {
+                    newLevelId = engine.getCurrentLevel().getId();
+                }
+            } catch (Exception ignored) {
+            }
+
+            if (oldLevelId != newLevelId) {
+                synchronized (BlockyUI.this) {
+                    momotRunGeneration.incrementAndGet();
+                    momotCurrentOutputDir = null;
+                    momotRunLevelId = -1;
+                    Thread t = momotRunThread;
+                    momotRunThread = null;
+                    if (t != null && t.isAlive()) {
+                        MomotRunService.stopRun(t);
+                    }
+                }
+                MomotRunService.stopMomotSearch("desktop");
+                try {
+                    Platform.runLater(() -> {
+                        try {
+                            webView.getEngine().executeScript(
+                                "try { if (window.__momotClearSolutions) window.__momotClearSolutions(); " +
+                                "if (window.__momotFirstGoalReset) window.__momotFirstGoalReset(); } catch(e) {}"
+                            );
+                        } catch (Exception ignored) {
+                        }
+                    });
+                } catch (Exception ignored) {
+                }
+            }
+
             try {
                 Platform.runLater(() -> {
                     try {
@@ -2036,6 +2114,14 @@ public class BlockyUI extends Application {
     }
 
     private void startMomotWithParams(int seed, int populationSize, int maxEvaluations, int nrRuns, int solutionLength) {
+        final long runGen;
+        final int levelId;
+        synchronized (this) {
+            runGen = momotRunGeneration.incrementAndGet();
+            Level startLevel = engine.getCurrentLevel();
+            levelId = startLevel != null ? startLevel.getId() : -1;
+            momotRunLevelId = levelId;
+        }
         try {
             pendingShowMomotPanel = true;
             webView.getEngine().executeScript(
@@ -2084,18 +2170,28 @@ public class BlockyUI extends Application {
                 populationSize,
                 maxEvaluations,
                 nrRuns,
-                solutionLength
+                solutionLength,
+                false,
+                seed,
+                "desktop"
         );
-        momotCurrentOutputDir = spec.outputBase;
+        synchronized (this) {
+            if (runGen != momotRunGeneration.get()) {
+                return;
+            }
+            momotCurrentOutputDir = spec.outputBase;
+        }
 
         final java.util.concurrent.atomic.AtomicBoolean uiRefreshPending = new java.util.concurrent.atomic.AtomicBoolean(false);
         final java.util.concurrent.atomic.AtomicLong lastRefreshMs = new java.util.concurrent.atomic.AtomicLong(0);
         java.util.function.BiConsumer<Integer, Object> liveSubscriber = (nfe, paretoFront) -> {
+            if (runGen != momotRunGeneration.get()) return;
             long now = System.currentTimeMillis();
             if ((now - lastRefreshMs.get() >= 250 || lastRefreshMs.get() == 0) && uiRefreshPending.compareAndSet(false, true)) {
                 lastRefreshMs.set(now);
                 Platform.runLater(() -> {
                     uiRefreshPending.set(false);
+                    if (runGen != momotRunGeneration.get()) return;
                     try {
                         webView.getEngine().executeScript(
                             "try { if (window.__momotShowAndRefresh) window.__momotShowAndRefresh(); } catch(e) {}"
@@ -2106,10 +2202,11 @@ public class BlockyUI extends Application {
             }
         };
 
-        MomotRunService.runAsync(spec, (txt) -> {
-            if (txt == null) return;
+        Thread started = MomotRunService.runAsync(spec, (txt) -> {
+            if (txt == null || runGen != momotRunGeneration.get()) return;
             final String safe = txt.replace("\\", "\\\\").replace("\"", "\\\"").replace("\r", "\\r").replace("\n", "\\n");
             Platform.runLater(() -> {
+                if (runGen != momotRunGeneration.get()) return;
                 try {
                     webView.getEngine().executeScript(
                         "try { if (window.__momotLogAppend) window.__momotLogAppend(\"" + safe + "\"); } catch(e) {}"
@@ -2118,6 +2215,7 @@ public class BlockyUI extends Application {
                 }
             });
         }, () -> {
+            if (runGen != momotRunGeneration.get()) return;
             try {
                 webView.getEngine().executeScript(
                     "try { " +
@@ -2127,10 +2225,21 @@ public class BlockyUI extends Application {
             } catch (Exception ignored3) {
             }
         }, (finalOutDir) -> {
-            if (finalOutDir != null && !finalOutDir.trim().isEmpty()) {
-                momotCurrentOutputDir = finalOutDir.trim();
+            synchronized (BlockyUI.this) {
+                if (runGen != momotRunGeneration.get()) return;
+                Level current = engine.getCurrentLevel();
+                int currentId = current != null ? current.getId() : -1;
+                if (currentId != levelId) return;
+                if (finalOutDir != null && !finalOutDir.trim().isEmpty()) {
+                    momotCurrentOutputDir = finalOutDir.trim();
+                }
             }
         }, liveSubscriber);
+        synchronized (this) {
+            if (runGen == momotRunGeneration.get()) {
+                momotRunThread = started;
+            }
+        }
     }
 
     private void loadXmiFromPathImpl(String xmiPath) {

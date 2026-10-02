@@ -14,9 +14,12 @@ import at.ac.tuwien.big.momot.TransformationSearchOrchestration;
 import at.ac.tuwien.big.momot.problem.solution.TransformationSolution;
 import at.ac.tuwien.big.momot.search.fitness.dimension.AbstractEGraphFitnessDimension;
 import at.ac.tuwien.big.momot.util.MomotUtil;
+import blocky.Body;
 import blocky.Game;
 import blocky.Level;
+import blocky_momot.BlockyProgramDistance;
 import blocky_momot.BlockySimulator;
+import blocky_momot.ThreadLocalRandomProxy;
 import blocky_momot.listener.IParetoFrontSubscriber;
 import blocky_momot.listener.ParetoFrontPublisherListener;
 import java.io.File;
@@ -46,13 +49,31 @@ import org.moeaframework.util.progress.ProgressListener;
 public class blocky_custom extends blocky {
 
     private String currentInputModel;
+    protected Body baselineSolution;
     private ParetoFrontPublisherListener publisherListener;
+    private final List<java.util.concurrent.ExecutorService> activePools = new java.util.ArrayList<>();
+
+    public void setBaselineSolution(Body baselineSolution) {
+        this.baselineSolution = baselineSolution;
+    }
+
+    public Body getBaselineSolution() {
+        return this.baselineSolution;
+    }
 
     public synchronized ParetoFrontPublisherListener getPublisherListener() {
         if (publisherListener == null) {
             publisherListener = new ParetoFrontPublisherListener();
         }
         return publisherListener;
+    }
+
+    private int getOverriddenSeed() {
+        MomotRunContext.Config ctx = MomotRunContext.get();
+        if (ctx != null && ctx.seed > 0) {
+            return ctx.seed;
+        }
+        return Integer.getInteger("blocky.seed", -1);
     }
 
     private int getOverriddenPopulationSize() {
@@ -107,6 +128,8 @@ public class blocky_custom extends blocky {
         EvolutionaryAlgorithmFactory<TransformationSolution> moea = orchestration.createEvolutionaryAlgorithmFactory(popSize);
         LocalSearchAlgorithmFactory<TransformationSolution> local = orchestration.createLocalSearchAlgorithmFactory();
 
+        orchestration.setDeterministic(true);
+
         // Clear and re-register algorithms to use the new factory
         orchestration.getAlgorithms().clear();
         orchestration.addAlgorithm("NSGA_II", _createRegisteredAlgorithm_0(orchestration, moea, local));
@@ -115,7 +138,34 @@ public class blocky_custom extends blocky {
     }
 
     @Override
+    protected double _createObjectiveHelper_1(final TransformationSolution solution, final EGraph graph, final EObject root) {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new RuntimeException("MoMoT search interrupted (user stop or level change)");
+        }
+        try {
+            if (root instanceof Game game) {
+                Body baseline = this.baselineSolution;
+                if (baseline == null) {
+                    baseline = BlockyProgramDistance.getThreadBaseline();
+                }
+                if (baseline != null) {
+                    Level level = game.getLevels().isEmpty() ? null : game.getLevels().get(0);
+                    Body current = level != null ? level.getSolution() : null;
+                    return (double) BlockyProgramDistance.programDistance(baseline, current);
+                }
+                return (double) BlockyProgramDistance.distanceToBaseline(game);
+            }
+        } catch (Throwable t) {
+            return 1000000.0;
+        }
+        return 1000000.0;
+    }
+
+    @Override
     protected double _createObjectiveHelper_2(final TransformationSolution solution, final EGraph graph, final EObject root) {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new RuntimeException("MoMoT search interrupted (user stop or level change)");
+        }
         try {
             if (root instanceof Game game) {
                 Level level = game.getLevels().isEmpty() ? null : game.getLevels().get(0);
@@ -183,28 +233,11 @@ public class blocky_custom extends blocky {
             @Override
             public void update(ProgressEvent event) {
                 if (isStarted(event) || isSeedStarted(event)) {
-                    if (event.getTotalSeeds() > 1) {
-                        int seed = event.getCurrentSeed();
-                        if (seed > 0) {
-                            PRNG.setSeed(seed);
-                        }
-                    } else {
-                        // A one-run trial already applied blocky.seed before the initial
-                        // population was built. Resetting here restarts that stream.
-                        String blockySeedProp = System.getProperty("blocky.seed");
-                        long configuredSeed = -1;
-                        if (blockySeedProp != null && !blockySeedProp.isBlank()) {
-                            try {
-                                configuredSeed = Long.parseLong(blockySeedProp.trim());
-                            } catch (Exception ignored) {
-                            }
-                        }
-                        if (configuredSeed <= 0) {
-                            int seed = event.getCurrentSeed();
-                            if (seed > 0) {
-                                PRNG.setSeed(seed);
-                            }
-                        }
+                    int configuredSeed = getOverriddenSeed();
+                    if (configuredSeed > 0) {
+                        PRNG.setSeed(configuredSeed);
+                    } else if (event.getCurrentSeed() > 0) {
+                        PRNG.setSeed(event.getCurrentSeed());
                     }
                 }
             }
@@ -214,7 +247,50 @@ public class blocky_custom extends blocky {
     @Override
     protected SearchExperiment<TransformationSolution> createExperiment(TransformationSearchOrchestration orchestration) {
         SearchExperiment<TransformationSolution> experiment =
-                new SearchExperiment<>(orchestration, getOverriddenMaxEvaluations());
+                new SearchExperiment<>(orchestration, getOverriddenMaxEvaluations()) {
+                    @Override
+                    protected List<SearchExecutor> createExecutors() {
+                        final List<SearchExecutor> executors = new java.util.ArrayList<>();
+                        for (final IRegisteredAlgorithm<? extends Algorithm> algorithm : getSearchOrchestration().getAlgorithms()) {
+                            final SearchExecutor executor = new SearchExecutor(createProblem())
+                                    .setName(getAlgorithmName(algorithm))
+                                    .withMaxEvaluations(getMaxEvaluations())
+                                    .withInstrumenter(createInstrumenter())
+                                    .withAlgorithm(algorithm.getRegisteredName())
+                                    .withEpsilon(getEpsilon());
+                            int threads = Integer.getInteger("blocky.threads", 1);
+                            if (threads > 1) {
+                                final int configuredSeed = getOverriddenSeed();
+                                final Body baseline = baselineSolution;
+                                java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads, runnable -> {
+                                    Thread worker = new Thread(() -> {
+                                        if (configuredSeed > 0) {
+                                            blocky_momot.ThreadLocalRandomProxy.setThreadSeed(configuredSeed);
+                                        }
+                                        if (baseline != null) {
+                                            BlockyProgramDistance.setThreadBaseline(baseline);
+                                        }
+                                        try {
+                                            runnable.run();
+                                        } finally {
+                                            blocky_momot.ThreadLocalRandomProxy.clearThreadRandom();
+                                            BlockyProgramDistance.clearThreadBaseline();
+                                        }
+                                    }, "blocky-dist-worker");
+                                    worker.setDaemon(true);
+                                    return worker;
+                                });
+                                synchronized (activePools) {
+                                    activePools.add(pool);
+                                }
+                                executor.distributeWith(pool);
+                            }
+                            attachProgressListeners(executor);
+                            executors.add(executor);
+                        }
+                        return executors;
+                    }
+                };
         experiment.setNumberOfRuns(getOverriddenNrRuns());
         experiment.addProgressListener(_createListener_0());
         experiment.addProgressListener(createPerRunSeedListener());
@@ -349,13 +425,35 @@ public class blocky_custom extends blocky {
     public void performSearch(String initialGraph, int solutionLength) {
         System.out.println("[MoMoT] Starting performSearch override in blocky_custom...");
         currentInputModel = initialGraph;
+        ThreadLocalRandomProxy.install();
+        int configuredSeed = getOverriddenSeed();
+        if (configuredSeed > 0) {
+            PRNG.setSeed(configuredSeed);
+        }
+        try {
+            this.baselineSolution = BlockyProgramDistance.loadSolutionFromXmi(initialGraph);
+            BlockyProgramDistance.setThreadBaseline(this.baselineSolution);
+        } catch (Throwable t) {
+            System.err.println("[MoMoT] Failed to load baseline solution from " + initialGraph + ": " + t);
+        }
 
         TransformationSearchOrchestration orchestration = createOrchestration(initialGraph, solutionLength);
         deriveBaseName(orchestration);
         printSearchInfo(orchestration);
 
         SearchExperiment<TransformationSolution> experiment = createExperiment(orchestration);
-        experiment.run();
+        try {
+            experiment.run();
+        } finally {
+            synchronized (activePools) {
+                for (java.util.concurrent.ExecutorService pool : activePools) {
+                    try {
+                        pool.shutdown();
+                    } catch (Throwable ignored) {}
+                }
+                activePools.clear();
+            }
+        }
 
         System.out.println("[MoMoT] Search finished. Handling results...");
         handleResults(experiment);
