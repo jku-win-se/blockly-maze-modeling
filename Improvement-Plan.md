@@ -1,0 +1,304 @@
+# Improvement Plan: making the MOMoT exploration solve and repair Blocky programs
+
+This document is a guide that anybody on the project can follow to apply, check and maintain the improvements to the MOMoT search. Each improvement has the same parts: why it is needed (the observation), what exactly to change and where, how to do it step by step, and how to check that it works without running a new benchmark.
+
+Related documents: `Benchmark-Analysis.md` (every benchmark result and its limits), `Exploration-Proposal.md` (hypotheses and experiments), `Landscape-Analysis.md` (the enumeration measurements behind the relaxed gate), `AGENTS.md` (project conventions).
+
+## 1. The six improvements at a glance
+
+| # | Improvement | Needed for | Evidence | State in the repository | Remaining work |
+|---|---|---|---|---|---|
+| 1 | Fix the `closestToGoal` objective | Progress towards the goal can guide the search | Bug found in step 1 (constant 100000 on levels 2–10). Alone: 12 → 16 of 120 solved (p = 0.54) | Done in `blocky_custom.java` | Make sure it is committed; verify (section 3.1) |
+| 2 | Gated objectives (`Edits`, `Actions`, `Blocks` only count for goal-reaching candidates) | Not rewarding small programs that do nothing | **Measured:** 16 → 61 of 120 on levels 4–9 (p < 0.001), equal to random search | Done in `blocky_custom.java`, switch `blocky.objectives=GATED` | Make GATED the default outside Docker (section 3.2) |
+| 3 | Edit and delete rules (`*_edit_anywhere`) | Repairing buggy programs | **Not measured.** Observed by the project owner with the original exploration | Generated `.henshin` files exist and the game uses them | Port the source to `.henshin_text`, test repair (section 3.3) |
+| 4 | Wrap and unwrap rules (`*_wrap`) | Adding structure without destroying what a program already does | **Measured:** 39 → 56 of 100 on levels 6–10 (p < 0.001), 56 against 37 of 80 for random search on levels 6–9. Confounded, see below | Generated `.henshin` files exist, switch `blocky.rules.wrap=true` | Decide the rule set that ships (section 3.4) |
+| 5 | Relaxed gate at `T = R − 5` | Letting near-solutions compete on size | **Landscape only.** No search has used it | **Not implemented** | Implement behind a switch (section 3.5) |
+| 6 | Always show non-goal candidates in the MoMoT solution panel | Seeing how close the search got when it has not (yet) found a solution, and what it is working on | A usability request. Two separate causes hide them today (UI filter, and the Pareto front under gating) | **Not implemented** | Remove the UI filter and add an archive of non-goal candidates (section 3.6) |
+
+**Two honest remarks before the details**
+
+- **Items 1, 2 and 4 have search data; items 3 and 5 do not; item 6 is a usability change and needs no benchmark.** Item 3 is justified by an observation that no benchmark can show (every benchmark starts from an empty program, where there are no user blocks to edit or delete). Item 5 is justified only by counting programs, not by a search.
+- **The benchmarked rule set is not the shipped rule set.** The wrap benchmark compared the original rules against `*_wrap.henshin`, which is built from the original rules. The game always loads `*_edit_anywhere.henshin`, so with wrap on it loads `*_edit_anywhere_wrap.henshin`. That module was only checked on small programs (`run.sh verify-wrap`); a search has never used it. Section 3.4 says what to do about this.
+
+## 2. Starting point and how to work
+
+- **Branch:** `proto/modify-delete-ops`. At the time of writing, several changes are still uncommitted (`blocky_custom.java`, `MomotFirstGoalBenchmarkRunner.java`, `BlockyUI.java`, the `*_wrap.henshin` files, `tools/`). Commit them before anything else, in the pieces of section 6.
+- **Build:** `mvn clean compile` from the repository root.
+- **Run the game:** `mvn -pl blocky_game javafx:run` from the repository root.
+- **Never edit `src-gen/`.** Everything below avoids it on purpose: the overrides are in `blocky_custom.java` (hand-written), and the rule files are separate `.henshin` files. If a change ever needs a different metamodel, change `blocky.ecore` and ask for the code to be regenerated in Eclipse (see `AGENTS.md`).
+- **Switches are JVM system properties.** The Docker entrypoint sets them from environment variables (`BLOCKY_OBJECTIVES`, `BLOCKY_WRAP`) through `JAVA_TOOL_OPTIONS`. Outside Docker, set `JAVA_TOOL_OPTIONS="-Dblocky.objectives=GATED -Dblocky.rules.wrap=true"` before starting the game.
+
+| Property | Values | Default in code | Read by |
+|---|---|---|---|
+| `blocky.objectives` | `CURRENT`, `GATED` | `CURRENT` | `blocky_custom.java` |
+| `blocky.rules.wrap` | `true`, `false` | `false` | `MomotFirstGoalBenchmarkRunner.withWrapMoves` (used by the game and the benchmark) |
+| `blocky.rules.editAnywhere` | `true`, `false` | `false` | `MomotFirstGoalBenchmarkRunner.withWrapMoves`, benchmark only (the game always uses `_edit_anywhere`) |
+| `blocky.algorithm` | `NSGA_II`, `MEMETIC_NSGA_II` (game), `RANDOM_SEARCH`, `IMMIGRANTS_NSGA_II` (benchmarks) | `NSGA_II` | `blocky_custom.java` |
+
+## 3. The improvements
+
+### 3.1 Fix `closestToGoal`
+
+**Observation.** On levels 2–10 the `closestToGoal` objective returned 100000 for every candidate. NSGA-II therefore had nothing pointing it towards the goal.
+
+**Cause.** The generated objective (in `src-gen`) reads the attribute `Cell.distanceToGoal`. That attribute is only filled in for the one input file that was known when the runner class loaded (the static `blocky.input`). For any other level every cell was unannotated, so the objective fell back to its penalty value.
+
+**Change.** `blocky_momot/src/blocky_momot_runner/blocky_custom.java`, the override `_createObjectiveHelper_3`. It no longer reads the attribute. It computes the distance field per evaluation with `BlockySimulator.distanceToGoalOrPenalty(level, 100000)`, which gives the same value (the smallest maze distance to the goal over the cells the robot visits) for every input. Any exception returns 1000000.
+
+```java
+@Override
+protected double _createObjectiveHelper_3(final TransformationSolution solution, final EGraph graph, final EObject root) {
+    try {
+        if (root instanceof Game game && !game.getLevels().isEmpty() && game.getLevels().get(0) != null) {
+            return (double) BlockySimulator.distanceToGoalOrPenalty(game.getLevels().get(0), 100000);
+        }
+    } catch (Throwable t) {
+        return 1000000.0;
+    }
+    return 1000000.0;
+}
+```
+
+**How to do it from scratch.**
+1. Open `blocky_custom.java` and find the objective helpers (`_createObjectiveHelper_1` is `Edits`, `_2` is `Actions`, `_3` is `closestToGoal`; the objective order is `[GoalReached, Edits, Actions, closestToGoal, Blocks]`).
+2. Add the override above. Do not touch the generated class.
+3. `mvn clean compile`.
+
+**How to check it works (no benchmark).**
+- Run one search on a level above 1 (for example the benchmark runner with one run, `BLOCKY_RUNS=1 BLOCKY_FROM_LEVEL=6 BLOCKY_TO_LEVEL=6`) and open the `objectives.pf` file in the run's output directory. The `closestToGoal` column must contain different values. If every row has 100000, the fix is not active.
+- After the fix the value is 0 exactly for programs that reach the goal.
+
+**Limit.** Alone it changes the solve count very little (12 → 16 of 120, p = 0.54), because the ungated size objectives pull towards small programs. It is a precondition for item 2, not an improvement by itself.
+
+### 3.2 Gated objectives
+
+**Observation.** With the original objectives the search keeps small programs that do nothing, because `Edits`, `Actions` and (later) `Blocks` reward being small even when the goal is not reached. All of NSGA-II's successes came in the first 31 of 100 generations, as if the population had collapsed onto small programs.
+
+**Hypothesis (H2b) and result.** If those objectives only count for programs that reach the goal, the search stops preferring useless small programs. Measured: 16 → 61 of 120 solved on levels 4–9 (p < 0.001). The early stall disappeared. The gated search is equal to random search (61 against 61), not better.
+
+**Change.** `blocky_custom.java`:
+- `blocky.objectives=GATED` switches it on (`gatedObjectives()`).
+- `reachesGoal(root)` runs the simulator and returns true if the status is `WON`.
+- `_createObjectiveHelper_1` (`Edits`) and `_createObjectiveHelper_2` (`Actions`) return `GATED_WORST` (100000) for a candidate that does not reach the goal.
+- `createFitnessFunction` adds a fifth objective `Blocks` (statement count, through `BlockyProgramMetrics.countStatements`), gated in the same way. It is added last so the positions of the existing objectives stay as the tools expect.
+- `GoalReached` and `closestToGoal` are never gated.
+
+**How to do it.** Nothing to implement: it is in the file. What is left is the default.
+1. The code default is `CURRENT`. The Docker entrypoint already defaults to `GATED` (`entrypoint.sh`, `docker-compose.yml`). The game started with `mvn javafx:run` therefore runs the old objectives unless the property is set.
+2. Change the default in `gatedObjectives()` to `"GATED"` (one word), or set `JAVA_TOOL_OPTIONS` in the way the project documents running the app. Changing the code default is simpler and cannot be forgotten.
+3. The comment in `entrypoint.sh` still says `CURRENT (default)`; correct it to match.
+
+**How to check it works.**
+- Start a search with `-Dblocky.objectives=GATED`. In the log the objective list must read `[GoalReached, Edits, Actions, closestToGoal, Blocks]`.
+- In `objectives.pf`, every candidate that does not reach the goal has 100000 in `Edits`, `Actions` and `Blocks`; only goal-reaching candidates have real values.
+
+**Known risk, untested: repair.** In repair, the search starts from the user's program. Gating gives no reward for staying close to that program until the goal is reached, so the search may move away from it before it succeeds. No repair run has been made. See section 5.
+
+### 3.3 Edit and delete rules (`*_edit_anywhere`)
+
+**Observation.** The original rules insert blocks and have a few fixed delete rules (the four `Delete...` rules that this module replaces), but no move that changes a block in place. A buggy program therefore cannot be repaired by changing the wrong block; the search has to remove it and rebuild around it. The project owner saw this often with the original exploration. No benchmark covers it: all of them synthesize from an empty program.
+
+**What the rules do.** The patcher builds, from each original rule module, a copy `*_edit_anywhere.henshin` that contains all original rules plus:
+- `EditAnywhere(k, cnd)`: the single search move. It is an independent unit; Henshin tries its sub-units in random order until one applies, so no step is wasted on a move with nothing to act on (for example on an empty program). Its sub-units:
+  - `CreateThenInsertContainerThenPopulate(k, cnd)`: the existing insert move;
+  - `DeleteContainerAnywhere`: deletes a block, with rules `Delete<Content>At<Position>` for Content in {Empty, Atomic, EmptyLoop, EmptyIf, EmptyIfElse} and Position in {OnlyInBody, BodyHead, Between, Last}. Loops and ifs can be deleted once their bodies are empty;
+  - `ModifyStatementAnywhere(k, cnd)`: `ChangeAtomicKind(k)` (set `AtomicStatement.kind`, only if it differs) and `ChangeIfCondition(cnd)` (set `IfStmt.condition`, only if it differs).
+- Delete and modify only match **user-placed blocks** (`generated = false`). Changing or deleting blocks that the search inserted itself would add no reachable programs and only cancel insertions.
+- The old delete rules (`DeleteOnlyContainerFromBody`, `DeleteHeadContainerWithNext`, `DeleteBetweenContainerWithNext`, `DeleteLastContainer`) are replaced.
+
+**Where it is wired.**
+- `tools/henshin-prototype/ModifyOpsPatcher.java` generates the files; `tools/henshin-prototype/VerifyPatchedRules.java` checks them.
+- `blocky_custom.createModuleManager()`: if a module has a unit named `EditAnywhere`, that unit becomes the only move (all other units are removed from the manager) and its parameters `k` and `cnd` get random value providers. This is done in `blocky_custom` and not in `blocky.momot`, so `src-gen` does not need regenerating.
+- `EnumParamPreprocessFitnessFunction.java`: also treats `EditAnywhere` as a top-level unit that takes `k` and `cnd`.
+- `BlockyUI.java`: the game always selects the `*_edit_anywhere.henshin` file for the current level (`atomic_only`, `no_conds`, `no_else` or `henshin_text`).
+
+**How to regenerate the rule files.**
+1. Prerequisites: JDK 17+, the Henshin and EMF jars in `libs/` and the EMF jars in the local Maven repository (`~/.m2`, override with `M2_REPO`). `run.sh` builds the class path itself.
+2. From the repository root: `tools/henshin-prototype/run.sh patch` writes `blocky_model/transformations/statement_insertions_{henshin_text,no_else,no_conds,atomic_only}_edit_anywhere.henshin`. The original files are not modified.
+3. `tools/henshin-prototype/run.sh verify` applies the generated rules to small programs and checks the expected behaviour. All checks must pass.
+4. The patcher serialises the metamodel reference as `http://www.example.org/blocky#//X`, as MOMoT expects, so the NSURI patch of `AGENTS.md` is not needed for these files. If you ever recompile from `.henshin_text` in Eclipse, patch the NSURI by hand as described there.
+
+**How to check it works (no benchmark).**
+- `run.sh verify` passes, including the check that on an empty program 15 of 15 `EditAnywhere` steps apply, and that on a user program `EditAnywhere` inserts, deletes and modifies.
+- In the game, load a level, place a program with a wrong block (for example a wrong turn), and start the search. Solutions that fix the program by changing that block must appear. This is the failure the project owner observed; a few such hand checks are the available evidence until a repair benchmark exists.
+
+**Gap to close.** The patcher edits the compiled `.henshin` modules; the textual source (`statement_insertions.henshin_text`) is **not** updated. `AGENTS.md` says rules are written in `.henshin_text` and compiled. Until the textual source gets the same rules, recompiling the text file in Eclipse silently loses the edit and wrap moves. Either port the rules to `.henshin_text` and compile, or state in `AGENTS.md` that these modules are generated by `tools/henshin-prototype` and must not be recompiled from the text.
+
+### 3.4 Wrap and unwrap rules (`*_wrap`)
+
+**Observation.** The existing rules insert and delete one block at a time. Turning `F F L` into `repeat { F F L }` means deleting the blocks and rebuilding them inside a loop. On levels that need a loop, most programs without one are far from every solution in block edits. The landscape analysis showed that when wrap and unwrap count as single edits, Progress becomes informative on levels 6, 7 and 9 (rank correlation about 0.3) and stays uninformative on levels 8 and 10 (0.08).
+
+**What the rules do** (`tools/henshin-prototype/WrapOpsPatcher.java`):
+- `WrapTailIn<Wrapper>At<Head|After>(cnd)`: a block and everything after it in the same body moves into a new loop, if or if-else that takes the block's place. At the first block this wraps the whole program.
+- `Unwrap<Wrapper>At<Head|After>`: the reverse, for a loop, if or if-else that is the last block of its body. The else branch must be empty.
+- `WrapAnywhere(cnd)`, `UnwrapAnywhere`, `Restructure(cnd)`: independent units over those rules.
+- `EditAnywhere` is extended (or created, if the module has none) with `Restructure`, plus two alias units of the insert move, so insertion is chosen three times as often as restructuring. This weight is `INSERT_WEIGHT = 3` in the patcher.
+- Wrappers are limited to the module's own vocabulary: it only wraps in what it can also insert. There is no wrap file for `atomic_only` (no loop or if to wrap in).
+
+**Result.** Gated NSGA-II, levels 6–10, 20 seeds, original rules against `*_wrap.henshin`: 39 → 56 of 100 solved (p < 0.001). Levels 6, 7 and 9 together: 38 → 55 of 60. Levels 8 and 10 unchanged (1 of 40 in both). Median generation of the first goal falls from 31 to 13 on level 6, from 49.5 to 18 on level 7 and from 28 to 17 on level 9. Against random search on levels 6–9: 56 against 37 of 80.
+
+**Two caveats that decide what to do next.**
+1. **Confound.** `*_wrap.henshin` is built from the original module, which has no `EditAnywhere`, so the patcher creates one from insert (weighted ×3) and Restructure only. In `blocky_custom` a module with `EditAnywhere` uses only that unit, so the separate `DeleteContainerAnywhere` move is gone and inserts are re-weighted. The measured gain is "the `_wrap` rule set against the original", not "wrap alone".
+2. **Rule set mismatch.** The game loads `*_edit_anywhere.henshin`; with wrap on it loads `*_edit_anywhere_wrap.henshin`, where delete and modify are present. That module differs from the benchmarked one. Both contain the same wrap and unwrap rules, so a similar effect is plausible, but it has not been measured.
+
+**How to regenerate.** `tools/henshin-prototype/run.sh wrap` writes `*_wrap.henshin` for the three originals and for the three `*_edit_anywhere` modules. Run `run.sh patch` first, because the wrap step reads the `_edit_anywhere` files. `tools/henshin-prototype/run.sh verify-wrap` applies the rules to small programs and checks the outcome (for example that `EditAnywhere` on `[F, Loop[L]]` produces inserts, wraps and unwraps). All checks must pass.
+
+**How to switch it on.** `-Dblocky.rules.wrap=true` (Docker: `BLOCKY_WRAP=true`, the default there). `MomotFirstGoalBenchmarkRunner.withWrapMoves` appends `_wrap` to the file name that the game or the benchmark chose. Switching it off, or deleting the `_wrap` files, restores the previous behaviour.
+
+**What to do about the mismatch** (pick one and write the choice into this section):
+- **Ship `_edit_anywhere_wrap`** (the current game behaviour) and say in the release notes that the measured gain is for a related rule set. This is the cheapest option and matches the aim (repair needs delete and modify).
+- **Check `_edit_anywhere_wrap` against `_edit_anywhere` once** with the existing benchmark script: set `-Dblocky.rules.editAnywhere=true` and run it with `BLOCKY_WRAP=false` and `true` on levels 6–10 (the switch exists in `MomotFirstGoalBenchmarkRunner`, but the run script does not pass it on yet; add it next to `-Dblocky.rules.wrap`). The project owner decided not to run another benchmark for now, so this stays optional.
+
+**Limit.** The wrap rules are modelled as string edits in `LandscapeAnalysis` and have been exercised by Henshin only on small programs (`verify-wrap`) and in the benchmark runs above. A fault in an unusual program shape is possible.
+
+### 3.5 Relaxed gate at `T = R − 5` (new, not yet implemented)
+
+**Observation.** The strict gate gives `Edits`, `Actions` and `Blocks` a value only for programs that reach the goal. Before any solution exists, only Progress differs between candidates. A relaxed gate would let candidates close to the goal already compete on size, so the search is also pushed towards small programs among near-solutions.
+
+**Definition.** Let `R` be the maze distance from the start cell to the goal (the length of the shortest route; R is 16 on levels 6 and 8, 12 on level 7, 10 on levels 9 and 10). Progress is the smallest maze distance to the goal over the visited cells, so it runs from `R` (the robot never leaves the start) down to 0 (the goal is reached). A gate at `T` admits a program if its Progress is at most `T`; solutions have Progress 0 and always pass. The strict gate is `T = 0`. The relaxed gate is `T = max(0, R − 5)`.
+
+**Evidence (landscape only, `Landscape-Analysis.md` section 8).**
+- `T = 3` is the strict gate in practice: at most 37 non-solutions out of millions reach Progress ≤ 3.
+- The number of admitted programs does not grow smoothly with `T`; it jumps by a factor of 35 to 1,700 in one step, and purity (the share of solutions among all that pass) drops by a factor of 30–120. The jump is at `T = R − 4` on levels 6 and 7, `R − 2` on levels 8 and 10, and `R − 1` on level 9.
+- `T = R − 5` is below the jump on all five levels. It is the largest value of the form `R − c` with that property that uses the same `c` everywhere. It is an empirical rule fitted to five levels, not a derived one.
+- What it admits depends on the level:
+
+| Level | R | Non-solutions admitted at `R − 5` | Reading |
+|---:|---:|---:|---|
+| 6 | 16 | 83 | With wrap they are closer to a solution than the failing programs (2.55 against 4.25 edits); without wrap they are not |
+| 7 | 12 | 2,010 | As many as there are solutions; 96% are within 2 edits of a solution. The one level where it admits a useful set |
+| 8 | 16 | 283 | Closer than the failing ones (4.9 against 9.3 edits); about 2% are smaller than the smallest solution |
+| 9 | 10 | 16 | Half are within 2 edits |
+| 10 | 10 | 0 | Nothing passes; at `T = 7`, 320 pass but are not close to a solution |
+
+**Expected effect, stated honestly.** On four of the five levels the relaxed gate admits between 0 and 283 programs out of 1–5 million, and the search draws 150 candidates per generation, so it will rarely meet them. A visible effect is plausible on level 7 only, and level 10 is untouched. The risk it adds is on levels 8 and 10, where about 2% of the admitted programs are smaller than the smallest solution (the tiny-program problem that gating removed). Do not expect it to change the solve counts much; do not claim that it does until a search has used it.
+
+**Design (not in the repository yet).** Keep the strict gate as the default so nothing else changes.
+
+1. **Helper for `R`.** Add to `blocky_momot/src/blocky_momot/BlockySimulator.java`:
+
+```java
+/** Maze distance from the start cell to the win cell; -1 if there is none. */
+public static int routeLength(Level level) {
+    // same start-cell and win-cell lookup as distanceToGoalOrPenalty, then:
+    //   Map<Cell,Integer> field = computeDistanceField(map, determineWinCellType(level));
+    //   Integer r = field.get(startCell);  return r == null ? -1 : r;
+}
+```
+
+2. **Switch.** A new property `blocky.gate.slack` (an integer; unset means the strict gate). With `slack = 5` the threshold is `T = max(0, R − 5)`.
+3. **Gate in `blocky_custom.java`.** Replace the three uses of `!reachesGoal(root)` (in `_createObjectiveHelper_1`, `_createObjectiveHelper_2` and the `Blocks` objective) by `!passesGate(root)`:
+
+```java
+private static final Integer GATE_SLACK = Integer.getInteger("blocky.gate.slack");   // null = strict
+
+private static boolean passesGate(final EObject root) {
+    if (reachesGoal(root)) return true;
+    if (GATE_SLACK == null) return false;                       // strict gate, as today
+    Level level = ((Game) root).getLevels().get(0);
+    int r = BlockySimulator.routeLength(level);
+    if (r < 0) return false;
+    int progress = BlockySimulator.distanceToGoalOrPenalty(level, 100000);
+    return progress <= Math.max(0, r - GATE_SLACK);
+}
+```
+
+   The penalty value 100000 is far above any threshold, so invalid programs never pass.
+4. **Cost.** The gate runs one more simulation per objective per evaluation. If runs get noticeably slower, compute `passesGate` once per candidate and share it between the three objectives.
+5. **Compile.** `mvn clean compile`, nothing else needs regenerating.
+
+**How to check it works (no benchmark).**
+- With `blocky.gate.slack` unset, results must be identical to today's strict gate (same `objectives.pf` on one seed).
+- With `slack = 5` on level 7 (R = 12, so `T = 7`): a candidate that never leaves the start must still get 100000, while a candidate that gets within 7 cells of the goal must get real `Edits`, `Actions` and `Blocks`. A short unit check on the helpers (`routeLength` returns 16, 12, 16, 10, 10 on levels 6–10, the R values of the landscape analysis) is cheap and catches wiring mistakes.
+- Optionally, count how many candidates of one run pass the relaxed gate against the strict one; the landscape tables predict very few on levels 6, 8, 9 and 10.
+
+**What would settle it.** A benchmark of the relaxed gate against the strict gate on levels 6–10, same seeds and budget (the strict gate result is in `Benchmark-Analysis.md`). It has not been run. Until then ship it off, or on for level 7 only if the project owner wants to try it.
+
+### 3.6 Always show non-goal candidates in the MoMoT solution panel
+
+**Observation.** The solution panel shows only candidates that reach the goal. Candidates that do not reach it are hidden, so when a run has not (yet) found a solution the panel is empty, and the user cannot see how close the search got or what it is working on.
+
+**There are two separate causes, and both have to be fixed.** Fixing only the first leaves the panel nearly empty as soon as the gated objectives (item 2) are on.
+
+**Cause A: a filter in the panel (`BlockyUI.java`, injected JavaScript).**
+- A checkbox `Show non-goal solutions` (`__momotShowNonGoal`) is created with `cbNonGoal.checked = false`, so non-goal candidates are hidden by default (around lines 753–761).
+- `renderSolutions` reads it into `showNonGoal` (around line 862) and, when it is off, keeps only candidates whose first objective is `GoalReached ≤ −0.5` (`displayed = processed.filter(p => p.isGoal)`, around line 921).
+- The status line and an empty-state row mention "non-goal hidden" (around lines 946–956 and 986–990). The refresh key includes `showNonGoal` (line 865).
+
+**Cause B: the data the panel gets does not contain them under gating.**
+- The panel lists what is in the run's output directory (`MomotResultsService.loadFromOutputDir`: the files in `models/`, joined to `objectives.pf`, `times.pf`, `generations.pf` and `solutions.txt`). While a search runs it is also fed with the Pareto front (`ParetoFrontPublisherListener`, `globalParetoFront`, a `NondominatedPopulation`).
+- A Pareto front only keeps non-dominated candidates. With the original objectives, a non-goal candidate can be non-dominated because it is small (few `Edits`, few `Actions`). With the gated objectives (item 2) every non-goal candidate has 100000 in `Edits`, `Actions` and `Blocks` and a `closestToGoal` above 0, so **every goal-reaching candidate dominates every non-goal candidate**. As soon as one solution exists, the non-goal candidates leave the front, and before that only the one with the best `closestToGoal` is on it. Turning the checkbox on does not bring them back.
+- The listener also drops candidates with the same objective values as one already present (`haveSameObjectives`), so under gating at most one non-goal candidate per distinct `closestToGoal` value can appear.
+- Also note that `algorithm.getResult()`, which the listener reads, is the algorithm's non-dominated result and not the whole population.
+
+**Change A: show them always (UI only, `BlockyUI.java`).**
+1. Remove the checkbox: delete the `cbLabel` / `cbNonGoal` / `cbSpan` lines and append only the load button to `actions`.
+2. In `renderSolutions`, set `var showNonGoal = true;` (or delete the variable and the filter branch). `displayed` is then always `processed`. Remove the `showNonGoal` part of `rawJson` and the empty-state row ("No goal-reaching solutions yet ...").
+3. Replace the status text with one line, for example `totalCount + ' candidate(s), ' + goalCount + ' reaching the goal' + goalInfo`.
+4. Make the table readable with mixed rows: sort by the `Goal Reached` column by default (set the initial `__momotSortCol` to 0, ascending, so goal-reaching candidates come first, since `GoalReached` is printed negated), show `-` instead of 100000 in the `Edits` and `Number of Actions` columns (the gate penalty is not a real value), and dim the rows that do not reach the goal. The `Number of blocks` column already counts the blocks from the model itself (`blockCountOf`), so it is correct for non-goal rows.
+
+**Change B: keep non-goal candidates in the output (needed under gating).** Keep a small archive of non-goal candidates, next to the Pareto front, and write it out with it.
+1. **Archive.** In `ParetoFrontPublisherListener`, add a bounded archive of distinct non-goal candidates, for example the best `K = 10` ranked by `closestToGoal` ascending and then by block count. Fill it from the algorithm's population, not only from `getResult()` (for NSGA-II the population is available from the algorithm object; check the exact accessor in the MOEA Framework version in `libs/`/Maven). Distinctness: by program, not only by objective vector, otherwise the deduplication above collapses them. The goal-reaching candidates stay in the existing Pareto front and are unchanged.
+2. **Output.** The panel only shows what is in `models/` and `objectives.pf`. The run writes these in two places in `blocky_custom.java`: the final `handleResults` (it builds the `Population` that is passed to `TransformationResultManager.saveObjectives` and to the solution and model writers) and the live save that follows a Pareto front update (it calls `saveObjectives(objectivesFile, paretoFront)`). Add the archive to the set that is written in both places, with the same file naming as the other models, so that `MomotResultsService` can join each model to its objective line. I did not read the code of the model writer that creates `models/`; read it before implementing, and keep the objective values in the file name consistent, because the join in `loadFromOutputDir` matches on them.
+3. **Switch.** A property `blocky.nonGoalArchive` (an integer `K`, default 10, 0 = off). The benchmark runners set it to 0 so their output directories stay as they were. Their success detection looks for a line with `GoalReached ≤ −0.999999` in `objectives.pf`, so extra non-goal lines would not create false successes, but other analyses may count lines.
+4. **Do not change the search.** The archive only records candidates; it must not feed back into selection or into the objectives.
+
+**How to check it works.**
+- Start a search and stop it before it finds a solution (or use a level it cannot solve, such as 10): the panel must list non-goal candidates, ordered by `Closest to Goal`, with `-` in `Edits` and `Number of Actions` and a real block count.
+- Start a search that finds a solution under `blocky.objectives=GATED`: the solution is listed first and the non-goal candidates stay listed after it (this is the case that the UI change alone does not cover).
+- Select a non-goal row and press Load: the program must load into the game, and running it must show where the robot ends up.
+- Run the benchmark script for one level with `blocky.nonGoalArchive=0`: `objectives.pf` and the success counts must be identical to a run before the change.
+
+**Risks.**
+- **Clutter and confusion.** A list of failed programs next to solutions can be mistaken for results. The sorting, the dimming and the `-` values above are there for that reason; keep the status line explicit about how many reach the goal.
+- **Cost.** Ranking the population and writing up to `K` extra model files on every live update. Keep `K` small and write non-goal models only when the archive changed.
+- **Repair.** In repair, a non-goal candidate near the user's program may be the most useful thing to show. This is a reason to keep the archive ranking simple and visible, not a reason to hide them.
+
+## 4. Recommended defaults
+
+| Setting | Recommended | Why |
+|---|---|---|
+| `blocky.objectives` | `GATED` | Measured gain; the game outside Docker still defaults to `CURRENT` |
+| `blocky.rules.wrap` | `true` | Measured gain on levels 6, 7, 9; harmless elsewhere |
+| Rule files | `*_edit_anywhere` (game) | Needed for repair |
+| `closestToGoal` | the fixed version, always on | A bug fix with no switch |
+| `blocky.gate.slack` | unset (strict) | Not implemented; no search evidence |
+| `blocky.nonGoalArchive` | 10 in the game, 0 in the benchmark runners | Non-goal candidates stay visible without changing benchmark outputs (not implemented yet) |
+
+## 5. Known gaps and risks
+
+1. **Repair is untested everywhere.** Edit and delete are justified by an observation. Whether gating drifts away from a user's program, and whether wrap helps repair, is unknown. A repair benchmark would be: take a solution, apply one defect (delete, swap or change one block), run the search from it, and count how often the goal is reached, with and without `_edit_anywhere`. Not built.
+2. **Rule set mismatch** between what was benchmarked and what ships (section 3.4).
+3. **`.henshin_text` is out of date** with respect to the generated modules (section 3.3).
+4. **Levels 8 and 10 are not solved by any of this.** Level 8 is solved once in 20 runs, level 10 never (0 of 60 runs in an earlier study). The landscape analysis and the proposal point to the generator of starting material (hypothesis H4: four solutions in about a million programs of up to 5 blocks), which none of the six items touch.
+5. **Gated results stop at the first solution.** Nothing is measured about program quality (blocks, `Edits`, `Actions`) among solutions, which is where gating is supposed to pay off.
+6. **Reproducibility.** The baseline differs from an earlier identical-seed run on 26 of 80 seeds, although the totals agree (39 against 35). Do not make claims about single seeds; use pooled counts.
+7. **No automated tests.** The only automated checks are `run.sh verify` and `run.sh verify-wrap` for the rules. Everything else is checked by running the app, as `AGENTS.md` says.
+
+## 6. Suggested order of work and commits
+
+1. **Commit what exists,** in separate commits so each can be reviewed:
+   - `closestToGoal` fix and gated objectives (`blocky_custom.java`, `BlockyUI.java` block-count column if kept separate);
+   - tools and generated rules (`tools/henshin-prototype/`, `*_edit_anywhere*.henshin`, `*_wrap.henshin`, `EnumParamPreprocessFitnessFunction.java`);
+   - the `blocky.rules.wrap` and `blocky.rules.editAnywhere` switches (`MomotFirstGoalBenchmarkRunner.java`, `docker-compose.yml`, `entrypoint.sh`);
+   - the benchmark algorithms and analysis tools (`RandomSearchNSGAII.java`, `RandomImmigrantsNSGAII.java`, `LandscapeAnalysis.java`, `run_first_goal_benchmark.sh`);
+   - the documents (`Benchmark-Analysis.md`, `Landscape-Analysis.md`, `Exploration-Proposal.md`, this file) and the benchmark CSVs.
+2. **Set the defaults** of section 4 and fix the stale comment in `entrypoint.sh`.
+3. **Close the `.henshin_text` gap** (section 3.3).
+4. **Implement the relaxed gate** behind `blocky.gate.slack` (section 3.5), off by default.
+5. **Show non-goal candidates** (section 3.6). Do change A (the panel) first: it is small, safe and gives the user the behaviour under the original objectives. Do change B (the archive) after the defaults of step 2 are set, because it is only needed once gating is on.
+6. **Optional, when time allows:** the `_edit_anywhere` against `_edit_anywhere_wrap` check (section 3.4), the repair benchmark, a benchmark of the relaxed gate.
+
+## 7. Checklist before calling the work done
+
+- [ ] `mvn clean compile` passes from the repository root.
+- [ ] `tools/henshin-prototype/run.sh verify` and `run.sh verify-wrap` pass.
+- [ ] A one-run search on level 6 shows varying `closestToGoal` values in `objectives.pf` (not all 100000).
+- [ ] With `GATED`, non-goal candidates show 100000 in `Edits`, `Actions` and `Blocks`.
+- [ ] The game started with `mvn -pl blocky_game javafx:run` runs with `GATED` and wrap on, without extra flags.
+- [ ] In the game, a program with one wrong block can be repaired by the search.
+- [ ] The solution panel lists candidates that do not reach the goal, with and without a solution present, and no checkbox hides them.
+- [ ] With `GATED`, non-goal candidates remain listed after a solution is found (archive of section 3.6, change B).
+- [ ] Benchmark output is unchanged with `blocky.nonGoalArchive=0`.
+- [ ] No file under `src-gen/` was modified.
+- [ ] `AGENTS.md` mentions the new switches and the generated rule modules.
