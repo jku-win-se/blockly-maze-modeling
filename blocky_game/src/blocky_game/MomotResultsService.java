@@ -297,11 +297,13 @@ public final class MomotResultsService {
             if (line.startsWith("Number of objectives:")
                     || line.trim().startsWith("GoalReached:")
                     || line.trim().startsWith("SolutionLength:")
+                    || line.trim().startsWith("Blocks:")
                     || line.startsWith("AggregatedFitness:")
                     || line.startsWith("Number of constraints:")
                     || line.startsWith("  AggregatedFitness:")
                     || line.startsWith("  GoalReached:")
-                    || line.startsWith("  SolutionLength:")) {
+                    || line.startsWith("  SolutionLength:")
+                    || line.startsWith("  Blocks:")) {
                 cur.append(line).append("\n");
             }
         }

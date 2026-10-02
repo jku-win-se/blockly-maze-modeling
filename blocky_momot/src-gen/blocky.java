@@ -541,6 +541,52 @@ public class blocky {
     };
   }
 
+  protected double _createObjectiveHelper_4(final TransformationSolution solution, final EGraph graph, final EObject root) {
+    double _xtrycatchfinallyexpression = (double) 0;
+    try {
+      double _xblockexpression = (double) 0;
+      {
+        final Game game = ((Game) root);
+        Level _xifexpression = null;
+        boolean _isEmpty = game.getLevels().isEmpty();
+        if (_isEmpty) {
+          _xifexpression = null;
+        } else {
+          _xifexpression = game.getLevels().get(0);
+        }
+        final Level level = _xifexpression;
+        double _xifexpression_1 = (double) 0;
+        boolean _equals = Objects.equals(level, null);
+        if (_equals) {
+          _xifexpression_1 = 1000000.0;
+        } else {
+          int _countStatements = BlockyProgramMetrics.countStatements(level.getSolution());
+          _xifexpression_1 = ((double) _countStatements);
+        }
+        _xblockexpression = _xifexpression_1;
+      }
+      _xtrycatchfinallyexpression = _xblockexpression;
+    } catch (final Throwable _t) {
+      if (_t instanceof Throwable) {
+        _xtrycatchfinallyexpression = 1000000.0;
+      } else {
+        throw Exceptions.sneakyThrow(_t);
+      }
+    }
+    return _xtrycatchfinallyexpression;
+  }
+
+  protected IFitnessDimension<TransformationSolution> _createObjective_4(final TransformationSearchOrchestration orchestration) {
+    return new AbstractEGraphFitnessDimension("Blocks", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
+       @Override
+       protected double internalEvaluate(TransformationSolution solution) {
+          EGraph graph = solution.execute();
+          EObject root = MomotUtil.getRoot(graph);
+          return _createObjectiveHelper_4(solution, graph, root);
+       }
+    };
+  }
+
   protected ModuleManager createModuleManager() {
     ModuleManager manager = new ModuleManager();
     for(String module : modules) {
@@ -599,6 +645,7 @@ public class blocky {
     function.addObjective(_createObjective_1(orchestration));
     function.addObjective(_createObjective_2(orchestration));
     function.addObjective(_createObjective_3(orchestration));
+    function.addObjective(_createObjective_4(orchestration));
     function.setSolutionRepairer(solutionRepairer);
     return function;
   }
