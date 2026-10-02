@@ -13,7 +13,7 @@ Related documents: `Benchmark-Analysis.md` (every benchmark result and its limit
 | 3 | Edit and delete rules (`*_edit_anywhere`) | Repairing buggy programs | **Not measured.** Observed by the project owner with the original exploration | Generated `.henshin` files exist and the game uses them | Port the source to `.henshin_text`, test repair (section 3.3) |
 | 4 | Wrap and unwrap rules (`*_wrap`) | Adding structure without destroying what a program already does | **Measured:** 39 → 56 of 100 on levels 6–10 (p < 0.001), 56 against 37 of 80 for random search on levels 6–9. Confounded, see below | Generated `.henshin` files exist, switch `blocky.rules.wrap=true` | Decide the rule set that ships (section 3.4) |
 | 5 | Relaxed gate at `T = R − 5` | Letting near-solutions compete on size | **Landscape only.** No search has used it | **Not implemented** | Implement behind a switch (section 3.5) |
-| 6 | Always show non-goal candidates in the MoMoT solution panel | Seeing how close the search got when it has not (yet) found a solution, and what it is working on | A usability request. Two separate causes hide them today (UI filter, and the Pareto front under gating) | **Not implemented** | Remove the UI filter and add an archive of non-goal candidates (section 3.6) |
+| 6 | Always show non-goal candidates in the MoMoT solution panel | Seeing how close the search got when it has not (yet) found a solution, and what it is working on | A usability request. Two separate causes hide them today (UI filter, and the Pareto front under gating) | **Implemented, GUI check pending** | Check in the app (section 3.6) |
 
 **Two honest remarks before the details**
 
@@ -237,17 +237,31 @@ private static boolean passesGate(final EObject root) {
 3. Replace the status text with one line, for example `totalCount + ' candidate(s), ' + goalCount + ' reaching the goal' + goalInfo`.
 4. Make the table readable with mixed rows: sort by the `Goal Reached` column by default (set the initial `__momotSortCol` to 0, ascending, so goal-reaching candidates come first, since `GoalReached` is printed negated), show `-` instead of 100000 in the `Edits` and `Number of Actions` columns (the gate penalty is not a real value), and dim the rows that do not reach the goal. The `Number of blocks` column already counts the blocks from the model itself (`blockCountOf`), so it is correct for non-goal rows.
 
-**Change B: keep non-goal candidates in the output (needed under gating).** Keep a small archive of non-goal candidates, next to the Pareto front, and write it out with it.
-1. **Archive.** In `ParetoFrontPublisherListener`, add a bounded archive of distinct non-goal candidates, for example the best `K = 10` ranked by `closestToGoal` ascending and then by block count. Fill it from the algorithm's population, not only from `getResult()` (for NSGA-II the population is available from the algorithm object; check the exact accessor in the MOEA Framework version in `libs/`/Maven). Distinctness: by program, not only by objective vector, otherwise the deduplication above collapses them. The goal-reaching candidates stay in the existing Pareto front and are unchanged.
-2. **Output.** The panel only shows what is in `models/` and `objectives.pf`. The run writes these in two places in `blocky_custom.java`: the final `handleResults` (it builds the `Population` that is passed to `TransformationResultManager.saveObjectives` and to the solution and model writers) and the live save that follows a Pareto front update (it calls `saveObjectives(objectivesFile, paretoFront)`). Add the archive to the set that is written in both places, with the same file naming as the other models, so that `MomotResultsService` can join each model to its objective line. I did not read the code of the model writer that creates `models/`; read it before implementing, and keep the objective values in the file name consistent, because the join in `loadFromOutputDir` matches on them.
-3. **Switch.** A property `blocky.nonGoalArchive` (an integer `K`, default 10, 0 = off). The benchmark runners set it to 0 so their output directories stay as they were. Their success detection looks for a line with `GoalReached ≤ −0.999999` in `objectives.pf`, so extra non-goal lines would not create false successes, but other analyses may count lines.
-4. **Do not change the search.** The archive only records candidates; it must not feed back into selection or into the objectives.
+**Change B: keep non-goal candidates in the output (needed under gating). Implemented.** A small archive of non-goal candidates is kept next to the Pareto front and written out with it.
 
-**How to check it works.**
-- Start a search and stop it before it finds a solution (or use a level it cannot solve, such as 10): the panel must list non-goal candidates, ordered by `Closest to Goal`, with `-` in `Edits` and `Number of Actions` and a real block count.
-- Start a search that finds a solution under `blocky.objectives=GATED`: the solution is listed first and the non-goal candidates stay listed after it (this is the case that the UI change alone does not cover).
-- Select a non-goal row and press Load: the program must load into the game, and running it must show where the robot ends up.
-- Run the benchmark script for one level with `blocky.nonGoalArchive=0`: `objectives.pf` and the success counts must be identical to a run before the change.
+- **Archive** (`ParetoFrontPublisherListener.updateNonGoalArchive`): on every progress update, the non-goal candidates of the algorithm's whole population (read through `NSGAII.getPopulation()`) that came closest to the goal are considered, closest first. At most `K = blocky.nonGoalArchive` are kept, ranked by `closestToGoal` and then by block count. It only records candidates; it never feeds back into selection or the objectives.
+- **Display values instead of the gate penalty.** A non-goal candidate has 100000 in `Edits`, `Actions` and `Blocks`, so near-misses with the same `closestToGoal` would have the same objective vector, and therefore the same model file name (`blocky_custom_<objective values>.xmi`, no index) and the same line in the panel's join. The archive therefore stores a **copy** (`TransformationSolution.copy()`) of each candidate whose `Edits` (`BlockyProgramDistance.distanceToBaseline`), `Actions` (`BlockySimulator.simulationSteps`) and `Blocks` (`BlockyProgramMetrics.countStatements`) are the real values, computed once after the fact from the executed model. The originals in the population are never changed. Candidates with identical display vectors are still skipped, so two near-misses collide only if all of `Edits`, `Actions`, `Blocks` and `closestToGoal` agree.
+- **Output** (`blocky_custom.java`, `withNonGoalArchive`): the live save (`saveLiveResults`) and the final save (`handleResults`) write the front plus the archive into `models/`, `objectives.pf`, `times.pf` and `generations.pf`. The archive entries come last, so the position-based join with `solutions.txt` stays aligned for the front. The `solutions.txt` / `solutions/` files are not changed, so archived rows have no text summary.
+- **Switch:** `blocky.nonGoalArchive` (integer `K`, 0 = off). The default in code is 0, so the benchmark runners (own `main`) and all other tools are unchanged. `Main.java` (the game's entry point) sets it to 10 when it is not already set; `-Dblocky.nonGoalArchive=0` turns it off in the game.
+- **Panel sort** (`BlockyUI.java`): ties on `Goal Reached` are broken by `Closest to Goal` and then by block count, so the closest near-miss is listed first.
+
+**How it was checked.** One 15-generation run on level 10 (`blocky.objectives=GATED`, wrap on, not solved), started through `MomotFirstGoalBenchmarkRunner` with `-Dblocky.nonGoalArchive=10`, then read with `MomotResultsService.loadFromOutputDir`, the function the panel uses:
+- 11 entries: the 1 near-miss of the Pareto front (with the 100000 penalties) and 10 archived candidates with real values, for example `-0.0 25.0 5.0 8.0 25.0`. The 11 lines of `objectives.pf` match the 11 model files one to one, all names distinct, each entry with its own generation and time.
+- With `-Dblocky.nonGoalArchive=0`: 1 line and 1 model, as before the change.
+- Wall time for the same run: 13.09 s with the archive off, 13.63 s on (one run each, so only an indication of a small cost).
+
+**Not checked yet.** (1) The GUI itself: the panel list, the Load button on an archived row, and a run that finds a solution (the archived rows must stay listed after it). (2) That an archived program, when loaded, reaches the same end cell as the candidate it was copied from. `copy()` keeps the transformation sequence, and the model files were written without errors, but the loaded program was not compared.
+
+**Known limits.**
+- The front's own near-miss (with the 100000 values) is still listed, and the archive may hold the same program with real values, so one program can appear twice.
+- The archive holds one program per display vector, not every program that reaches a given distance.
+- Archived rows have no text summary (`solutions.txt` is written from the front only).
+
+**How to check it works in the app.**
+- Start a search on a level it cannot solve (level 10): the panel must list near-miss candidates ordered by `Closest to Goal`, with real `Edits`, `Number of Actions` and block counts.
+- Start a search that finds a solution under `blocky.objectives=GATED`: the solution is listed first and the near-misses stay listed after it.
+- Select a near-miss row and press Load: the program must load into the game, and running it must show where the robot ends up.
+- Run one level of the benchmark script: `objectives.pf` and the success counts must be unchanged (the archive is off there).
 
 **Risks.**
 - **Clutter and confusion.** A list of failed programs next to solutions can be mistaken for results. The sorting, the dimming and the `-` values above are there for that reason; keep the status line explicit about how many reach the goal.
@@ -263,7 +277,7 @@ private static boolean passesGate(final EObject root) {
 | Rule files | `*_edit_anywhere` (game) | Needed for repair |
 | `closestToGoal` | the fixed version, always on | A bug fix with no switch |
 | `blocky.gate.slack` | unset (strict) | Not implemented; no search evidence |
-| `blocky.nonGoalArchive` | 10 in the game, 0 in the benchmark runners | Non-goal candidates stay visible without changing benchmark outputs (not implemented yet) |
+| `blocky.nonGoalArchive` | 0 in code, set to 10 by `Main.java` for the game | Non-goal candidates stay visible without changing benchmark outputs |
 
 ## 5. Known gaps and risks
 
