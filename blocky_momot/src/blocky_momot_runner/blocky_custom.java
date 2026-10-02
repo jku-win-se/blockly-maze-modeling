@@ -12,12 +12,14 @@ import at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension;
 import at.ac.tuwien.big.momot.TransformationResultManager;
 import at.ac.tuwien.big.momot.TransformationSearchOrchestration;
 import at.ac.tuwien.big.momot.problem.solution.TransformationSolution;
+import at.ac.tuwien.big.momot.search.fitness.IEGraphMultiDimensionalFitnessFunction;
 import at.ac.tuwien.big.momot.search.fitness.dimension.AbstractEGraphFitnessDimension;
 import at.ac.tuwien.big.momot.util.MomotUtil;
 import blocky.Body;
 import blocky.Game;
 import blocky.Level;
 import blocky_momot.BlockyProgramDistance;
+import blocky_momot.BlockyProgramMetrics;
 import blocky_momot.BlockySimulator;
 import blocky_momot.ThreadLocalRandomProxy;
 import blocky_momot.listener.IParetoFrontSubscriber;
@@ -195,6 +197,44 @@ public class blocky_custom extends blocky {
                 return _createObjectiveHelper_2(solution, graph, root);
             }
         };
+    }
+
+    protected double _createObjectiveHelper_4(final TransformationSolution solution, final EGraph graph, final EObject root) {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new RuntimeException("MoMoT search interrupted (user stop or level change)");
+        }
+        try {
+            if (root instanceof Game game) {
+                Level level = game.getLevels().isEmpty() ? null : game.getLevels().get(0);
+                if (level == null) {
+                    return 1000000.0;
+                }
+                return (double) BlockyProgramMetrics.countStatements(level.getSolution());
+            }
+        } catch (Throwable t) {
+            return 1000000.0;
+        }
+        return 1000000.0;
+    }
+
+    protected IFitnessDimension<TransformationSolution> _createObjective_4(final TransformationSearchOrchestration orchestration) {
+        return new AbstractEGraphFitnessDimension("Blocks", at.ac.tuwien.big.moea.search.fitness.dimension.IFitnessDimension.FunctionType.Minimum) {
+            @Override
+            protected double internalEvaluate(TransformationSolution solution) {
+                EGraph graph = solution.execute();
+                EObject root = MomotUtil.getRoot(graph);
+                return _createObjectiveHelper_4(solution, graph, root);
+            }
+        };
+    }
+
+    @Override
+    protected IEGraphMultiDimensionalFitnessFunction createFitnessFunction(final TransformationSearchOrchestration orchestration) {
+        IEGraphMultiDimensionalFitnessFunction function = super.createFitnessFunction(orchestration);
+        if (function != null && !function.getObjectiveNames().contains("Blocks")) {
+            function.addObjective(_createObjective_4(orchestration));
+        }
+        return function;
     }
 
     @Override

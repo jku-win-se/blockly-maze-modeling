@@ -202,6 +202,13 @@ search = {
 					if (level == null) 1000000.0 else BlockySimulator.closestToGoalOrPenalty(level, 100000) as double
 				} catch (Throwable t) { 1000000.0 }
 			}
+			Blocks : minimize {
+				try {
+					val game = root as Game
+					val level = if (game.levels.isEmpty) null else game.levels.get(0)
+					if (level == null) 1000000.0 else BlockyProgramMetrics.countStatements(level.solution) as double
+				} catch (Throwable t) { 1000000.0 }
+			}
 		}
 		solutionRepairer = new TransformationPlaceholderRepairer
 	}

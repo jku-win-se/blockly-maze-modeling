@@ -419,11 +419,11 @@
                 panel.style.right = '10px';
                 panel.style.top = '80px';
                 panel.style.bottom = 'auto';
-                panel.style.width = '420px';
+                panel.style.width = '480px';
                 panel.style.height = '260px';
                 panel.style.minWidth = '300px';
                 panel.style.minHeight = '140px';
-                panel.style.maxWidth = '680px';
+                panel.style.maxWidth = '760px';
                 panel.style.maxHeight = '560px';
                 if (window.innerWidth < 768) {
                     panel.style.left = '10px';
@@ -658,7 +658,7 @@
                             return th;
                         }
 
-                        var objNames = ['Goal Reached', 'Edits', 'Number of Actions', 'Closest to Goal'];
+                        var objNames = ['Goal Reached', 'Edits', 'Number of Actions', 'Closest to Goal', 'Number of Blocks'];
                         var displayCols = Math.max(maxObj, objNames.length);
                         for (var i=0; i<displayCols; i++) hRow.appendChild(mkTh(objNames[i] || ('Obj ' + (i+1)), i));
                         hRow.appendChild(mkTh('Model', 999));

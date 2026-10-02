@@ -191,7 +191,10 @@ public final class BlockyProgramDistance {
         }
         Container c = body.getFirstContainer();
         while (c != null) {
-            out.add(c.getStatement());
+            Statement s = c.getStatement();
+            if (s != null) {
+                out.add(s);
+            }
             c = c.getNext();
         }
         return out;

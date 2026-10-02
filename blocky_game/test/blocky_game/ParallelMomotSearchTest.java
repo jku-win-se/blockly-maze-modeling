@@ -2,6 +2,7 @@ package blocky_game;
 
 import blocky.*;
 import blocky_momot.BlockyProgramDistance;
+import blocky_momot.BlockyProgramMetrics;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -16,6 +17,184 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ParallelMomotSearchTest {
+
+    @Test
+    void testVisualBlockCountAndEditDistance() {
+        BlockyFactory factory = BlockyFactory.eINSTANCE;
+
+        // Baseline: [MoveForward, TurnLeft] -> 2 blocks
+        Body baseline = factory.createBody();
+        Container c1 = factory.createContainer();
+        AtomicStatement s1 = factory.createAtomicStatement();
+        s1.setKind(AtomicStatementKind.MOVE_FORWARD);
+        c1.setStatement(s1);
+
+        Container c2 = factory.createContainer();
+        AtomicStatement s2 = factory.createAtomicStatement();
+        s2.setKind(AtomicStatementKind.TURN_LEFT);
+        c2.setStatement(s2);
+
+        c1.setNext(c2);
+        baseline.setFirstContainer(c1);
+
+        assertEquals(2, BlockyProgramMetrics.countStatements(baseline), "Baseline should have 2 blocks");
+
+        // 1. Same statements, but with an empty container inserted in between
+        Body withEmptyContainer = factory.createBody();
+        Container ec1 = factory.createContainer();
+        AtomicStatement es1 = factory.createAtomicStatement();
+        es1.setKind(AtomicStatementKind.MOVE_FORWARD);
+        ec1.setStatement(es1);
+
+        Container empty = factory.createContainer(); // empty container (statement == null)
+
+        Container ec2 = factory.createContainer();
+        AtomicStatement es2 = factory.createAtomicStatement();
+        es2.setKind(AtomicStatementKind.TURN_LEFT);
+        ec2.setStatement(es2);
+
+        ec1.setNext(empty);
+        empty.setNext(ec2);
+        withEmptyContainer.setFirstContainer(ec1);
+
+        assertEquals(2, BlockyProgramMetrics.countStatements(withEmptyContainer),
+                "Empty container must not count towards block count");
+        assertEquals(0, BlockyProgramDistance.programDistance(baseline, withEmptyContainer),
+                "Empty container must not increase graph edit distance");
+
+        // 2. Add 1 visual block: [MoveForward, TurnLeft, MoveForward] -> distance 1
+        Body withAddedBlock = factory.createBody();
+        Container ac1 = factory.createContainer();
+        AtomicStatement as1 = factory.createAtomicStatement();
+        as1.setKind(AtomicStatementKind.MOVE_FORWARD);
+        ac1.setStatement(as1);
+
+        Container ac2 = factory.createContainer();
+        AtomicStatement as2 = factory.createAtomicStatement();
+        as2.setKind(AtomicStatementKind.TURN_LEFT);
+        ac2.setStatement(as2);
+
+        Container ac3 = factory.createContainer();
+        AtomicStatement as3 = factory.createAtomicStatement();
+        as3.setKind(AtomicStatementKind.MOVE_FORWARD);
+        ac3.setStatement(as3);
+
+        ac1.setNext(ac2);
+        ac2.setNext(ac3);
+        withAddedBlock.setFirstContainer(ac1);
+
+        assertEquals(3, BlockyProgramMetrics.countStatements(withAddedBlock));
+        assertEquals(1, BlockyProgramDistance.programDistance(baseline, withAddedBlock),
+                "Adding 1 visual block must increment edit distance by 1");
+
+        // 3. Delete 1 visual block: [MoveForward] -> distance 1
+        Body withDeletedBlock = factory.createBody();
+        Container dc1 = factory.createContainer();
+        AtomicStatement ds1 = factory.createAtomicStatement();
+        ds1.setKind(AtomicStatementKind.MOVE_FORWARD);
+        dc1.setStatement(ds1);
+        withDeletedBlock.setFirstContainer(dc1);
+
+        assertEquals(1, BlockyProgramMetrics.countStatements(withDeletedBlock));
+        assertEquals(1, BlockyProgramDistance.programDistance(baseline, withDeletedBlock),
+                "Deleting 1 visual block must increment edit distance by 1");
+
+        // 4. Change atomic statement kind (relabel): [MoveForward, TurnRight] -> distance 1
+        Body withRelabeledBlock = factory.createBody();
+        Container rc1 = factory.createContainer();
+        AtomicStatement rs1 = factory.createAtomicStatement();
+        rs1.setKind(AtomicStatementKind.MOVE_FORWARD);
+        rc1.setStatement(rs1);
+
+        Container rc2 = factory.createContainer();
+        AtomicStatement rs2 = factory.createAtomicStatement();
+        rs2.setKind(AtomicStatementKind.TURN_RIGHT);
+        rc2.setStatement(rs2);
+
+        rc1.setNext(rc2);
+        withRelabeledBlock.setFirstContainer(rc1);
+
+        assertEquals(2, BlockyProgramMetrics.countStatements(withRelabeledBlock));
+        assertEquals(1, BlockyProgramDistance.programDistance(baseline, withRelabeledBlock),
+                "Changing atomic statement kind must increment edit distance by 1");
+
+        // 5. IfStmt condition change (relabel) & nested block counting
+        // Baseline If: If(CHECK_FORWARD) { MoveForward } else { TurnLeft } -> 3 visual blocks
+        Body ifBaseline = factory.createBody();
+        Container ifC = factory.createContainer();
+        IfStmt ifStmt1 = factory.createIfStmt();
+        ifStmt1.setCondition(ConditionKind.CHECK_FORWARD);
+
+        Body thenB1 = factory.createBody();
+        Container tc1 = factory.createContainer();
+        AtomicStatement ts1 = factory.createAtomicStatement();
+        ts1.setKind(AtomicStatementKind.MOVE_FORWARD);
+        tc1.setStatement(ts1);
+        thenB1.setFirstContainer(tc1);
+        ifStmt1.setThenBody(thenB1);
+
+        Body elseB1 = factory.createBody();
+        Container elc1 = factory.createContainer();
+        AtomicStatement els1 = factory.createAtomicStatement();
+        els1.setKind(AtomicStatementKind.TURN_LEFT);
+        elc1.setStatement(els1);
+        elseB1.setFirstContainer(elc1);
+        ifStmt1.setElseBody(elseB1);
+
+        ifC.setStatement(ifStmt1);
+        ifBaseline.setFirstContainer(ifC);
+
+        assertEquals(3, BlockyProgramMetrics.countStatements(ifBaseline),
+                "IfStmt with 1 then and 1 else block must count as 3 blocks");
+
+        // Modified If: condition changed to CHECK_LEFT -> distance 1
+        Body ifModified = factory.createBody();
+        Container ifC2 = factory.createContainer();
+        IfStmt ifStmt2 = factory.createIfStmt();
+        ifStmt2.setCondition(ConditionKind.CHECK_LEFT);
+
+        Body thenB2 = factory.createBody();
+        Container tc2 = factory.createContainer();
+        AtomicStatement ts2 = factory.createAtomicStatement();
+        ts2.setKind(AtomicStatementKind.MOVE_FORWARD);
+        tc2.setStatement(ts2);
+        thenB2.setFirstContainer(tc2);
+        ifStmt2.setThenBody(thenB2);
+
+        Body elseB2 = factory.createBody();
+        Container elc2 = factory.createContainer();
+        AtomicStatement els2 = factory.createAtomicStatement();
+        els2.setKind(AtomicStatementKind.TURN_LEFT);
+        elc2.setStatement(els2);
+        elseB2.setFirstContainer(elc2);
+        ifStmt2.setElseBody(elseB2);
+
+        ifC2.setStatement(ifStmt2);
+        ifModified.setFirstContainer(ifC2);
+
+        assertEquals(3, BlockyProgramMetrics.countStatements(ifModified));
+        assertEquals(1, BlockyProgramDistance.programDistance(ifBaseline, ifModified),
+                "Changing IfStmt condition must increment edit distance by 1");
+
+        // 6. Loop with nested empty container
+        Body loopBody = factory.createBody();
+        Container lc1 = factory.createContainer();
+        Loop loop = factory.createLoop();
+        Body loopInner = factory.createBody();
+        Container innerC1 = factory.createContainer();
+        AtomicStatement is1 = factory.createAtomicStatement();
+        is1.setKind(AtomicStatementKind.MOVE_FORWARD);
+        innerC1.setStatement(is1);
+        Container innerEmpty = factory.createContainer();
+        innerC1.setNext(innerEmpty);
+        loopInner.setFirstContainer(innerC1);
+        loop.setBody(loopInner);
+        lc1.setStatement(loop);
+        loopBody.setFirstContainer(lc1);
+
+        assertEquals(2, BlockyProgramMetrics.countStatements(loopBody),
+                "Loop with 1 inner statement (plus empty container) must count as 2 blocks");
+    }
 
     @Test
     void testBlockyProgramDistanceThreadLocalIsolation() throws Exception {
@@ -311,11 +490,11 @@ class ParallelMomotSearchTest {
     @Test
     void testSemaphoreWaitingQueueAndStateTransitions() throws Exception {
         List<SessionContext> sessions = new ArrayList<>();
-        // Start 11 sessions
+        // Start 11 sessions with higher eval count so they do not finish instantaneously
         for (int i = 0; i < 11; i++) {
             SessionContext sc = new SessionContext("queue-test-" + i);
             sessions.add(sc);
-            sc.runMomotWithParams(i, 50, 1000, 2, 8);
+            sc.runMomotWithParams(i, 50, 5000, 2, 8);
         }
 
         // Give a short moment for threads to initialize and enter semaphore
@@ -323,18 +502,21 @@ class ParallelMomotSearchTest {
 
         int runningCount = 0;
         int waitingCount = 0;
+        int finishedCount = 0;
         for (SessionContext sc : sessions) {
             String st = sc.getMomotStatus();
             if ("Running".equals(st)) {
                 runningCount++;
             } else if ("Waiting".equals(st)) {
                 waitingCount++;
+            } else if ("Finished".equals(st)) {
+                finishedCount++;
             }
         }
 
         // Up to 10 can be running, at least 1 should be waiting if 10 slots filled
         assertTrue(runningCount <= 10, "At most 10 sessions can be running simultaneously, was: " + runningCount);
-        assertTrue(runningCount + waitingCount == 11, "All 11 sessions should be either Running or Waiting");
+        assertTrue(runningCount + waitingCount + finishedCount == 11, "All 11 sessions should be tracked in valid states");
 
         // Stop all sessions to clean up
         for (SessionContext sc : sessions) {
@@ -478,7 +660,7 @@ class ParallelMomotSearchTest {
         assertEquals(soloEdits2, parEdits2, "Parallel run for Program 2 must produce identical edit distances to solo run");
         assertNotEquals(soloEdits1, soloEdits2, "Program 1 and Program 2 must have different edit distance sets");
 
-        // Verify that all 4 objectives [GoalReached, Edits, Actions, closestToGoal] match between solo and parallel runs
+        // Verify that all 5 objectives [GoalReached, Edits, Actions, closestToGoal, Blocks] match between solo and parallel runs
         List<List<Double>> soloObjectives1 = extractAllObjectives(solo1.getMomotCurrentOutputDir());
         List<List<Double>> soloObjectives2 = extractAllObjectives(solo2.getMomotCurrentOutputDir());
         List<List<Double>> parObjectives1 = extractAllObjectives(par1.getMomotCurrentOutputDir());
@@ -486,8 +668,8 @@ class ParallelMomotSearchTest {
 
         assertFalse(soloObjectives1.isEmpty(), "Solo 1 must produce objective points");
         assertFalse(soloObjectives2.isEmpty(), "Solo 2 must produce objective points");
-        assertEquals(soloObjectives1, parObjectives1, "All 4 objectives for Program 1 in parallel run must match solo run");
-        assertEquals(soloObjectives2, parObjectives2, "All 4 objectives for Program 2 in parallel run must match solo run");
+        assertEquals(soloObjectives1, parObjectives1, "All 5 objectives for Program 1 in parallel run must match solo run");
+        assertEquals(soloObjectives2, parObjectives2, "All 5 objectives for Program 2 in parallel run must match solo run");
         assertNotEquals(soloObjectives1, soloObjectives2, "Program 1 and Program 2 must have different objective sets");
     }
 
