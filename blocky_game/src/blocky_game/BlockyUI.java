@@ -927,6 +927,12 @@ public class BlockyUI extends Application {
                 + "                } "
                 + "                if (vA < vB) return -1 * window.__momotSortDir; "
                 + "                if (vA > vB) return 1 * window.__momotSortDir; "
+                // ties: closer to the goal first, then fewer blocks (candidates without a value last)
+                + "                var cA = a.objs[3] !== undefined ? a.objs[3] : Infinity, cB = b.objs[3] !== undefined ? b.objs[3] : Infinity; "
+                + "                if (cA !== cB) return cA < cB ? -1 : 1; "
+                + "                var kA = (a.it.blocks !== undefined && a.it.blocks !== null && a.it.blocks >= 0) ? a.it.blocks : Infinity; "
+                + "                var kB = (b.it.blocks !== undefined && b.it.blocks !== null && b.it.blocks >= 0) ? b.it.blocks : Infinity; "
+                + "                if (kA !== kB) return kA < kB ? -1 : 1; "
                 + "                return 0; "
                 + "              }); "
                 + "            } "

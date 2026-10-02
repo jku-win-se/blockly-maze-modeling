@@ -373,7 +373,26 @@ public class blocky_custom extends blocky {
         return experiment;
     }
 
-    private synchronized void saveLiveResults(Path outputDir, NondominatedPopulation paretoFront) {
+    /**
+     * The solutions to write for the solution panel: the given front plus the non-goal archive of the publisher
+     * listener (empty unless blocky.nonGoalArchive is set). The archive entries come last so that the files that
+     * are matched to the objectives by position (solutions.txt) stay aligned for the front.
+     */
+    private Population withNonGoalArchive(final Iterable<? extends Solution> front) {
+        Population shown = new Population(front);
+        try {
+            ParetoFrontPublisherListener pub = getPublisherListener();
+            if (pub != null) {
+                shown.addAll(pub.getNonGoalArchiveSnapshot());
+            }
+        } catch (Throwable t) {
+            System.err.println("[MoMoT] non-goal archive not written: " + t);
+        }
+        return shown;
+    }
+
+    private synchronized void saveLiveResults(Path outputDir, NondominatedPopulation front) {
+        Population paretoFront = withNonGoalArchive(front);
         try {
             Path modelsPath = outputDir.resolve("models");
             Files.createDirectories(modelsPath);
@@ -482,15 +501,16 @@ public class blocky_custom extends blocky {
         String modelsDir = outputDir.resolve("models").toString();
 
         Population population = TransformationResultManager.createApproximationSet(experiment, (String[]) null);
+        Population shown = withNonGoalArchive(population);
         System.out.println("- Save objectives of all algorithms to '" + objectivesFile + "'");
-        TransformationResultManager.saveObjectives(objectivesFile, population);
+        TransformationResultManager.saveObjectives(objectivesFile, shown);
 
         File timesFile = outputDir.resolve("times.pf").toFile();
         File gensFile = outputDir.resolve("generations.pf").toFile();
         StringBuilder timesContent = new StringBuilder();
         StringBuilder gensContent = new StringBuilder();
         ParetoFrontPublisherListener pub = getPublisherListener();
-        for (Solution solution : population) {
+        for (Solution solution : shown) {
             long t = 0L;
             int g = 1;
             if (solution != null) {
@@ -555,7 +575,7 @@ public class blocky_custom extends blocky {
                 solutionsDir, baseName, MomotUtil.asIterables(population, TransformationSolution.class), solutionWriter);
 
         population = TransformationResultManager.createApproximationSet(experiment, (String[]) null);
-        List<File> savedModels = TransformationResultManager.saveModels(modelsDir, baseName, population);
+        List<File> savedModels = TransformationResultManager.saveModels(modelsDir, baseName, withNonGoalArchive(population));
         java.util.Set<String> validNames = new java.util.HashSet<>();
         if (savedModels != null) {
             for (File f : savedModels) {
