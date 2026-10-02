@@ -345,7 +345,7 @@ public class BlockyUI extends Application {
                 "                var mxb = (typeof window.Od !== 'undefined' && isFinite(window.Od)) ? window.Od : -1;\n" +
                 "                var tb = document.getElementById('toolbox'); var tbHtml = tb ? tb.innerHTML : '';\n" +
 "                var sd = (typeof window.__stableStartT === 'number') ? window.__stableStartT : ((typeof window.T !== 'undefined') ? window.T : 1);\n" +
-"                var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: sd, allowLoops: tbHtml.indexOf('maze_forever') !== -1, allowConditionals: tbHtml.indexOf('maze_if') !== -1 });\n" +
+"                var meta = JSON.stringify({ level: lvl, maxBlocks: mxb, startDirection: sd, allowLoops: tbHtml.indexOf('maze_forever') !== -1, allowConditionals: tbHtml.indexOf('maze_if') !== -1, allowIfElse: tbHtml.indexOf('maze_ifElse') !== -1 });\n" +
 "                bridge.syncLevelMeta(meta);\n" +
 "              } catch(e) { log('syncLevelMeta: ' + e); }\n" +
 "              try {\n" +
@@ -2142,24 +2142,14 @@ public class BlockyUI extends Application {
         System.setProperty("blocky.nrRuns", String.valueOf(nrRuns));
         System.setProperty("blocky.solutionLength", String.valueOf(solutionLength));
 
-        // Determine correct Henshin file based on level constraints
+        // Use full Henshin rule set for all levels
         String henshin = "statement_insertions_henshin_text.henshin";
         Level lvl = engine.getCurrentLevel();
         if (lvl != null) {
-            boolean loops = lvl.isAllowLoops();
-            boolean conds = lvl.isAllowConditionals();
             boolean ifElse = lvl.isAllowIfElse();
             System.setProperty("blocky.allowIfElse", String.valueOf(ifElse));
-            
-            if (!loops && !conds) {
-                henshin = "statement_insertions_atomic_only.henshin";
-            } else if (!conds) {
-                henshin = "statement_insertions_no_conds.henshin";
-            } else if (!ifElse) {
-                henshin = "statement_insertions_no_else.henshin";
-            } else {
-                henshin = "statement_insertions_henshin_text.henshin";
-            }
+        } else {
+            System.setProperty("blocky.allowIfElse", "true");
         }
         System.setProperty("blocky.henshin", "../blocky_model/transformations/" + henshin);
 

@@ -401,15 +401,7 @@ public final class MomotFirstGoalBenchmarkRunner {
     }
 
     public static String selectHenshinModuleForLevel(int level) {
-        if (level <= 2) {
-            return "statement_insertions_atomic_only.henshin";
-        } else if (level <= 5) {
-            return "statement_insertions_no_conds.henshin";
-        } else if (level <= 7) {
-            return "statement_insertions_no_else.henshin";
-        } else {
-            return "statement_insertions_henshin_text.henshin";
-        }
+        return "statement_insertions_henshin_text.henshin";
     }
 
     public static int canonicalSolutionLengthForLevel(int level) {

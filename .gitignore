@@ -1,5 +1,6 @@
 # Local setup doc (not for repo)
 GITHUB_ORG_SETUP.md
+DEPLOY.md
 
 # Eclipse (machine-specific; keep .classpath, .project, .launch in repo)
 .metadata/
