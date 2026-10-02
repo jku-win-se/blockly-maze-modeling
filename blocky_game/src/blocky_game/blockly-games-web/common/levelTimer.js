@@ -957,6 +957,26 @@
         }
     }
 
+    function getCurrentWorkspaceXml() {
+        try {
+            if (window.BlocklyInterface && typeof window.BlocklyInterface.getCode === 'function') {
+                var code = window.BlocklyInterface.getCode();
+                if (code && typeof code === 'string' && code.trim().length > 0) {
+                    return code;
+                }
+            }
+        } catch (e) {}
+        try {
+            if (window.localStorage) {
+                var stored = window.localStorage.getItem('maze' + level);
+                if (stored && typeof stored === 'string' && stored.trim().length > 0) {
+                    return stored;
+                }
+            }
+        } catch (e2) {}
+        return '';
+    }
+
     function recordProgramRun() {
         if (!sessionId) return;
         try {
@@ -971,12 +991,17 @@
                 headers['X-Session-ID'] = sid;
             }
             if (typeof fetch === 'function') {
+                var nowIso = new Date().toISOString();
                 fetch('/api/simulation/run', {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({
                         timerSessionId: sessionId,
-                        level: level
+                        level: level,
+                        recordExecution: true,
+                        variant: getVariant(),
+                        timestamp: nowIso,
+                        xml: getCurrentWorkspaceXml()
                     })
                 }).then(function(r) {
                     if (r.ok) return r.json();

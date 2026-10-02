@@ -17,6 +17,9 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -617,17 +620,44 @@ public class HttpSearchServer {
 
             String modelPath = parseJsonField(body, "modelPath");
             boolean ok = session.loadMomotSolution(modelPath);
-            if (ok) {
-                String timerSid = extractTimerSessionId(exchange, body);
-                int levelId = extractLevelId(exchange, body, session);
-                recordActivity(timerSid, levelId, ActivityType.SOLUTION_LOAD);
-            }
 
             GameEngine engine = session.getEngine();
             Level level = engine.getCurrentLevel();
 
             int levelId = (level != null) ? level.getId() : 1;
             String xml = (ok && level != null) ? engine.solutionToBlocklyXml(level) : "";
+
+            if (ok) {
+                String timerSid = extractTimerSessionId(exchange, body);
+                int timerLevelId = extractLevelId(exchange, body, session);
+                recordActivity(timerSid, timerLevelId, ActivityType.SOLUTION_LOAD);
+
+                if (timerSid != null) {
+                    String modelName = modelPath != null ? new File(modelPath).getName() : "solution.xmi";
+                    String objectiveLine = "";
+                    for (MomotResultsService.SolutionEntry e : session.listMomotSolutions()) {
+                        if (modelPath != null && (modelPath.equals(e.modelPath) || (e.modelPath != null && modelName.equals(new File(e.modelPath).getName())))) {
+                            if (e.objectiveLine != null) {
+                                objectiveLine = e.objectiveLine;
+                                break;
+                            }
+                        }
+                    }
+                    if (objectiveLine.isEmpty()) {
+                        String fromBody = parseJsonField(body, "objectiveLine");
+                        if (fromBody != null) objectiveLine = fromBody;
+                    }
+                    String timestamp = parseJsonField(body, "timestamp");
+                    if (timestamp == null || timestamp.trim().isEmpty()) {
+                        timestamp = java.time.Instant.now().toString();
+                    }
+                    String variant = parseJsonField(body, "variant");
+                    if (variant == null || variant.trim().isEmpty()) {
+                        variant = "momot";
+                    }
+                    appendSessionEvent(timerSid, "candidate_exploration", variant, timerLevelId, modelName, xml, modelPath, objectiveLine, timestamp);
+                }
+            }
             int[][] grid = (level != null && level.getMap() != null) ? engine.buildGridForWebView(level.getMap()) : new int[0][0];
 
             Cell startCell = (level != null && level.getMap() != null) ? engine.getStartCell(level.getMap()) : null;
@@ -803,8 +833,25 @@ public class HttpSearchServer {
 
                 String timerSid = extractTimerSessionId(exchange, body);
                 int levelId = extractLevelId(exchange, body, session);
-                if (timerSid != null) {
+                boolean recordExecution = parseJsonBooleanField(body, "recordExecution", false);
+                if (timerSid != null && recordExecution) {
                     recordActivity(timerSid, levelId, ActivityType.PROGRAM_RUN);
+                    String variant = parseJsonField(body, "variant");
+                    if (variant == null || variant.trim().isEmpty()) {
+                        variant = "momot";
+                    }
+                    String timestamp = parseJsonField(body, "timestamp");
+                    if (timestamp == null || timestamp.trim().isEmpty()) {
+                        timestamp = java.time.Instant.now().toString();
+                    }
+                    String xml = parseJsonField(body, "xml");
+                    if (xml == null || xml.trim().isEmpty()) {
+                        Level curLvl = session.getEngine().getCurrentLevel();
+                        if (curLvl != null) {
+                            xml = session.getEngine().solutionToBlocklyXml(curLvl);
+                        }
+                    }
+                    appendSessionEvent(timerSid, "program_run", variant, levelId, "workspace", xml, null, null, timestamp);
                 }
 
                 List<String> logs = session.getEngine().simulateUserProgramWithLogs();
@@ -909,11 +956,19 @@ public class HttpSearchServer {
         }
         File dir = resolveLevelSessionsDir();
         File sessionFile = new File(dir, timerSessionId + ".json");
-        if (!sessionFile.exists()) {
-            return;
-        }
 
         synchronized (SESSION_FILE_LOCK) {
+            if (!sessionFile.exists()) {
+                try {
+                    String initial = "{\n" +
+                            "  \"sessionId\": \"" + escapeJson(timerSessionId) + "\",\n" +
+                            "  \"userId\": \"anonymous\",\n" +
+                            "  \"startedAt\": \"" + java.time.Instant.now().toString() + "\",\n" +
+                            "  \"levels\": {}\n" +
+                            "}";
+                    Files.writeString(sessionFile.toPath(), initial, StandardCharsets.UTF_8);
+                } catch (Exception ignored) {}
+            }
             if (!sessionFile.exists()) {
                 return;
             }
@@ -989,6 +1044,84 @@ public class HttpSearchServer {
                 Files.write(sessionFile.toPath(), sb.toString().getBytes(StandardCharsets.UTF_8));
             } catch (Exception e) {
                 System.err.println("[HttpSearchServer] Failed to record activity: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void appendSessionEvent(String timerSessionId, String type, String variant, int levelId,
+                                           String modelName, String xml, String modelPath, String objectiveLine,
+                                           String timestamp) {
+        if (timerSessionId == null || !timerSessionId.matches("^[a-zA-Z0-9_-]{1,128}$")) {
+            return;
+        }
+        if (levelId < 1 || levelId > 10) {
+            levelId = 1;
+        }
+        if (variant == null || variant.trim().isEmpty()) {
+            variant = "momot";
+        }
+        if (timestamp == null || timestamp.trim().isEmpty()) {
+            timestamp = java.time.Instant.now().toString();
+        }
+        File baseDir = resolveLevelSessionsDir();
+        File sessionDir = new File(baseDir, timerSessionId);
+        File modelsDir = new File(sessionDir, "models");
+
+        synchronized (SESSION_FILE_LOCK) {
+            try {
+                if (!modelsDir.exists()) {
+                    modelsDir.mkdirs();
+                }
+                File eventsFile = new File(sessionDir, "events.jsonl");
+                int eventIndex = 1;
+                if (eventsFile.exists()) {
+                    try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(eventsFile), StandardCharsets.UTF_8))) {
+                        while (r.readLine() != null) {
+                            eventIndex++;
+                        }
+                    }
+                }
+                String eventId = String.valueOf(eventIndex);
+                String modelFile = "models/" + eventId + ".xml";
+
+                // 1. Write XML file
+                File xmlFile = new File(modelsDir, eventId + ".xml");
+                Files.writeString(xmlFile.toPath(), xml != null ? xml : "", StandardCharsets.UTF_8);
+
+                // 2. If candidate, copy XMI file
+                if (modelPath != null && !modelPath.trim().isEmpty()) {
+                    File srcXmi = new File(modelPath.trim());
+                    if (!srcXmi.exists()) {
+                        File alt = new File("blocky_game", modelPath.trim());
+                        if (alt.exists()) srcXmi = alt;
+                    }
+                    if (srcXmi.exists() && srcXmi.isFile()) {
+                        File dstXmi = new File(modelsDir, eventId + ".xmi");
+                        Files.copy(srcXmi.toPath(), dstXmi.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+
+                // 3. Append to events.jsonl
+                StringBuilder jsonLine = new StringBuilder();
+                jsonLine.append("{\"timestamp\":\"").append(escapeJson(timestamp)).append("\",");
+                jsonLine.append("\"type\":\"").append(escapeJson(type)).append("\",");
+                jsonLine.append("\"variant\":\"").append(escapeJson(variant)).append("\",");
+                jsonLine.append("\"level\":").append(levelId).append(",");
+                jsonLine.append("\"modelName\":\"").append(escapeJson(modelName != null ? modelName : "")).append("\",");
+                jsonLine.append("\"modelFile\":\"").append(escapeJson(modelFile)).append("\"");
+                if (modelPath != null) {
+                    jsonLine.append(",\"modelPath\":\"").append(escapeJson(modelPath)).append("\"");
+                }
+                if (objectiveLine != null) {
+                    jsonLine.append(",\"objectiveLine\":\"").append(escapeJson(objectiveLine)).append("\"");
+                }
+                jsonLine.append("}\n");
+
+                try (FileWriter fw = new FileWriter(eventsFile, StandardCharsets.UTF_8, true)) {
+                    fw.write(jsonLine.toString());
+                }
+            } catch (Exception e) {
+                System.err.println("[HttpSearchServer] Failed to append session event: " + e.getMessage());
             }
         }
     }
@@ -1233,6 +1366,18 @@ public class HttpSearchServer {
         return false;
     }
 
+    private static class SessionEvent {
+        String timestamp;
+        String type;
+        String variant;
+        int level;
+        String modelName;
+        String modelFile;
+        String modelPath;
+        String objectiveLine;
+        String xml = "";
+    }
+
     private static class AdminSessionSummary {
         String sessionId;
         String userId;
@@ -1244,6 +1389,47 @@ public class HttpSearchServer {
         int totalSolutionsLoaded;
         int totalDirectManipulations;
         Map<Integer, LevelRecord> levels = new TreeMap<>();
+        List<SessionEvent> events = new ArrayList<>();
+    }
+
+    private static List<SessionEvent> loadSessionEvents(File dir, String sessionId) {
+        List<SessionEvent> events = new ArrayList<>();
+        if (dir == null || sessionId == null) return events;
+        File sessionDir = new File(dir, sessionId);
+        File eventsFile = new File(sessionDir, "events.jsonl");
+        if (!eventsFile.exists() || !eventsFile.isFile()) {
+            return events;
+        }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(eventsFile), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                SessionEvent evt = new SessionEvent();
+                evt.timestamp = parseJsonField(line, "timestamp");
+                evt.type = parseJsonField(line, "type");
+                evt.variant = parseJsonField(line, "variant");
+                evt.level = parseJsonIntField(line, "level", 1);
+                evt.modelName = parseJsonField(line, "modelName");
+                evt.modelFile = parseJsonField(line, "modelFile");
+                evt.modelPath = parseJsonField(line, "modelPath");
+                evt.objectiveLine = parseJsonField(line, "objectiveLine");
+
+                if (evt.modelFile != null && !evt.modelFile.trim().isEmpty()) {
+                    File xmlFile = new File(sessionDir, evt.modelFile.trim());
+                    if (xmlFile.exists() && xmlFile.isFile()) {
+                        try {
+                            evt.xml = Files.readString(xmlFile.toPath(), StandardCharsets.UTF_8);
+                        } catch (Exception ignored) {}
+                    }
+                }
+                if (evt.xml == null) evt.xml = "";
+                events.add(evt);
+            }
+        } catch (Exception e) {
+            System.err.println("[HttpSearchServer] Failed to load session events for " + sessionId + ": " + e.getMessage());
+        }
+        return events;
     }
 
     private static List<AdminSessionSummary> loadAllSessionSummaries() {
@@ -1302,6 +1488,7 @@ public class HttpSearchServer {
                     sum.totalMomotSearches = totalSearches;
                     sum.totalSolutionsLoaded = totalLoaded;
                     sum.totalDirectManipulations = totalDms;
+                    sum.events = loadSessionEvents(dir, sum.sessionId);
                     list.add(sum);
                 } catch (Exception ignored) {}
             }
@@ -1323,6 +1510,31 @@ public class HttpSearchServer {
         return String.format("%02d:%02d", mins, secs);
     }
 
+    private static String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;")
+                   .replace("'", "&#39;");
+    }
+
+    private static String getBlockPreviewScript() {
+        Path p = Paths.get("blocky_game/src/blocky_game/blockly-games-web/common/blockPreview.js");
+        if (Files.exists(p)) {
+            try {
+                return new String(Files.readAllBytes(p), StandardCharsets.UTF_8);
+            } catch (Exception ignored) {}
+        }
+        Path alt = Paths.get("src/blocky_game/blockly-games-web/common/blockPreview.js");
+        if (Files.exists(alt)) {
+            try {
+                return new String(Files.readAllBytes(alt), StandardCharsets.UTF_8);
+            } catch (Exception ignored) {}
+        }
+        return "/* blockPreview.js not found */";
+    }
+
     private static String generateAdminHtmlReport(List<AdminSessionSummary> sessions) {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n");
@@ -1338,7 +1550,14 @@ public class HttpSearchServer {
         sb.append("th { background: #f6f8fa; font-weight: 600; color: #24292f; border-bottom: 2px solid #d0d7de; }\n");
         sb.append("tr:hover { background: #fdfdfd; }\n");
         sb.append(".badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #ddf4ff; color: #0969da; }\n");
+        sb.append(".badge-run { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #ddf4ff; color: #0969da; }\n");
+        sb.append(".badge-cand { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #dafbe1; color: #1a7f37; }\n");
         sb.append(".total-cell { font-weight: 700; color: #1a7f37; }\n");
+        sb.append(".session-events-section { margin-top: 24px; background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #d0d7de; }\n");
+        sb.append(".event-card { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 12px; margin-top: 10px; }\n");
+        sb.append(".event-meta { font-size: 12px; color: #57606a; margin-bottom: 8px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }\n");
+        sb.append(".xml-toggle { margin-top: 8px; font-size: 11px; color: #57606a; }\n");
+        sb.append(".xml-toggle pre { background: #ffffff; padding: 8px; border: 1px solid #d0d7de; border-radius: 4px; overflow-x: auto; max-height: 200px; font-size: 11px; }\n");
         sb.append("</style>\n</head>\n<body>\n");
 
         long grandTotalMs = 0;
@@ -1379,9 +1598,9 @@ public class HttpSearchServer {
         } else {
             for (AdminSessionSummary s : sessions) {
                 sb.append("<tr>\n");
-                sb.append("  <td><span class=\"badge\">").append(escapeJson(s.sessionId)).append("</span></td>\n");
-                sb.append("  <td><strong>").append(escapeJson(s.userId)).append("</strong></td>\n");
-                sb.append("  <td>").append(escapeJson(s.startedAt != null ? s.startedAt : "-")).append("</td>\n");
+                sb.append("  <td><span class=\"badge\">").append(escapeHtml(s.sessionId)).append("</span></td>\n");
+                sb.append("  <td><strong>").append(escapeHtml(s.userId)).append("</strong></td>\n");
+                sb.append("  <td>").append(escapeHtml(s.startedAt != null ? s.startedAt : "-")).append("</td>\n");
                 sb.append("  <td><strong>").append(s.totalProgramRuns).append("</strong></td>\n");
                 sb.append("  <td><strong>").append(s.totalMomotSearches).append("</strong></td>\n");
                 sb.append("  <td><strong>").append(s.totalSolutionsLoaded).append("</strong></td>\n");
@@ -1391,7 +1610,7 @@ public class HttpSearchServer {
                     if (rec != null && (rec.elapsedMs > 0 || rec.programRuns > 0 || rec.momotSearches > 0 || rec.solutionsLoaded > 0 || rec.directManipulations > 0)) {
                         sb.append("  <td>");
                         if (rec.elapsedMs > 0) {
-                            sb.append(formatTimeSecOrMs(rec.elapsedMs)).append("<br><small style=\"color:#8c959f;\">").append(escapeJson(rec.variant)).append("</small>");
+                            sb.append(formatTimeSecOrMs(rec.elapsedMs)).append("<br><small style=\"color:#8c959f;\">").append(escapeHtml(rec.variant)).append("</small>");
                         } else {
                             sb.append("-");
                         }
@@ -1411,8 +1630,57 @@ public class HttpSearchServer {
                 sb.append("</tr>\n");
             }
         }
+        sb.append("</tbody>\n</table>\n");
 
-        sb.append("</tbody>\n</table>\n</body>\n</html>");
+        sb.append("<h2 style=\"margin-top: 36px; font-size: 18px; color: #0969da;\">Session Event Timelines & Workspace Snapshots</h2>\n");
+        boolean anyEvents = false;
+        for (AdminSessionSummary s : sessions) {
+            if (s.events == null || s.events.isEmpty()) continue;
+            anyEvents = true;
+            sb.append("<div class=\"session-events-section\">\n");
+            sb.append("  <h3 style=\"margin: 0 0 10px 0; font-size: 15px;\">Session: <span class=\"badge\">")
+              .append(escapeHtml(s.sessionId)).append("</span> &bull; User: <strong>")
+              .append(escapeHtml(s.userId)).append("</strong> (").append(s.events.size()).append(" events)</h3>\n");
+
+            for (SessionEvent ev : s.events) {
+                sb.append("  <div class=\"event-card\">\n");
+                sb.append("    <div class=\"event-meta\">\n");
+                String badgeClass = "program_run".equals(ev.type) ? "badge-run" : "badge-cand";
+                sb.append("      <span class=\"").append(badgeClass).append("\">").append(escapeHtml(ev.type)).append("</span>\n");
+                sb.append("      <span><strong>Level:</strong> ").append(ev.level).append("</span>\n");
+                sb.append("      <span><strong>Variant:</strong> ").append(escapeHtml(ev.variant != null ? ev.variant : "-")).append("</span>\n");
+                sb.append("      <span><strong>Time:</strong> ").append(escapeHtml(ev.timestamp != null ? ev.timestamp : "-")).append("</span>\n");
+                if (ev.modelName != null && !ev.modelName.isEmpty()) {
+                    sb.append("      <span><strong>Model:</strong> ").append(escapeHtml(ev.modelName)).append("</span>\n");
+                }
+                if (ev.objectiveLine != null && !ev.objectiveLine.isEmpty()) {
+                    sb.append("      <span><strong>Objective:</strong> ").append(escapeHtml(ev.objectiveLine)).append("</span>\n");
+                }
+                sb.append("    </div>\n");
+
+                if (ev.xml != null && !ev.xml.trim().isEmpty()) {
+                    sb.append("    <div class=\"block-preview\" data-xml=\"").append(escapeHtml(ev.xml)).append("\"></div>\n");
+                    sb.append("    <details class=\"xml-toggle\"><summary>Raw Workspace XML</summary><pre>").append(escapeHtml(ev.xml)).append("</pre></details>\n");
+                } else {
+                    sb.append("    <div style=\"font-size:12px; color:#8c959f; font-style:italic;\">No workspace XML snapshot recorded for this event.</div>\n");
+                }
+                sb.append("  </div>\n");
+            }
+            sb.append("</div>\n");
+        }
+        if (!anyEvents) {
+            sb.append("<p style=\"color:#57606a; font-size:13px;\">No session events recorded yet.</p>\n");
+        }
+
+        sb.append("<script>\n").append(getBlockPreviewScript()).append("\n</script>\n");
+        sb.append("<script>\n");
+        sb.append("document.addEventListener('DOMContentLoaded', function() {\n");
+        sb.append("    if (window.BlockPreview && typeof window.BlockPreview.renderAll === 'function') {\n");
+        sb.append("        window.BlockPreview.renderAll(document);\n");
+        sb.append("    }\n");
+        sb.append("});\n");
+        sb.append("</script>\n");
+        sb.append("</body>\n</html>");
         return sb.toString();
     }
 
@@ -1502,7 +1770,23 @@ public class HttpSearchServer {
                           .append("\"directManipulations\":").append(entry.getValue().directManipulations)
                           .append("}");
                     }
-                    sb.append("}}");
+                    sb.append("},\"events\":[");
+                    for (int evIdx = 0; evIdx < s.events.size(); evIdx++) {
+                        if (evIdx > 0) sb.append(",");
+                        SessionEvent ev = s.events.get(evIdx);
+                        sb.append("{")
+                          .append("\"timestamp\":\"").append(escapeJson(ev.timestamp != null ? ev.timestamp : "")).append("\",")
+                          .append("\"type\":\"").append(escapeJson(ev.type != null ? ev.type : "")).append("\",")
+                          .append("\"variant\":\"").append(escapeJson(ev.variant != null ? ev.variant : "")).append("\",")
+                          .append("\"level\":").append(ev.level).append(",")
+                          .append("\"modelName\":\"").append(escapeJson(ev.modelName != null ? ev.modelName : "")).append("\",")
+                          .append("\"modelFile\":\"").append(escapeJson(ev.modelFile != null ? ev.modelFile : "")).append("\",")
+                          .append("\"modelPath\":\"").append(escapeJson(ev.modelPath != null ? ev.modelPath : "")).append("\",")
+                          .append("\"objectiveLine\":\"").append(escapeJson(ev.objectiveLine != null ? ev.objectiveLine : "")).append("\",")
+                          .append("\"xml\":").append(ev.xml != null ? "\"" + escapeJson(ev.xml) + "\"" : "\"\"")
+                          .append("}");
+                    }
+                    sb.append("]}");
                 }
                 sb.append("]}");
                 sendJson(exchange, 200, sb.toString());
@@ -1579,7 +1863,24 @@ public class HttpSearchServer {
                               .append("      }");
                         }
                         if (!firstLvl) sb.append("\n    ");
-                        sb.append("}\n  }");
+                        sb.append("},\n    \"events\": [");
+                        for (int evIdx = 0; evIdx < s.events.size(); evIdx++) {
+                            if (evIdx > 0) sb.append(",");
+                            SessionEvent ev = s.events.get(evIdx);
+                            sb.append("\n      {\n")
+                              .append("        \"timestamp\": \"").append(escapeJson(ev.timestamp != null ? ev.timestamp : "")).append("\",\n")
+                              .append("        \"type\": \"").append(escapeJson(ev.type != null ? ev.type : "")).append("\",\n")
+                              .append("        \"variant\": \"").append(escapeJson(ev.variant != null ? ev.variant : "")).append("\",\n")
+                              .append("        \"level\": ").append(ev.level).append(",\n")
+                              .append("        \"modelName\": \"").append(escapeJson(ev.modelName != null ? ev.modelName : "")).append("\",\n")
+                              .append("        \"modelFile\": \"").append(escapeJson(ev.modelFile != null ? ev.modelFile : "")).append("\",\n")
+                              .append("        \"modelPath\": \"").append(escapeJson(ev.modelPath != null ? ev.modelPath : "")).append("\",\n")
+                              .append("        \"objectiveLine\": \"").append(escapeJson(ev.objectiveLine != null ? ev.objectiveLine : "")).append("\",\n")
+                              .append("        \"xml\": ").append(ev.xml != null ? "\"" + escapeJson(ev.xml) + "\"" : "\"\"").append("\n")
+                              .append("      }");
+                        }
+                        if (!s.events.isEmpty()) sb.append("\n    ");
+                        sb.append("]\n  }");
                     }
                     sb.append("\n]");
                     byte[] bytes = sb.toString().getBytes(StandardCharsets.UTF_8);

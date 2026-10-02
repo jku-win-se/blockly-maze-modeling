@@ -709,13 +709,13 @@
                                         if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath(path);
                                     }
                                 } catch(eP) {}
-                            });
-                            tr.addEventListener('dblclick', function() {
-                                var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);
-                                if (bridge && bridge.loadMomotSolution) {
-                                    setStatus('Loading ' + p.modelName + '...');
-                                    bridge.loadMomotSolution(p.it.modelPath);
-                                }
+                                try {
+                                    var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);
+                                    if (bridge && bridge.loadMomotSolution) {
+                                        setStatus('Loading ' + p.modelName + '...');
+                                        bridge.loadMomotSolution(p.it.modelPath);
+                                    }
+                                } catch(eL) {}
                             });
                             tbody.appendChild(tr);
                         });

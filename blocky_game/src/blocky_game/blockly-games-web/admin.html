@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Blockly Maze - Admin Dashboard</title>
   <link rel="stylesheet" href="common/common.css">
+  <script src="common/blockPreview.js"></script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -288,6 +289,54 @@
       gap: 8px;
       margin-top: 16px;
     }
+    .event-card {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    .event-meta {
+      font-size: 12px;
+      color: #57606a;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .badge-run {
+      background: #ddf4ff;
+      color: #0969da;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .badge-cand {
+      background: #dafbe1;
+      color: #1a7f37;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .xml-details summary {
+      cursor: pointer;
+      font-size: 11px;
+      color: #57606a;
+      margin-top: 6px;
+    }
+    .xml-details pre {
+      font-size: 11px;
+      background: #ffffff;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #d0d7de;
+      max-height: 120px;
+      overflow: auto;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -408,6 +457,10 @@
         </thead>
         <tbody id="modalLevelsBody"></tbody>
       </table>
+      <div id="modalEventsContainer" style="margin-top: 20px;">
+        <h4 style="margin: 0 0 10px 0; color: #0969da; font-size: 15px;">Event Timeline & Workspace Snapshots</h4>
+        <div id="modalEventsList" style="max-height: 360px; overflow-y: auto; padding-right: 4px;"></div>
+      </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="modalDownloadHtml">Download HTML</button>
         <button type="button" class="btn btn-secondary" id="modalDownloadJson">Download JSON</button>
@@ -421,6 +474,13 @@
       var adminToken = sessionStorage.getItem('blocky_admin_token');
       var allSessions = [];
       var selectedSession = null;
+      var previewScriptCached = '';
+      fetch('common/blockPreview.js').then(function(r) {
+        if (r.ok) return r.text();
+        return '';
+      }).then(function(txt) {
+        previewScriptCached = txt;
+      }).catch(function() {});
 
       function formatTime(ms) {
         if (!ms || ms <= 0) return '-';
@@ -597,6 +657,42 @@
           rows += '<tr><td>Level ' + l + '</td><td>' + timeStr + '</td><td>' + runs + '</td><td>' + searches + '</td><td>' + loaded + '</td><td>' + dms + '</td><td>' + varStr + '</td><td>' + updStr + '</td></tr>';
         }
         tbody.innerHTML = rows;
+
+        var eventsList = document.getElementById('modalEventsList');
+        if (!sess.events || sess.events.length === 0) {
+          eventsList.innerHTML = '<div style="font-size: 13px; color: #8c959f; font-style: italic; padding: 8px 0;">No activity events recorded for this session.</div>';
+        } else {
+          var evHtml = '';
+          sess.events.forEach(function(ev) {
+            var isRun = ev.type === 'program_run';
+            var badgeClass = isRun ? 'badge-run' : 'badge-cand';
+            evHtml += '<div class="event-card">';
+            evHtml += '  <div class="event-meta">';
+            evHtml += '    <span class="' + badgeClass + '">' + escapeHtml(ev.type) + '</span>';
+            evHtml += '    <span><strong>Level ' + ev.level + '</strong></span>';
+            evHtml += '    <span>' + escapeHtml(ev.variant || '-') + '</span>';
+            evHtml += '    <span>' + escapeHtml(ev.timestamp || '-') + '</span>';
+            if (ev.modelName) {
+              evHtml += '    <span><strong>Model:</strong> ' + escapeHtml(ev.modelName) + '</span>';
+            }
+            if (ev.objectiveLine) {
+              evHtml += '    <span><strong>Obj:</strong> ' + escapeHtml(ev.objectiveLine) + '</span>';
+            }
+            evHtml += '  </div>';
+            if (ev.xml && ev.xml.trim()) {
+              evHtml += '  <div class="block-preview" data-xml="' + escapeHtml(ev.xml) + '"></div>';
+              evHtml += '  <details class="xml-details"><summary>Raw Workspace XML</summary><pre>' + escapeHtml(ev.xml) + '</pre></details>';
+            } else {
+              evHtml += '  <div style="font-size:12px; color:#8c959f; font-style:italic;">No workspace XML snapshot recorded.</div>';
+            }
+            evHtml += '</div>';
+          });
+          eventsList.innerHTML = evHtml;
+          if (window.BlockPreview && typeof window.BlockPreview.renderAll === 'function') {
+            window.BlockPreview.renderAll(eventsList);
+          }
+        }
+
         modal.style.display = 'flex';
       }
 
@@ -645,9 +741,10 @@
 
       document.getElementById('modalDownloadHtml').onclick = function() {
         if (!selectedSession) return;
+        var sess = selectedSession;
         var rows = '';
         for (var l = 1; l <= 10; l++) {
-          var rec = selectedSession.levels && selectedSession.levels[l];
+          var rec = sess.levels && sess.levels[l];
           var timeStr = rec && rec.elapsedMs > 0 ? formatTime(rec.elapsedMs) : '-';
           var runs = rec && typeof rec.programRuns === 'number' ? rec.programRuns : 0;
           var searches = rec && typeof rec.momotSearches === 'number' ? rec.momotSearches : 0;
@@ -656,13 +753,64 @@
           var varStr = rec && (rec.elapsedMs > 0 || runs > 0 || searches > 0 || loaded > 0 || dms > 0) ? (rec.variant || 'momot') : '-';
           rows += '<tr><td>Level ' + l + '</td><td>' + timeStr + '</td><td>' + runs + '</td><td>' + searches + '</td><td>' + loaded + '</td><td>' + dms + '</td><td>' + varStr + '</td></tr>\n';
         }
+        var eventsHtml = '';
+        if (sess.events && sess.events.length > 0) {
+          sess.events.forEach(function(ev) {
+            var isRun = ev.type === 'program_run';
+            var badgeClass = isRun ? 'badge-run' : 'badge-cand';
+            eventsHtml += '<div class="event-card" style="background:#f6f8fa; border:1px solid #d0d7de; border-radius:6px; padding:10px 12px; margin-bottom:10px;">';
+            eventsHtml += '  <div style="font-size:12px; color:#57606a; display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">';
+            eventsHtml += '    <span style="font-weight:600; padding:2px 6px; border-radius:4px; font-size:11px; ' + (isRun ? 'background:#ddf4ff; color:#0969da;' : 'background:#dafbe1; color:#1a7f37;') + '">' + escapeHtml(ev.type) + '</span>';
+            eventsHtml += '    <span><strong>Level ' + ev.level + '</strong></span>';
+            eventsHtml += '    <span>' + escapeHtml(ev.variant || '-') + '</span>';
+            eventsHtml += '    <span>' + escapeHtml(ev.timestamp || '-') + '</span>';
+            if (ev.modelName) eventsHtml += '    <span><strong>Model:</strong> ' + escapeHtml(ev.modelName) + '</span>';
+            if (ev.objectiveLine) eventsHtml += '    <span><strong>Obj:</strong> ' + escapeHtml(ev.objectiveLine) + '</span>';
+            eventsHtml += '  </div>';
+            if (ev.xml && ev.xml.trim()) {
+              eventsHtml += '  <div class="block-preview" data-xml="' + escapeHtml(ev.xml) + '"></div>';
+              eventsHtml += '  <details style="margin-top:6px; font-size:11px;"><summary style="cursor:pointer; color:#57606a;">Raw XML</summary><pre style="background:#fff; border:1px solid #d0d7de; padding:6px; border-radius:4px; max-height:120px; overflow:auto;">' + escapeHtml(ev.xml) + '</pre></details>';
+            } else {
+              eventsHtml += '  <div style="font-size:12px; color:#8c959f; font-style:italic;">No workspace XML snapshot recorded.</div>';
+            }
+            eventsHtml += '</div>';
+          });
+        } else {
+          eventsHtml = '<div style="font-size:13px; color:#8c959f; font-style:italic;">No events recorded.</div>';
+        }
+
+        var previewStyles = (window.BlockPreview && typeof window.BlockPreview.getStyles === 'function') ? window.BlockPreview.getStyles() : '';
+        var previewScript = previewScriptCached || '';
+
         var doc = [
-          '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Session ' + selectedSession.sessionId + '</title>',
-          '<style>body{font-family:sans-serif;padding:30px;background:#f6f8fa;} .card{background:#fff;padding:24px;border-radius:8px;max-width:700px;margin:0 auto;} table{width:100%;border-collapse:collapse;} th,td{padding:8px 12px;border:1px solid #d0d7de;text-align:left;}</style>',
-          '</head><body><div class="card"><h2>Blockly Maze Session Report</h2><p><strong>Session ID:</strong> ' + selectedSession.sessionId + '<br><strong>User:</strong> ' + selectedSession.userId + '<br><strong>Total Time:</strong> ' + formatTime(selectedSession.totalElapsedMs) + '<br><strong>Runs:</strong> ' + (selectedSession.totalProgramRuns || 0) + ' | <strong>Searches:</strong> ' + (selectedSession.totalMomotSearches || 0) + ' | <strong>Loaded:</strong> ' + (selectedSession.totalSolutionsLoaded || 0) + ' | <strong>DMs:</strong> ' + (selectedSession.totalDirectManipulations || 0) + '</p>',
-          '<table><thead><tr><th>Level</th><th>Time</th><th>Runs</th><th>Searches</th><th>Loaded</th><th>DM</th><th>Variant</th></tr></thead><tbody>' + rows + '</tbody></table></div></body></html>'
+          '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Session ' + escapeHtml(sess.sessionId) + '</title>',
+          '<style>',
+          'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:30px;background:#f6f8fa;color:#24292f;}',
+          '.card{background:#fff;padding:24px;border-radius:8px;max-width:850px;margin:0 auto;border:1px solid #d0d7de;}',
+          'table{width:100%;border-collapse:collapse;margin:16px 0;} th,td{padding:8px 12px;border:1px solid #d0d7de;text-align:left;font-size:13px;}',
+          'th{background:#f6f8fa;}',
+          previewStyles,
+          '</style>',
+          '</head><body><div class="card"><h2>Blockly Maze Session Report</h2><p><strong>Session ID:</strong> ' + escapeHtml(sess.sessionId) + '<br><strong>User:</strong> ' + escapeHtml(sess.userId) + '<br><strong>Total Time:</strong> ' + formatTime(sess.totalElapsedMs) + '<br><strong>Runs:</strong> ' + (sess.totalProgramRuns || 0) + ' | <strong>Searches:</strong> ' + (sess.totalMomotSearches || 0) + ' | <strong>Loaded:</strong> ' + (sess.totalSolutionsLoaded || 0) + ' | <strong>DMs:</strong> ' + (sess.totalDirectManipulations || 0) + '</p>',
+          '<h3>Level Summaries</h3>',
+          '<table><thead><tr><th>Level</th><th>Time</th><th>Runs</th><th>Searches</th><th>Loaded</th><th>DM</th><th>Variant</th></tr></thead><tbody>' + rows + '</tbody></table>',
+          '<h3 style="margin-top:24px;">Activity Timeline & Workspace Snapshots</h3>',
+          eventsHtml,
+          '</div>',
+          '<script>' + previewScript + '<\/script>',
+          '<script>',
+          'document.addEventListener("DOMContentLoaded", function() {',
+          '  if (window.BlockPreview && typeof window.BlockPreview.renderAll === "function") {',
+          '    window.BlockPreview.renderAll(document);',
+          '  }',
+          '});',
+          'if (window.BlockPreview && typeof window.BlockPreview.renderAll === "function") {',
+          '  window.BlockPreview.renderAll(document);',
+          '}',
+          '<\/script>',
+          '</body></html>'
         ].join('\n');
-        downloadBlob(doc, 'session_' + selectedSession.sessionId + '.html', 'text/html');
+        downloadBlob(doc, 'session_' + sess.sessionId + '.html', 'text/html');
       };
 
       // Auto login check

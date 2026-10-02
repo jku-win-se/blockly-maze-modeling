@@ -55,6 +55,10 @@ describe('Level Timer and Activity Headers Test Suite', () => {
     });
 
     it('records program run when runButton is clicked via levelTimer hook', () => {
+        window.BlocklyInterface = {
+            getCode: () => '<xml><block type="maze_moveForward"></block></xml>'
+        };
+
         const timerScript = fs.readFileSync(path.join(__dirname, '../common/levelTimer.js'), 'utf8');
         window.eval(timerScript);
 
@@ -71,6 +75,25 @@ describe('Level Timer and Activity Headers Test Suite', () => {
         const body = JSON.parse(req.options.body);
         assert.strictEqual(body.timerSessionId, 'test_user_sess_999');
         assert.strictEqual(body.level, 3);
+        assert.strictEqual(body.recordExecution, true);
+        assert.ok(body.timestamp, 'timestamp should be present');
+        assert.strictEqual(body.xml, '<xml><block type="maze_moveForward"></block></xml>');
+    });
+
+    it('falls back to localStorage workspace XML when BlocklyInterface is unavailable', () => {
+        window.localStorage.setItem('maze3', '<xml><block type="maze_turn"><field name="DIR">turnLeft</field></block></xml>');
+
+        const timerScript = fs.readFileSync(path.join(__dirname, '../common/levelTimer.js'), 'utf8');
+        window.eval(timerScript);
+
+        const runBtn = window.document.getElementById('runButton');
+        runBtn.click();
+
+        const simCalls = capturedRequests.filter(r => r.url.includes('/api/simulation/run'));
+        assert.strictEqual(simCalls.length, 1);
+        const body = JSON.parse(simCalls[0].options.body);
+        assert.strictEqual(body.recordExecution, true);
+        assert.strictEqual(body.xml, '<xml><block type="maze_turn"><field name="DIR">turnLeft</field></block></xml>');
     });
 
     it('does not count a Reset click or the Run click the browser fires right after it', () => {

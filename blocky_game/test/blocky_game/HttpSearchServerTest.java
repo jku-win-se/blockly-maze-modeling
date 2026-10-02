@@ -389,24 +389,35 @@ class HttpSearchServerTest {
         assertTrue(bodyInit.contains("\"programRuns\":0"));
         assertTrue(bodyInit.contains("\"directManipulations\":0"));
 
-        // 2. Program run 1 via simulation endpoint
-        HttpRequest reqSim1 = HttpRequest.newBuilder()
+        // 2a. Background simulation run WITHOUT recordExecution - must NOT increment runs
+        HttpRequest reqSimBg = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/simulation/run"))
                 .header("Content-Type", "application/json")
                 .header("X-Timer-Session-ID", testActSid)
                 .header("X-Level-ID", "1")
                 .POST(HttpRequest.BodyPublishers.ofString("{\"timerSessionId\":\"" + testActSid + "\",\"level\":1}"))
                 .build();
+        HttpResponse<String> respSimBg = client.send(reqSimBg, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respSimBg.statusCode());
+
+        // 2b. Explicit user program run 1 with recordExecution: true
+        HttpRequest reqSim1 = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/simulation/run"))
+                .header("Content-Type", "application/json")
+                .header("X-Timer-Session-ID", testActSid)
+                .header("X-Level-ID", "1")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"timerSessionId\":\"" + testActSid + "\",\"level\":1,\"recordExecution\":true,\"xml\":\"<xml><block type=\\\"maze_moveForward\\\"></block></xml>\"}"))
+                .build();
         HttpResponse<String> respSim1 = client.send(reqSim1, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, respSim1.statusCode());
 
-        // 3. Program run 2
+        // 3. Explicit user program run 2 with recordExecution: true
         HttpRequest reqSim2 = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/simulation/run"))
                 .header("Content-Type", "application/json")
                 .header("X-Timer-Session-ID", testActSid)
                 .header("X-Level-ID", "1")
-                .POST(HttpRequest.BodyPublishers.ofString("{\"timerSessionId\":\"" + testActSid + "\",\"level\":1}"))
+                .POST(HttpRequest.BodyPublishers.ofString("{\"timerSessionId\":\"" + testActSid + "\",\"level\":1,\"recordExecution\":true,\"xml\":\"<xml><block type=\\\"maze_turn\\\"></block></xml>\"}"))
                 .build();
         HttpResponse<String> respSim2 = client.send(reqSim2, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, respSim2.statusCode());
@@ -449,7 +460,7 @@ class HttpSearchServerTest {
         assertTrue(bodyUpdate.contains("\"programRuns\":2"));
         assertTrue(bodyUpdate.contains("\"directManipulations\":1"));
 
-        // 7. Verify Admin API shows activity counts
+        // 7. Verify Admin API shows activity counts and events
         HttpRequest loginReq = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/admin/login"))
                 .header("Content-Type", "application/json")
@@ -469,7 +480,10 @@ class HttpSearchServerTest {
         assertTrue(adminBody.contains("\"totalProgramRuns\":2"));
         assertTrue(adminBody.contains("\"totalDirectManipulations\":1"));
         assertTrue(adminBody.contains("\"programRuns\":2"));
+        assertTrue(adminBody.contains("\"events\":"));
+        assertTrue(adminBody.contains("\"type\":\"program_run\""));
     }
+
     @Test
     void testSnapshotAndEpochHandling() throws Exception {
         HttpRequest reqNew = HttpRequest.newBuilder()
@@ -537,5 +551,74 @@ class HttpSearchServerTest {
         assertTrue(respState.body().contains("\"levelId\":2"));
     }
 
+    @Test
+    void testEventsLoggingAndExport() throws Exception {
+        String evSid = "test-ev-sess-" + System.currentTimeMillis();
+        String initJson = "{\"sessionId\":\"" + evSid + "\",\"userId\":\"event_tester\",\"variant\":\"momot\",\"level\":1,\"elapsedMs\":5000}";
+        HttpRequest reqInit = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/level-time"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(initJson))
+                .build();
+        HttpResponse<String> respInit = client.send(reqInit, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respInit.statusCode());
 
+        // 1. Send Run Program with recordExecution: true and XML snapshot
+        String sampleXml = "<xml><block type=\"maze_moveForward\"><next><block type=\"maze_turn\"><field name=\"DIR\">turnRight</field></block></next></block></xml>";
+        HttpRequest reqRun = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/simulation/run"))
+                .header("Content-Type", "application/json")
+                .header("X-Timer-Session-ID", evSid)
+                .header("X-Level-ID", "1")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"timerSessionId\":\"" + evSid + "\",\"level\":1,\"variant\":\"momot\",\"recordExecution\":true,\"xml\":\"" + sampleXml.replace("\"", "\\\"") + "\"}"))
+                .build();
+        HttpResponse<String> respRun = client.send(reqRun, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respRun.statusCode());
+
+        // 2. Check Admin Login and fetch sessions JSON
+        HttpRequest loginReq = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/admin/login"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"password\":\"" + TEST_ADMIN_PASSWORD + "\"}"))
+                .build();
+        HttpResponse<String> loginResp = client.send(loginReq, HttpResponse.BodyHandlers.ofString());
+        String token = loginResp.body().replaceAll(".*\"token\":\"([^\"]+)\".*", "$1");
+
+        HttpRequest adminReq = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/admin/sessions?q=" + evSid))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build();
+        HttpResponse<String> adminResp = client.send(adminReq, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, adminResp.statusCode());
+        String adminBody = adminResp.body();
+        assertTrue(adminBody.contains("\"events\":"));
+        assertTrue(adminBody.contains("\"type\":\"program_run\""));
+        assertTrue(adminBody.contains("maze_moveForward"));
+
+        // 3. Test HTML Export
+        HttpRequest exportHtmlReq = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/admin/export?format=html&token=" + token))
+                .GET()
+                .build();
+        HttpResponse<String> exportHtmlResp = client.send(exportHtmlReq, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, exportHtmlResp.statusCode());
+        assertTrue(exportHtmlResp.headers().firstValue("Content-Type").orElse("").contains("text/html"));
+        String htmlBody = exportHtmlResp.body();
+        assertTrue(htmlBody.contains("BlockPreview"));
+        assertTrue(htmlBody.contains("block-preview"));
+        assertTrue(htmlBody.contains("maze_moveForward"));
+
+        // 4. Test JSON Export
+        HttpRequest exportJsonReq = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/admin/export?format=json&token=" + token))
+                .GET()
+                .build();
+        HttpResponse<String> exportJsonResp = client.send(exportJsonReq, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, exportJsonResp.statusCode());
+        assertTrue(exportJsonResp.headers().firstValue("Content-Type").orElse("").contains("application/json"));
+        String jsonBody = exportJsonResp.body();
+        assertTrue(jsonBody.contains("\"events\":"));
+        assertTrue(jsonBody.contains("\"type\": \"program_run\""));
+    }
 }

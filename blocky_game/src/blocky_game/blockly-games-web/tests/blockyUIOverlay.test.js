@@ -90,4 +90,28 @@ describe('blockyUIOverlay.js Test Suite', () => {
         const mouseUpEv = new window.MouseEvent('mouseup', {});
         window.document.dispatchEvent(mouseUpEv);
     });
+
+    it('loads solution directly on single click and does not require double click', async () => {
+        await new Promise(r => setTimeout(r, 150));
+        let loadedPath = null;
+        window.javaBridge = {
+            loadMomotSolution: (path) => {
+                loadedPath = path;
+            },
+            getSolutionPath: () => '[[0,0],[0,1]]'
+        };
+
+        assert.ok(typeof window.__momotRenderSolutions === 'function');
+        window.__momotRenderSolutions([
+            { modelPath: 'models/sol_test.xmi', objectiveLine: '-1.0 4.0' }
+        ]);
+
+        const list = window.document.getElementById('__momotList');
+        assert.ok(list);
+        const tr = list.querySelector('tbody tr');
+        assert.ok(tr, 'Solution row should be rendered');
+
+        tr.click();
+        assert.strictEqual(loadedPath, 'models/sol_test.xmi', 'Single click must immediately call loadMomotSolution');
+    });
 });
