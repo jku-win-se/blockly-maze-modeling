@@ -4,7 +4,7 @@ This document is a guide that anybody on the project can follow to apply, check 
 
 Related documents: `Benchmark-Analysis.md` (every benchmark result and its limits), `Exploration-Proposal.md` (hypotheses and experiments), `Landscape-Analysis.md` (the enumeration measurements behind the relaxed gate), `AGENTS.md` (project conventions).
 
-## 1. The nine improvements at a glance
+## 1. The ten improvements at a glance
 
 | # | Improvement | Needed for | Evidence | State in the repository | Remaining work |
 |---|---|---|---|---|---|
@@ -17,6 +17,7 @@ Related documents: `Benchmark-Analysis.md` (every benchmark result and its limit
 | 7 | Fixed exploration parameters, hidden from the MoMoT panel | Users should not have to choose seeds, population, iterations, runs, solution length or algorithm | A usability request. Defaults sit between the old panel and the benchmark settings; the solution length is a constant 10 | **Implemented, compiles, GUI check pending** | Check in the app (section 3.7) |
 | 8 | Remove the Execution log window of the game | Less clutter in the game UI | A usability request | **Implemented, compiles, GUI check pending** | Check in the app (section 3.8) |
 | 9 | MoMoT panel: progress bar, elapsed time, log hidden behind a button | Seeing that a search runs and how far it is, without the log | A usability request. The data (`nfe`) was already delivered to the panel | **Implemented, compiles, GUI check pending** | Check in the app, in particular the run counter (section 3.9) |
+| 10 | MoMoT panel: no Refresh, Load or Run buttons; a "Clear path" button; the search starts when a Direct Manipulation marker is placed | The panel refreshes itself, double-click already loads a row, and placing the marker is the only way to define the target | A usability request | **Implemented, compiles, GUI check pending** | Check in the app, in particular restarting by placing a second marker (section 3.10) |
 
 **Two honest remarks before the details**
 
@@ -253,7 +254,7 @@ private static boolean passesGate(final EObject root) {
 - With `-Dblocky.nonGoalArchive=0`: 1 line and 1 model, as before the change.
 - Wall time for the same run: 13.09 s with the archive off, 13.63 s on (one run each, so only an indication of a small cost).
 
-**Not checked yet.** (1) The GUI itself: the panel list, the Load button on an archived row, and a run that finds a solution (the archived rows must stay listed after it). (2) That an archived program, when loaded, reaches the same end cell as the candidate it was copied from. `copy()` keeps the transformation sequence, and the model files were written without errors, but the loaded program was not compared.
+**Not checked yet.** (1) The GUI itself: the panel list, loading an archived row (double-click), and a run that finds a solution (the archived rows must stay listed after it). (2) That an archived program, when loaded, reaches the same end cell as the candidate it was copied from. `copy()` keeps the transformation sequence, and the model files were written without errors, but the loaded program was not compared.
 
 **Known limits.**
 - The front's own near-miss (with the 100000 values) is still listed, and the archive may hold the same program with real values, so one program can appear twice.
@@ -263,7 +264,7 @@ private static boolean passesGate(final EObject root) {
 **How to check it works in the app.**
 - Start a search on a level it cannot solve (level 10): the panel must list near-miss candidates ordered by `Closest to Goal`, with real `Edits`, `Number of Actions` and block counts.
 - Start a search that finds a solution under `blocky.objectives=GATED`: the solution is listed first and the near-misses stay listed after it.
-- Select a near-miss row and press Load: the program must load into the game, and running it must show where the robot ends up.
+- Double-click a near-miss row: the program must load into the game, and running it must show where the robot ends up.
 - Run one level of the benchmark script: `objectives.pf` and the success counts must be unchanged (the archive is off there).
 
 **Risks.**
@@ -289,7 +290,7 @@ private static boolean passesGate(final EObject root) {
 **What to change (`blocky_game/src/blocky_game/BlockyUI.java`).**
 1. In the injected panel script, delete the creation of `labSeed`/`inpSeed`, `labPop`/`inpPop`, `labIter`/`inpIter`, `labRuns`/`inpRuns`, `labSolLen`/`inpSolLen`, `labAlg`/`selAlg` and the matching `settings.appendChild(...)` lines. Only the Run/Stop button container stays in `__momotSettings`.
 2. In the Run button handler, replace the reads of those inputs with constants: `s = 0`, `p = 100`, `it = 100`, `e = p * it`, `r = 8`, `sl = 10`, `alg = 'NSGA_II'`. The rest of the handler (`setMomotAlgorithm`, `runMomotWithParams(s, p, e, r, sl)`) is unchanged.
-3. In `showMomotPanelOnly`, delete the SolLen inference (`defSolLen`, `inferSolutionLength`) and the script that set `__momotInpSolLen`. Keep `window.__momotShowAndRefresh()` and set the status text to `MoMoT panel ready. Click Run.`
+3. In `showMomotPanelOnly`, delete the SolLen inference (`defSolLen`, `inferSolutionLength`) and the script that set `__momotInpSolLen`. Keep `window.__momotShowAndRefresh()` and set the status text to `MoMoT panel ready. Place a Direct Manipulation marker to start.` (section 3.10 changed the text from `Click Run.`)
 
 **To change a default later:** edit the constants in the Run handler. The benchmarks were run with `CANONICAL_MIN_SOLUTION_LENGTHS`, not with a constant, so their results do not transfer to levels where 10 is below that minimum.
 
@@ -302,10 +303,10 @@ private static boolean passesGate(final EObject root) {
 **How it was checked.** `mvn -q -pl blocky_game compile` passes. The app was **not** run.
 
 **How to check it works in the app.**
-- Open the MoMoT panel: no Seed, Pop, Iter, Runs, SolLen or Alg fields; only Run, Stop, Refresh and Load.
+- Open the MoMoT panel: no Seed, Pop, Iter, Runs, SolLen or Alg fields; only Stop in the button row (Run is hidden by section 3.10; section 3.10 also removed Refresh and Load).
 - Press Run on any level: the status line reads `Starting MoMoT (alg=NSGA_II, seed=0, pop=100, iter=100 (eval=10000), runs=8, solLen=10)...`.
 - The console shows `[JSBridge] runMomotWithParams seed=0 pop=100 eval=10000 runs=8 solLen=10`.
-- The panel still lists solutions and Load still works (nothing else reads the removed fields; a search of the source for `__momotInp` and `__momotSelAlg` finds nothing).
+- The panel still lists solutions and loading a row (double-click, section 3.10) still works (nothing else reads the removed fields; a search of the source for `__momotInp` and `__momotSelAlg` finds nothing).
 
 ### 3.8 Remove the execution log window
 
@@ -334,12 +335,11 @@ private static boolean passesGate(final EObject root) {
 
 **How to achieve it (`blocky_game/src/blocky_game/BlockyUI.java`).** All JavaScript below is inside Java string literals of the panel script, joined without newlines. **Never put a `//` comment inside those strings**: it would comment out the rest of the script. Use single quotes in the JavaScript, and no non-ASCII characters (the progress text uses ` | ` as a separator for that reason).
 
-*Step 1: the toggle button.* Where the header buttons are built (`right.appendChild(refreshBtn)`), create a second button with the existing `mkBtn` helper and add it before the Refresh button:
+*Step 1: the toggle button.* Where the header buttons are built (`right.appendChild(...)`), create a button with the existing `mkBtn` helper and add it to the header (it was first added before the Refresh button; section 3.10 removed that button):
 
 ```java
 + "        var logToggleBtn = mkBtn('__momotLogToggleBtn', 'Show log', 'Show or hide the MoMoT log'); "
 + "        right.appendChild(logToggleBtn); "
-+ "        right.appendChild(refreshBtn); "
 ```
 
 *Step 2: hide the log and wire the button.* Where `log` is created (`log.textContent = ''`), add:
@@ -354,7 +354,7 @@ private static boolean passesGate(final EObject root) {
 + "        }); "
 ```
 
-*Step 3: the progress element.* Create a block `prog` (hidden until a run starts) with a bar (`progBar` containing `progFill`) and a text line (`progText`), and append it between the status line and the log: `body.appendChild(list); body.appendChild(actions); body.appendChild(status); body.appendChild(prog); body.appendChild(log);`. `progFill` has `width: 0%`, a green background and `transition: width 0.3s`. The table (`list`) and its code are not touched.
+*Step 3: the progress element.* Create a block `prog` (hidden until a run starts) with a bar (`progBar` containing `progFill`) and a text line (`progText`), and append it between the status line and the log: `body.appendChild(list); body.appendChild(status); body.appendChild(prog); body.appendChild(log);` (the `actions` row that held the Load button was removed in section 3.10). `progFill` has `width: 0%`, a green background and `transition: width 0.3s`. The table (`list`) and its code are not touched.
 
 *Step 4: the three JavaScript hooks.* Next to `window.__momotSetStatus = setStatus;` define:
 - `window.__momotProgressStart(runs, gens)`: stores the start time, resets the state to run 1, generation 0, 0 %, shows `prog`, and starts `setInterval(renderProgress, 1000)` so the elapsed time ticks.
@@ -402,6 +402,103 @@ double pct = Math.min(100.0, 100.0 * ((run - 1) * (double) evalsPerRun + Math.mi
 
 **How to check it works in the app.** Press Run: the bar and `Run k/8 | generation g/100 | % | mm:ss` appear and the elapsed time ticks every second. The log is hidden; `Show log` reveals it with the run output and `Hide log` hides it again. The table updates as before. At the end the text shows `ended`.
 
+### 3.10 MoMoT panel: no Refresh, Load or Run buttons, a Clear path button, and the search starts when the marker is placed
+
+**Observation.** After sections 3.7 and 3.9 the panel header still had buttons that did nothing a user needs to do by hand:
+- **Refresh** reloaded the table, but the table already refreshes itself: at most every 250 ms during a run (the live subscriber in `startMomotWithParams`), when a run ends (the finish callback of `MomotRunService.runAsync` runs in a `finally`, so Stop is included), at run start, on page load, and after a Direct Manipulation click.
+- **Load** loaded the selected row. Double-clicking a row already calls the same bridge method, `loadMomotSolution(modelPath)`.
+- **Run** needed a second click after the Direct Manipulation click. The marker (the cell the user clicks) defines the target of the search, so a search without a new marker has no reason to start.
+
+A manual Refresh also cleared two overlays on the maze (the comparison path and the `dmgMarker` element); the automatic refresh does not.
+
+**Decision (project owner).**
+1. Remove Refresh and Load; keep double-click as the way to load a row.
+2. Give the two overlays their own button, **Clear path**.
+3. Start the search automatically when a Direct Manipulation click is accepted. A click on a wall or other invalid cell still does nothing. Hide the Run button; Stop stays. Placing a second marker while a search runs stops the old search and starts a new one.
+4. Do **not** shorten the search: it still runs its whole budget (section 3.7). The grace period after the first goal that was considered for this was rejected, because the full run is what improves `Edits`, `Actions` and `Blocks`.
+
+**How to achieve it (`blocky_game/src/blocky_game/BlockyUI.java`).** The same rules as section 3.9 apply to the JavaScript strings: no `//` comments inside them, single quotes, no non-ASCII characters.
+
+*Step 1: remove Refresh.* Delete these three lines of the panel script: the creation `var refreshBtn = mkBtn('__momotRefreshBtn', 'Refresh', ...)`, `right.appendChild(refreshBtn);` and `refreshBtn.addEventListener('click', function(){ refresh(); });`. Keep the function `refresh(isSilent)` and `window.__momotShowAndRefresh`: the automatic refresh calls them.
+
+*Step 2: add Clear path.* Next to `logToggleBtn`, create and append the button, and after the `window.__momotShowAndRefresh = ...` line add its listener (this is the body of the non-silent branch of `refresh`, which the old Refresh button used to run):
+
+```java
++ "        var clearOverlayBtn = mkBtn('__momotClearOverlayBtn', 'Clear path', 'Clear the comparison path and the marker from the maze'); "
++ "        right.appendChild(logToggleBtn); "
++ "        right.appendChild(clearOverlayBtn); "
+// after window.__momotShowAndRefresh = ...
++ "        clearOverlayBtn.addEventListener('click', function(){ "
++ "          try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {} "
++ "          try { "
++ "            var oldMarker = document.getElementById('dmgMarker'); "
++ "            if (oldMarker && oldMarker.parentNode) oldMarker.parentNode.removeChild(oldMarker); "
++ "          } catch(eM) {} "
++ "        }); "
+```
+
+*Step 3: remove Load.* Delete the `actions` row and what is in it: the four lines that create `actions` (a `div` with id `__momotActions`, its style line), `loadBtn` (`mkBtn('__momotLoadBtn', 'Load', ...)`) and `actions.appendChild(loadBtn);`; change `body.appendChild(list); body.appendChild(actions); body.appendChild(status);` to `body.appendChild(list); body.appendChild(status);`; and delete the whole `loadBtn.addEventListener('click', ...)` block. In the row `click` handler, make the status say how to load: `setStatus('Selected: ' + p.modelName + ' (double-click to load)');`. The `dblclick` handler is not touched.
+
+*Step 4: one function that starts the search.* In the panel script, the Run button handler `mRunBtn.addEventListener('click', function(){ ... });` becomes a named function that the button and the Direct Manipulation click both call. Change only its first and last line:
+
+```java
+// first line, was: mRunBtn.addEventListener('click', function(){
++ "        window.__momotStartRun = function(){ "
+// ... the body is unchanged (restore the pegman, reset the first-goal state, s=0, p=100, it=100, e=p*it, r=8, sl=10, alg='NSGA_II', runMomotWithParams) ...
+// last line, was: }); 
++ "        }; "
++ "        mRunBtn.addEventListener('click', window.__momotStartRun); "
+```
+
+Hide the button right after it is created: `mRunBtn.style.display = 'none';`.
+
+In the Direct Manipulation click handler (the code that calls `bridge.teleportPegman(col, row, t)`), call the function after the panel refresh and before `__dmStop()`. It sits after the checks that reject cells whose value is not 1 or 3, so only an accepted cell starts a search:
+
+```java
++ "                try { if (window.__momotShowAndRefresh) window.__momotShowAndRefresh(); } catch(e4b) {} "
++ "                try { if (window.__momotStartRun) window.__momotStartRun(); } catch(e4c) {} "
++ "                __dmStop(); "
+```
+
+*Step 5: ignore the late callbacks of a replaced run.* `MomotRunService.runAsync` already interrupts the running search before it starts a new one, and `runInternal` takes a lock, so two searches never overlap. What is missing is the old run's callbacks, which fire after the old thread ends, when the new run is already going: the finish callback would call `__momotProgressDone()` and the new run's bar would say `ended`. Give every run an id and let the callbacks of an older run do nothing:
+
+```java
+// field of BlockyUI
+private final java.util.concurrent.atomic.AtomicInteger momotRunId = new java.util.concurrent.atomic.AtomicInteger(0);
+// first line of startMomotWithParams
+final int myRunId = momotRunId.incrementAndGet();
+// first line of the live subscriber (the BiConsumer)
+if (momotRunId.get() != myRunId) return;
+// first line of the finish callback (the Runnable passed to runAsync)
+if (momotRunId.get() != myRunId) return;
+// the output folder callback
+if (momotRunId.get() == myRunId && finalOutDir != null && !finalOutDir.trim().isEmpty()) { ...
+```
+
+Stop alone does not change the id, so the finish callback of a stopped run still runs and the table and bar are finished as before.
+
+*Step 6: the status texts.* Two places said `Click Run`: the first status text of the panel (`status.textContent = ...`) and the script in `showMomotPanelOnly`. Use `Place a Direct Manipulation marker to start the search.` and `MoMoT panel ready. Place a Direct Manipulation marker to start.`
+
+*Step 7: build.* `mvn -q -pl blocky_game compile`. With Docker, `run-game.bat` mounts the repository, so restarting it is enough; if an old build is mounted, use `docker compose up -d --build`.
+
+**What stays the same.** The search itself: population 100, 100 iterations, 8 runs, solution length 10 and no early stop (section 3.7). The pegman is still moved back to its position from before the marker (`__preDmQ`, saved when Direct Manipulation starts) when the search starts, and the marker stays on the maze.
+
+**Known limits.**
+- Every accepted marker starts a full search (8 runs of 10,000 evaluations). A marker placed by mistake is handled with Stop, or by placing the right marker, which restarts the search.
+- Loading a row is only possible with a double-click; a single click selects it and draws its comparison path. The status line says so.
+- The Run button still exists (hidden) because the shared function is registered on it; removing the element means removing the line `mRunBtn.addEventListener(...)` too.
+
+**How it was checked.** `mvn -q -pl blocky_game compile` passes. A search of the source finds no `refreshBtn`, `loadBtn`, `__momotLoadBtn` or `__momotActions` left. The app was **not** run.
+
+**How to check it works in the app.**
+- The header shows `Show log` and `Clear path`; there is no Refresh. The row under the table (Load) is gone, and Stop is the only button in the button row.
+- Click `Direct Manipulation`, then a path cell: the search starts without any other click, the progress bar appears, and the table fills.
+- Click `Direct Manipulation`, then a wall: nothing starts.
+- During a run, place a second marker elsewhere: the bar restarts at run 1 and does not show `ended`; the table shows the new search.
+- Press Stop during a run: the bar shows `ended` and the table keeps its rows.
+- Select a row: the status says `(double-click to load)` and the comparison path is drawn. Double-click it: the program loads into the game.
+- Press `Clear path`: the comparison path and the marker disappear from the maze.
+
 ## 4. Recommended defaults
 
 | Setting | Recommended | Why |
@@ -436,7 +533,7 @@ double pct = Math.min(100.0, 100.0 * ((run - 1) * (double) evalsPerRun + Math.mi
 3. **Close the `.henshin_text` gap** (section 3.3).
 4. **Implement the relaxed gate** behind `blocky.gate.slack` (section 3.5), off by default.
 5. **Show non-goal candidates** (section 3.6). Do change A (the panel) first: it is small, safe and gives the user the behaviour under the original objectives. Do change B (the archive) after the defaults of step 2 are set, because it is only needed once gating is on.
-6. **Fixed panel parameters** (section 3.7): a change to `BlockyUI.java` only, independent of the steps above. Commit it separately.
+6. **Fixed panel parameters** (section 3.7), **panel progress and log** (section 3.9) and **panel buttons and automatic start** (section 3.10): changes to `BlockyUI.java` only, independent of the steps above. Commit them separately, in this order, because 3.9 and 3.10 refer to the code of the step before.
 7. **Optional, when time allows:** the `_edit_anywhere` against `_edit_anywhere_wrap` check (section 3.4), the repair benchmark, a benchmark of the relaxed gate.
 
 ## 7. Checklist before calling the work done
@@ -451,6 +548,7 @@ double pct = Math.min(100.0, 100.0 * ((run - 1) * (double) evalsPerRun + Math.mi
 - [ ] With `GATED`, non-goal candidates remain listed after a solution is found (archive of section 3.6, change B).
 - [ ] Benchmark output is unchanged with `blocky.nonGoalArchive=0`.
 - [ ] The MoMoT panel shows a progress bar with elapsed time during a run, the log is hidden by default and toggles with `Show log` / `Hide log`, and the table is unchanged (section 3.9).
+- [ ] The MoMoT panel has no Refresh, Load or Run button, has `Clear path`, a Direct Manipulation click on a valid cell starts the search, and a second marker restarts it with a correct progress bar (section 3.10).
 - [ ] The Execution log window is gone and running or stepping a program still works (section 3.8).
 - [ ] The MoMoT panel has no parameter fields, and the status line on Run shows `solLen=10` (section 3.7).
 - [ ] No file under `src-gen/` was modified.

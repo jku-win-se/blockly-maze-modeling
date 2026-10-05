@@ -1879,7 +1879,7 @@ public class BlockyUI extends Application {
             webView.getEngine().executeScript(
                 "try { " +
                 "  if (window.__momotShowAndRefresh) window.__momotShowAndRefresh();" +
-                "  if (window.__momotSetStatus) window.__momotSetStatus('MoMoT panel ready. Click Run.');" +
+                "  if (window.__momotSetStatus) window.__momotSetStatus('MoMoT panel ready. Place a Direct Manipulation marker to start.');" +
                 "} catch(e) {}"
             );
         } catch (Exception ignored) {
