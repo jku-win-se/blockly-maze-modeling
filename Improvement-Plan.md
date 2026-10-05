@@ -4,7 +4,7 @@ This document is a guide that anybody on the project can follow to apply, check 
 
 Related documents: `Benchmark-Analysis.md` (every benchmark result and its limits), `Exploration-Proposal.md` (hypotheses and experiments), `Landscape-Analysis.md` (the enumeration measurements behind the relaxed gate), `AGENTS.md` (project conventions).
 
-## 1. The six improvements at a glance
+## 1. The nine improvements at a glance
 
 | # | Improvement | Needed for | Evidence | State in the repository | Remaining work |
 |---|---|---|---|---|---|
@@ -14,6 +14,9 @@ Related documents: `Benchmark-Analysis.md` (every benchmark result and its limit
 | 4 | Wrap and unwrap rules (`*_wrap`) | Adding structure without destroying what a program already does | **Measured:** 39 → 56 of 100 on levels 6–10 (p < 0.001), 56 against 37 of 80 for random search on levels 6–9. Confounded, see below | Generated `.henshin` files exist, switch `blocky.rules.wrap=true` | Decide the rule set that ships (section 3.4) |
 | 5 | Relaxed gate at `T = R − 5` | Letting near-solutions compete on size | **Landscape only.** No search has used it | **Not implemented** | Implement behind a switch (section 3.5) |
 | 6 | Always show non-goal candidates in the MoMoT solution panel | Seeing how close the search got when it has not (yet) found a solution, and what it is working on | A usability request. Two separate causes hide them today (UI filter, and the Pareto front under gating) | **Implemented, GUI check pending** | Check in the app (section 3.6) |
+| 7 | Fixed exploration parameters, hidden from the MoMoT panel | Users should not have to choose seeds, population, iterations, runs, solution length or algorithm | A usability request. Defaults sit between the old panel and the benchmark settings; the solution length is a constant 10 | **Implemented, compiles, GUI check pending** | Check in the app (section 3.7) |
+| 8 | Remove the Execution log window of the game | Less clutter in the game UI | A usability request | **Implemented, compiles, GUI check pending** | Check in the app (section 3.8) |
+| 9 | MoMoT panel: progress bar, elapsed time, log hidden behind a button | Seeing that a search runs and how far it is, without the log | A usability request. The data (`nfe`) was already delivered to the panel | **Implemented, compiles, GUI check pending** | Check in the app, in particular the run counter (section 3.9) |
 
 **Two honest remarks before the details**
 
@@ -268,6 +271,137 @@ private static boolean passesGate(final EObject root) {
 - **Cost.** Ranking the population and writing up to `K` extra model files on every live update. Keep `K` small and write non-goal models only when the archive changed.
 - **Repair.** In repair, a non-goal candidate near the user's program may be the most useful thing to show. This is a reason to keep the archive ranking simple and visible, not a reason to hide them.
 
+### 3.7 Fixed exploration parameters, hidden from the MoMoT panel
+
+**Observation.** The MoMoT panel showed editable fields for Seed, Pop, Iter, Runs, SolLen and an Alg dropdown. A user has to know what they mean, and a wrong value silently makes a level unsolvable: the panel's SolLen of 10 is below the minimum solution length of levels 4 (11), 8 (12) and 10 (38), and level 6 (10) has no slack. In addition, `showMomotPanelOnly` overwrote SolLen with 2 × the length of the user's current program (`BlockyProgramMetrics.inferSolutionLength`), so the shown default was not a fixed number either.
+
+**Decision (project owner).** Give every parameter a default and remove the fields from the panel. The algorithm is fixed to NSGA-II and its dropdown is removed too.
+
+| Parameter | Before (panel default) | Now (fixed) | Note |
+|---|---|---|---|
+| Seed | 0 | 0 (auto) | A fixed seed would repeat the same search on every click |
+| Pop | 50 | 100 | The benchmark uses 150 |
+| Iter | 40 | 100 | Evaluations = Pop × Iter = 10,000 per run (was 2,000). The benchmark also uses 100 |
+| Runs | 10 | 8 | Total cost per click is about 80,000 evaluations, about 4 × the old 20,000 |
+| SolLen | 10 (then overwritten with 2 × program length) | 10 (constant, project owner's decision) | A per-level table (`2, 8, 2, 11, 8, 10, 8, 12, 8, 38`, as in `MomotFirstGoalBenchmarkRunner.CANONICAL_MIN_SOLUTION_LENGTHS`) was implemented first and then replaced by the constant. **Known limit:** 10 is below the minimum for levels 4 (11), 8 (12) and 10 (38), so those cannot be solved from the panel; level 6 (10) has no slack |
+| Alg | NSGA-II (dropdown also offered Memetic) | NSGA-II | Memetic is still reachable with `-Dblocky.algorithm=MEMETIC_NSGA_II` |
+
+**What to change (`blocky_game/src/blocky_game/BlockyUI.java`).**
+1. In the injected panel script, delete the creation of `labSeed`/`inpSeed`, `labPop`/`inpPop`, `labIter`/`inpIter`, `labRuns`/`inpRuns`, `labSolLen`/`inpSolLen`, `labAlg`/`selAlg` and the matching `settings.appendChild(...)` lines. Only the Run/Stop button container stays in `__momotSettings`.
+2. In the Run button handler, replace the reads of those inputs with constants: `s = 0`, `p = 100`, `it = 100`, `e = p * it`, `r = 8`, `sl = 10`, `alg = 'NSGA_II'`. The rest of the handler (`setMomotAlgorithm`, `runMomotWithParams(s, p, e, r, sl)`) is unchanged.
+3. In `showMomotPanelOnly`, delete the SolLen inference (`defSolLen`, `inferSolutionLength`) and the script that set `__momotInpSolLen`. Keep `window.__momotShowAndRefresh()` and set the status text to `MoMoT panel ready. Click Run.`
+
+**To change a default later:** edit the constants in the Run handler. The benchmarks were run with `CANONICAL_MIN_SOLUTION_LENGTHS`, not with a constant, so their results do not transfer to levels where 10 is below that minimum.
+
+**Trade-offs.**
+- The new Pop, Iter and Runs make a click about 4 × slower than before. If that is too slow, lower `p`, `it` or `r` first.
+- Removing the 2 × program length rule drops a dynamic default. It may have helped when the user starts from their own, partly correct program (direct manipulation); a constant 10 is also fixed and was not measured there.
+- Pop 100, Iter 100 and Runs 8 are not benchmarked as a set; they sit between the old panel values and the benchmark values.
+- Level 10 stays unsolved by the search whatever the parameters (see `Benchmark-Analysis.md`); this change does not address that.
+
+**How it was checked.** `mvn -q -pl blocky_game compile` passes. The app was **not** run.
+
+**How to check it works in the app.**
+- Open the MoMoT panel: no Seed, Pop, Iter, Runs, SolLen or Alg fields; only Run, Stop, Refresh and Load.
+- Press Run on any level: the status line reads `Starting MoMoT (alg=NSGA_II, seed=0, pop=100, iter=100 (eval=10000), runs=8, solLen=10)...`.
+- The console shows `[JSBridge] runMomotWithParams seed=0 pop=100 eval=10000 runs=8 solLen=10`.
+- The panel still lists solutions and Load still works (nothing else reads the removed fields; a search of the source for `__momotInp` and `__momotSelAlg` finds nothing).
+
+### 3.8 Remove the execution log window
+
+**Request (project owner).** Remove the "Execution log" window from the UI.
+
+**What it was.** A draggable, resizable panel (`__execLogPanel`, title `Execution log`, a Clear button) built inside the Blockly host by the injected script in `BlockyUI.java`. It showed the step-by-step trace of a program run and the immediate-feedback notes.
+
+**What to change (`BlockyUI.java`).** Replace the whole function `__execLogEnsure` (panel creation, drag and resize handling, and the definitions of `window.__execLogClear` / `window.__execLogAppend`, about 180 lines) with a stub that only defines the two functions as no-ops and returns `true`. Do **not** delete the callers: about 20 places (`__execLogAppend` / `__execLogClear` in the run, step and feedback code, and the two `executeScript` calls in the Java methods that clear and append logs) are guarded and now do nothing. Do not put a `//` comment inside the injected JavaScript string: the string parts are joined without newlines, so it would comment out the rest of the script. Use a Java comment.
+
+**Not changed.** The Java side still computes the log lines; only their display is gone. Console output (`System.out`) is unchanged.
+
+**How it was checked.** `mvn -q -pl blocky_game compile` passes, and a search finds no `__execLogPanel` or `__execLogBody` left. The app was **not** run.
+
+**How to check it works in the app.** The Execution log window is no longer shown. Run a program and step through it: the robot still moves, and the MoMoT panel still opens. No JavaScript errors appear in the console.
+
+### 3.9 MoMoT panel: progress bar, elapsed time and a hidden log
+
+**Original idea.** The MoMoT panel (section 3.7) was being simplified: the exploration parameters were fixed and hidden, and the Execution log window of the game was removed (section 3.8). The panel also has its own log (`__momotLog`, a text box under the table with the console output of the run). The project owner was tempted to remove that log too, because it is technical noise for a user who only wants to see solutions. The log is, however, the only place that shows that a search is running and how far it is: the table can stay empty for a while at the start, and a run takes minutes (8 runs of 10,000 evaluations with the defaults of section 3.7).
+
+**Observation.** The panel needs a progress indication before the log can go. The data is already there: the live subscriber in `startMomotWithParams` is called by `ParetoFrontPublisherListener` about every 400 ms with the evaluation count `nfe` of the current run (`event.getCurrentNFE()`), and already refreshes the table at most every 250 ms. Nothing used `nfe`.
+
+**Decision (project owner).**
+1. Do **not** remove the log: hide it by default and toggle it with a button, so errors and run output stay reachable.
+2. Add a progress bar with the run number, the generation, the percentage and the elapsed time.
+3. Do **not** change the solution table (columns, sorting, rendering): it is considered good as it is.
+
+**How to achieve it (`blocky_game/src/blocky_game/BlockyUI.java`).** All JavaScript below is inside Java string literals of the panel script, joined without newlines. **Never put a `//` comment inside those strings**: it would comment out the rest of the script. Use single quotes in the JavaScript, and no non-ASCII characters (the progress text uses ` | ` as a separator for that reason).
+
+*Step 1: the toggle button.* Where the header buttons are built (`right.appendChild(refreshBtn)`), create a second button with the existing `mkBtn` helper and add it before the Refresh button:
+
+```java
++ "        var logToggleBtn = mkBtn('__momotLogToggleBtn', 'Show log', 'Show or hide the MoMoT log'); "
++ "        right.appendChild(logToggleBtn); "
++ "        right.appendChild(refreshBtn); "
+```
+
+*Step 2: hide the log and wire the button.* Where `log` is created (`log.textContent = ''`), add:
+
+```java
++ "        log.style.display = 'none'; "
++ "        logToggleBtn.addEventListener('click', function() { "
++ "          var show = (log.style.display === 'none'); "
++ "          log.style.display = show ? 'block' : 'none'; "
++ "          logToggleBtn.textContent = show ? 'Hide log' : 'Show log'; "
++ "          if (show) { log.scrollTop = log.scrollHeight + 1000; } "
++ "        }); "
+```
+
+*Step 3: the progress element.* Create a block `prog` (hidden until a run starts) with a bar (`progBar` containing `progFill`) and a text line (`progText`), and append it between the status line and the log: `body.appendChild(list); body.appendChild(actions); body.appendChild(status); body.appendChild(prog); body.appendChild(log);`. `progFill` has `width: 0%`, a green background and `transition: width 0.3s`. The table (`list`) and its code are not touched.
+
+*Step 4: the three JavaScript hooks.* Next to `window.__momotSetStatus = setStatus;` define:
+- `window.__momotProgressStart(runs, gens)`: stores the start time, resets the state to run 1, generation 0, 0 %, shows `prog`, and starts `setInterval(renderProgress, 1000)` so the elapsed time ticks.
+- `window.__momotSetProgress(run, runs, gen, gens, pct)`: stores the values and renders.
+- `window.__momotProgressDone()`: stops the timer and appends ` | ended` to the text.
+- `renderProgress()` sets the fill width to `pct` and the text to `Run r/R | generation g/G | P% | mm:ss`.
+
+*Step 5: start the progress when Run is pressed.* In `startMomotWithParams`, in the first `executeScript` (next to `__momotLogClear`), add:
+
+```java
+"  if (window.__momotProgressStart) window.__momotProgressStart(" + nrRuns + ", "
+        + Math.max(1, maxEvaluations / Math.max(1, populationSize)) + ");" +
+```
+
+*Step 6: feed it from the live subscriber.* Before the subscriber, keep two counters. In the subscriber, update them on every call (before the 250 ms throttle) and send the progress together with the table refresh:
+
+```java
+final AtomicInteger currentRun = new AtomicInteger(1);
+final AtomicInteger lastNfe = new AtomicInteger(-1);
+final int evalsPerRun = Math.max(1, maxEvaluations);
+final int generationsPerRun = Math.max(1, maxEvaluations / Math.max(1, populationSize));
+// in the subscriber:
+int n = nfe == null ? 0 : Math.max(0, nfe);
+int prev = lastNfe.getAndSet(n);
+if (prev >= 0 && n < prev && currentRun.get() < nrRuns) currentRun.incrementAndGet();
+int gen = Math.min(generationsPerRun, (n + populationSize - 1) / populationSize);
+double pct = Math.min(100.0, 100.0 * ((run - 1) * (double) evalsPerRun + Math.min(n, evalsPerRun))
+        / ((double) nrRuns * evalsPerRun));
+// inside the existing Platform.runLater, before __momotShowAndRefresh:
+// window.__momotSetProgress(run, nrRuns, gen, generationsPerRun, pct)   (pct formatted with Locale.ROOT, one decimal)
+```
+
+*Step 7: finish.* In the finish callback of `MomotRunService.runAsync` (the `Runnable` that already calls `__momotShowAndRefresh`), call `window.__momotProgressDone()` first.
+
+*Step 8: build and check.* `mvn -q -pl blocky_game compile`, then the in-app checks below.
+
+**Assumption to verify.** `nfe` is counted per run, so the run number is detected by `nfe` dropping below its previous value. If a run's first reported `nfe` happened to be higher than the previous run's last one, the run counter would lag by one until the next drop. Check in the app that the counter reaches `8/8`. If it does not, the listener should publish the run index itself (`ParetoFrontPublisherListener` knows when a seed finishes: `isSeedFinished`), instead of inferring it.
+
+**Known limits.**
+- Updates arrive at most about every 400 ms (listener throttle) and are only sent when the Pareto front or the archive is non-empty, so the bar can look idle at the very start of a run.
+- Pressing Stop ends the run early: the bar freezes and shows `ended`, without reaching 100 %.
+- The table, its columns and its sorting are unchanged.
+
+**How it was checked.** `mvn -q -pl blocky_game compile` passes. The app was **not** run.
+
+**How to check it works in the app.** Press Run: the bar and `Run k/8 | generation g/100 | % | mm:ss` appear and the elapsed time ticks every second. The log is hidden; `Show log` reveals it with the run output and `Hide log` hides it again. The table updates as before. At the end the text shows `ended`.
+
 ## 4. Recommended defaults
 
 | Setting | Recommended | Why |
@@ -278,6 +412,7 @@ private static boolean passesGate(final EObject root) {
 | `closestToGoal` | the fixed version, always on | A bug fix with no switch |
 | `blocky.gate.slack` | unset (strict) | Not implemented; no search evidence |
 | `blocky.nonGoalArchive` | 0 in code, set to 10 by `Main.java` for the game | Non-goal candidates stay visible without changing benchmark outputs |
+| Panel parameters (seed, pop, iter, runs, solLen, alg) | 0, 100, 100, 8, 10, NSGA-II; fixed, no fields (section 3.7) | The user does not choose them |
 
 ## 5. Known gaps and risks
 
@@ -301,7 +436,8 @@ private static boolean passesGate(final EObject root) {
 3. **Close the `.henshin_text` gap** (section 3.3).
 4. **Implement the relaxed gate** behind `blocky.gate.slack` (section 3.5), off by default.
 5. **Show non-goal candidates** (section 3.6). Do change A (the panel) first: it is small, safe and gives the user the behaviour under the original objectives. Do change B (the archive) after the defaults of step 2 are set, because it is only needed once gating is on.
-6. **Optional, when time allows:** the `_edit_anywhere` against `_edit_anywhere_wrap` check (section 3.4), the repair benchmark, a benchmark of the relaxed gate.
+6. **Fixed panel parameters** (section 3.7): a change to `BlockyUI.java` only, independent of the steps above. Commit it separately.
+7. **Optional, when time allows:** the `_edit_anywhere` against `_edit_anywhere_wrap` check (section 3.4), the repair benchmark, a benchmark of the relaxed gate.
 
 ## 7. Checklist before calling the work done
 
@@ -314,5 +450,8 @@ private static boolean passesGate(final EObject root) {
 - [ ] The solution panel lists candidates that do not reach the goal, with and without a solution present, and no checkbox hides them.
 - [ ] With `GATED`, non-goal candidates remain listed after a solution is found (archive of section 3.6, change B).
 - [ ] Benchmark output is unchanged with `blocky.nonGoalArchive=0`.
+- [ ] The MoMoT panel shows a progress bar with elapsed time during a run, the log is hidden by default and toggles with `Show log` / `Hide log`, and the table is unchanged (section 3.9).
+- [ ] The Execution log window is gone and running or stepping a program still works (section 3.8).
+- [ ] The MoMoT panel has no parameter fields, and the status line on Run shows `solLen=10` (section 3.7).
 - [ ] No file under `src-gen/` was modified.
 - [ ] `AGENTS.md` mentions the new switches and the generated rule modules.

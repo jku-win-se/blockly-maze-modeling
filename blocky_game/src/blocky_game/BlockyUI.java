@@ -93,6 +93,8 @@ public class BlockyUI extends Application {
     private volatile boolean pendingShowMomotPanel;
     /** When set, MoMoT panel only shows solutions from this output directory (current run). */
     private volatile String momotCurrentOutputDir;
+    /** Id of the latest MoMoT run; callbacks of an earlier (stopped or replaced) run compare against it and do nothing. */
+    private final java.util.concurrent.atomic.AtomicInteger momotRunId = new java.util.concurrent.atomic.AtomicInteger(0);
     /** Monotonically increasing generation id for each successful page load. */
     private final java.util.concurrent.atomic.AtomicInteger pageGen = new java.util.concurrent.atomic.AtomicInteger(0);
     /** Current generation id for the currently loaded page. */
@@ -475,183 +477,11 @@ public class BlockyUI extends Application {
                 + "    } "
                 + "  } catch(e) {} "
                 + "  window.__dbgDisableAutoRun = true; "
+                // The execution log window was removed; these no-op hooks keep the existing callers valid.
                 + "  function __execLogEnsure() { "
-                + "    try { "
-                + "      if (window.__execLogReady) return true; "
-                + "      var host = document.getElementById('blockly'); "
-                + "      if (!host) return false; "
-                + "      var existing = document.getElementById('__execLogPanel'); "
-                + "      if (!existing) { "
-                + "        var panel = document.createElement('div'); panel.id = '__execLogPanel'; "
-                + "        panel.style.position = 'absolute'; "
-                + "        panel.style.left = '10px'; "
-                + "        panel.style.bottom = '70px'; "
-                + "        panel.style.top = 'auto'; "
-                + "        panel.style.width = '380px'; "
-                + "        panel.style.height = '220px'; "
-                + "        panel.style.minWidth = '260px'; "
-                + "        panel.style.minHeight = '120px'; "
-                + "        panel.style.maxWidth = '560px'; "
-                + "        panel.style.maxHeight = '520px'; "
-                + "        panel.style.overflow = 'hidden'; "
-                + "        panel.style.background = 'rgba(64,64,64,0.85)'; "
-                + "        panel.style.borderRadius = '8px'; "
-                + "        panel.style.border = '1px solid rgba(255,255,255,0.15)'; "
-                + "        panel.style.boxShadow = '2px 2px 5px rgba(0,0,0,0.35)'; "
-                + "        panel.style.zIndex = '999'; "
-                + "        var header = document.createElement('div'); header.id = '__execLogHeader'; "
-                + "        header.style.display = 'flex'; header.style.alignItems = 'center'; header.style.justifyContent = 'space-between'; "
-                + "        header.style.padding = '6px 8px'; header.style.color = '#fff'; header.style.fontSize = '14px'; "
-                + "        header.style.cursor = 'move'; "
-                + "        header.style.userSelect = 'none'; "
-                + "        var title = document.createElement('div'); title.textContent = 'Execution log'; title.style.fontWeight = 'bold'; "
-                + "        var btn = document.createElement('button'); btn.id = '__execLogClearBtn'; btn.textContent = 'Clear'; "
-                + "        btn.style.margin = '0'; btn.style.padding = '4px 8px'; btn.style.fontSize = '12px'; "
-                + "        btn.style.borderRadius = '4px'; btn.style.border = '1px solid rgba(255,255,255,0.25)'; "
-                + "        btn.style.background = 'rgba(255,255,255,0.10)'; btn.style.color = '#fff'; "
-                + "        btn.addEventListener('click', function(){ try { if (window.__execLogClear) window.__execLogClear(); } catch(e) {} }); "
-                + "        header.appendChild(title); header.appendChild(btn); "
-                + "        var body = document.createElement('pre'); body.id = '__execLogBody'; "
-                + "        body.style.margin = '0'; body.style.padding = '6px 8px'; "
-                + "        body.style.height = 'calc(100% - 38px)'; body.style.overflow = 'auto'; "
-                + "        body.style.color = '#fff'; body.style.fontFamily = 'Consolas, Menlo, Monaco, monospace'; body.style.fontSize = '12px'; "
-                + "        body.style.whiteSpace = 'pre-wrap'; body.style.wordBreak = 'break-word'; "
-                + "        panel.appendChild(header); panel.appendChild(body); "
-                + "        var rh = document.createElement('div'); rh.id = '__execLogResizeHandle'; "
-                + "        rh.style.position = 'absolute'; rh.style.right = '2px'; rh.style.bottom = '2px'; "
-                + "        rh.style.width = '14px'; rh.style.height = '14px'; "
-                + "        rh.style.cursor = 'se-resize'; "
-                + "        rh.style.opacity = '0.85'; "
-                + "        rh.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.0) 45%, rgba(255,255,255,0.35) 46%, rgba(255,255,255,0.35) 55%, rgba(255,255,255,0.0) 56%, rgba(255,255,255,0.0) 100%)'; "
-                + "        panel.appendChild(rh); "
-                + "        host.appendChild(panel); "
-                + "      } "
-                + "      window.__execLogReady = true; "
-                + "      if (!window.__execLogMaxLines) window.__execLogMaxLines = 500; "
-                + "      if (!window.__execLogDragBound) { "
-                + "        window.__execLogDragBound = true; "
-                + "        (function(){ "
-                + "          try { "
-                + "            var panel = document.getElementById('__execLogPanel'); "
-                + "            var header = document.getElementById('__execLogHeader'); "
-                  + "            var handle = document.getElementById('__execLogResizeHandle'); "
-                + "            if (!panel || !header) return; "
-                + "            var dragging = false; "
-                  + "            var resizing = false; "
-                + "            var startX = 0, startY = 0, startLeft = 0, startTop = 0; "
-                  + "            var startW = 0, startH = 0; "
-                + "            function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); } "
-                + "            function onMove(ev) { "
-                + "              try { "
-                  + "                var host = document.getElementById('blockly'); "
-                  + "                if (!host) return; "
-                  + "                var hb = host.getBoundingClientRect(); "
-                  + "                if (resizing) { "
-                  + "                  var dx = ev.clientX - startX; "
-                  + "                  var dy = ev.clientY - startY; "
-                  + "                  var newW = startW + dx; "
-                  + "                  var newH = startH + dy; "
-                  + "                  var minW = 260, minH = 120, maxW = 560, maxH = 520; "
-                  + "                  newW = clamp(newW, minW, maxW); "
-                  + "                  newH = clamp(newH, minH, maxH); "
-                  + "                  // Clamp so we stay within host bounds.\n"
-                  + "                  var pb = panel.getBoundingClientRect(); "
-                  + "                  var leftInHost = pb.left - hb.left; "
-                  + "                  var topInHost = pb.top - hb.top; "
-                  + "                  newW = clamp(newW, minW, Math.max(minW, hb.width - leftInHost)); "
-                  + "                  newH = clamp(newH, minH, Math.max(minH, hb.height - topInHost)); "
-                  + "                  panel.style.width = Math.round(newW) + 'px'; "
-                  + "                  panel.style.height = Math.round(newH) + 'px'; "
-                  + "                  return; "
-                  + "                } "
-                  + "                if (dragging) { "
-                  + "                  var dx2 = ev.clientX - startX; "
-                  + "                  var dy2 = ev.clientY - startY; "
-                  + "                  var pb2 = panel.getBoundingClientRect(); "
-                  + "                  var newLeft = startLeft + dx2; "
-                  + "                  var newTop  = startTop + dy2; "
-                  + "                  var maxLeft = Math.max(0, hb.width  - pb2.width); "
-                  + "                  var maxTop  = Math.max(0, hb.height - pb2.height); "
-                  + "                  newLeft = clamp(newLeft, 0, maxLeft); "
-                  + "                  newTop  = clamp(newTop,  0, maxTop); "
-                  + "                  panel.style.left = newLeft + 'px'; "
-                  + "                  panel.style.top = newTop + 'px'; "
-                  + "                  panel.style.bottom = 'auto'; "
-                  + "                } "
-                + "              } catch(e) {} "
-                + "            } "
-                + "            function onUp() { "
-                + "              dragging = false; "
-                  + "              resizing = false; "
-                + "              try { document.removeEventListener('mousemove', onMove, true); document.removeEventListener('mouseup', onUp, true); } catch(e) {} "
-                + "            } "
-                + "            header.addEventListener('mousedown', function(ev){ "
-                + "              try { "
-                + "                if (ev && ev.button !== 0) return; "
-                + "                if (ev && ev.target && ev.target.id === '__execLogClearBtn') return; "
-                + "                var host = document.getElementById('blockly'); "
-                + "                if (!host) return; "
-                + "                var hb = host.getBoundingClientRect(); "
-                + "                var pb = panel.getBoundingClientRect(); "
-                + "                dragging = true; "
-                + "                startX = ev.clientX; startY = ev.clientY; "
-                + "                startLeft = pb.left - hb.left; "
-                + "                startTop  = pb.top  - hb.top; "
-                + "                panel.style.left = startLeft + 'px'; "
-                + "                panel.style.top = startTop + 'px'; "
-                + "                panel.style.bottom = 'auto'; "
-                + "                document.addEventListener('mousemove', onMove, true); "
-                + "                document.addEventListener('mouseup', onUp, true); "
-                + "                if (ev && ev.preventDefault) ev.preventDefault(); "
-                + "              } catch(e) {} "
-                + "            }, true); "
-                  + "            if (handle) { "
-                  + "              handle.addEventListener('mousedown', function(ev){ "
-                  + "                try { "
-                  + "                  if (ev && ev.button !== 0) return; "
-                  + "                  var host = document.getElementById('blockly'); "
-                  + "                  if (!host) return; "
-                  + "                  var hb = host.getBoundingClientRect(); "
-                  + "                  var pb = panel.getBoundingClientRect(); "
-                  + "                  resizing = true; "
-                  + "                  startX = ev.clientX; startY = ev.clientY; "
-                  + "                  startW = pb.width; startH = pb.height; "
-                  + "                  // Make sure top/left anchoring is active during resize.\n"
-                  + "                  panel.style.left = (pb.left - hb.left) + 'px'; "
-                  + "                  panel.style.top = (pb.top - hb.top) + 'px'; "
-                  + "                  panel.style.bottom = 'auto'; "
-                  + "                  document.addEventListener('mousemove', onMove, true); "
-                  + "                  document.addEventListener('mouseup', onUp, true); "
-                  + "                  if (ev && ev.preventDefault) ev.preventDefault(); "
-                  + "                } catch(e) {} "
-                  + "              }, true); "
-                  + "            } "
-                + "          } catch(e) {} "
-                + "        })(); "
-                + "      } "
-                + "      window.__execLogClear = function() { "
-                + "        try { var b = document.getElementById('__execLogBody'); if (b) b.textContent = ''; window.__execLogLineCount = 0; } catch(e) {} "
-                + "      }; "
-                + "      window.__execLogAppend = function(lines) { "
-                + "        try { "
-                + "          var b = document.getElementById('__execLogBody'); if (!b) return; "
-                + "          if (lines === undefined || lines === null) return; "
-                + "          if (typeof lines === 'string') lines = [lines]; "
-                + "          if (!lines.length) return; "
-                + "          var txt = b.textContent || ''; "
-                + "          for (var i=0; i<lines.length; i++) { "
-                + "            var line = (lines[i] === undefined || lines[i] === null) ? '' : String(lines[i]); "
-                + "            txt += (txt.length ? '\\n' : '') + line; "
-                + "          } "
-                + "          var parts = txt.split(/\\n/); "
-                + "          var max = window.__execLogMaxLines || 500; "
-                + "          if (parts.length > max) parts = parts.slice(parts.length - max); "
-                + "          b.textContent = parts.join('\\n'); "
-                + "          b.scrollTop = b.scrollHeight + 1000; "
-                + "        } catch(e) {} "
-                + "      }; "
-                + "      return true; "
-                + "    } catch(e) { return false; } "
+                + "    if (!window.__execLogClear) window.__execLogClear = function() {}; "
+                + "    if (!window.__execLogAppend) window.__execLogAppend = function() {}; "
+                + "    return true; "
                 + "  } "
                 + "  function __momotEnsure() { "
                 + "    try { "
@@ -703,40 +533,18 @@ public class BlockyUI extends Application {
                 + "        settings.style.padding = '6px 8px'; settings.style.borderBottom = '1px solid rgba(255,255,255,0.1)'; "
                 + "        settings.style.alignItems = 'center'; settings.style.fontSize = '11px'; "
                 + "        settings.style.color = '#fff'; "
-                + "        var labSeed = document.createElement('span'); labSeed.textContent = 'Seed:'; "
-                + "        var inpSeed = mkInput('__momotInpSeed', '0', 'Random seed (0 for auto)', '35px'); "
-                + "        var labPop = document.createElement('span'); labPop.textContent = 'Pop:'; "
-                + "        var inpPop = mkInput('__momotInpPop', '50', 'Population size', '35px'); "
-                + "        var labIter = document.createElement('span'); labIter.textContent = 'Iter:'; "
-                + "        var inpIter = mkInput('__momotInpIter', '40', 'Number of iterations (generations)', '30px'); "
-                + "        var labRuns = document.createElement('span'); labRuns.textContent = 'Runs:'; "
-                + "        var inpRuns = mkInput('__momotInpRuns', '10', 'Number of algorithm runs', '25px'); "
-                + "        var labSolLen = document.createElement('span'); labSolLen.textContent = 'SolLen:'; "
-                + "        var inpSolLen = mkInput('__momotInpSolLen', '10', 'Solution length (number of transformation steps)', '25px'); "
-                + "        var labAlg = document.createElement('span'); labAlg.textContent = 'Alg:'; "
-                + "        var selAlg = document.createElement('select'); selAlg.id = '__momotSelAlg'; "
-                + "        selAlg.title = 'Search algorithm (Memetic = NSGA-II + short hill climb on the best candidates each generation)'; "
-                + "        selAlg.style.fontSize = '11px'; selAlg.style.background = 'rgba(0,0,0,0.3)'; selAlg.style.color = '#fff'; "
-                + "        selAlg.style.border = '1px solid rgba(255,255,255,0.2)'; selAlg.style.borderRadius = '3px'; "
-                + "        [['NSGA_II', 'NSGA-II'], ['MEMETIC_NSGA_II', 'Memetic NSGA-II']].forEach(function(o) { "
-                + "          var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; op.style.color = '#000'; "
-                + "          selAlg.appendChild(op); "
-                + "        }); "
                 + "        var btnCont = document.createElement('div'); btnCont.style.display = 'flex'; btnCont.style.gap = '4px'; "
                 + "        var mRunBtn = mkBtn('__momotRunBtn', 'Run', 'Execute MOMoT search'); "
                 + "        mRunBtn.style.background = 'rgba(70, 150, 70, 0.6)'; "
+                + "        mRunBtn.style.display = 'none'; "
                 + "        var mStopBtn = mkBtn('__momotStopBtn', 'Stop', 'Stop current MOMoT search'); "
                 + "        mStopBtn.style.background = 'rgba(180, 50, 50, 0.6)'; "
                 + "        btnCont.appendChild(mRunBtn); btnCont.appendChild(mStopBtn); "
-                + "        settings.appendChild(labSeed); settings.appendChild(inpSeed); "
-                + "        settings.appendChild(labPop); settings.appendChild(inpPop); "
-                + "        settings.appendChild(labIter); settings.appendChild(inpIter); "
-                + "        settings.appendChild(labRuns); settings.appendChild(inpRuns); "
-                + "        settings.appendChild(labSolLen); settings.appendChild(inpSolLen); "
-                + "        settings.appendChild(labAlg); settings.appendChild(selAlg); "
                 + "        settings.appendChild(btnCont); "
-                + "        var refreshBtn = mkBtn('__momotRefreshBtn', 'Refresh', 'Reload solutions from output folders'); "
-                + "        right.appendChild(refreshBtn); "
+                + "        var logToggleBtn = mkBtn('__momotLogToggleBtn', 'Show log', 'Show or hide the MoMoT log'); "
+                + "        var clearOverlayBtn = mkBtn('__momotClearOverlayBtn', 'Clear path', 'Clear the comparison path and the marker from the maze'); "
+                + "        right.appendChild(logToggleBtn); "
+                + "        right.appendChild(clearOverlayBtn); "
                 + "        header.appendChild(title); header.appendChild(right); "
                 + "        var body = document.createElement('div'); body.id = '__momotBody'; "
                 + "        body.style.padding = '6px 8px'; body.style.height = 'calc(100% - 38px)'; body.style.overflow = 'auto'; "
@@ -747,13 +555,9 @@ public class BlockyUI extends Application {
                 + "        list.style.borderRadius = '4px'; "
                 + "        list.style.background = 'rgba(0,0,0,0.2)'; "
                 + "        list.style.display = 'none'; "
-                + "        var actions = document.createElement('div'); actions.id = '__momotActions'; "
-                + "        actions.style.display = 'flex'; actions.style.alignItems = 'center'; actions.style.justifyContent = 'space-between'; actions.style.marginTop = '8px'; "
-                + "        var loadBtn = mkBtn('__momotLoadBtn', 'Load', 'Load selected model into the game'); "
-                + "        actions.appendChild(loadBtn); "
                 + "        var status = document.createElement('div'); status.id = '__momotStatus'; status.style.marginTop = '6px'; "
                 + "        status.style.color = '#0f0'; status.style.fontWeight = 'bold'; "
-                + "        status.textContent = 'Click Refresh or Run to see solutions.'; "
+                + "        status.textContent = 'Place a Direct Manipulation marker to start the search.'; "
                 + "        var log = document.createElement('pre'); log.id = '__momotLog'; "
                 + "        log.style.margin = '8px 0 0 0'; log.style.padding = '6px 8px'; "
                 + "        log.style.height = '80px'; log.style.overflow = 'auto'; "
@@ -763,7 +567,26 @@ public class BlockyUI extends Application {
                 + "        log.style.borderRadius = '6px'; "
                 + "        log.style.whiteSpace = 'pre-wrap'; log.style.wordBreak = 'break-word'; "
                 + "        log.textContent = ''; "
-                + "        body.appendChild(list); body.appendChild(actions); body.appendChild(status); body.appendChild(log); "
+                + "        log.style.display = 'none'; "
+                + "        logToggleBtn.addEventListener('click', function() { "
+                + "          var show = (log.style.display === 'none'); "
+                + "          log.style.display = show ? 'block' : 'none'; "
+                + "          logToggleBtn.textContent = show ? 'Hide log' : 'Show log'; "
+                + "          if (show) { log.scrollTop = log.scrollHeight + 1000; } "
+                + "        }); "
+                + "        var prog = document.createElement('div'); prog.id = '__momotProgress'; "
+                + "        prog.style.marginTop = '6px'; prog.style.display = 'none'; "
+                + "        var progBar = document.createElement('div'); "
+                + "        progBar.style.height = '8px'; progBar.style.background = 'rgba(255,255,255,0.15)'; "
+                + "        progBar.style.borderRadius = '4px'; progBar.style.overflow = 'hidden'; "
+                + "        var progFill = document.createElement('div'); progFill.id = '__momotProgressFill'; "
+                + "        progFill.style.height = '100%'; progFill.style.width = '0%'; progFill.style.background = '#4caf50'; "
+                + "        progFill.style.transition = 'width 0.3s'; "
+                + "        progBar.appendChild(progFill); "
+                + "        var progText = document.createElement('div'); progText.id = '__momotProgressText'; "
+                + "        progText.style.marginTop = '3px'; progText.style.fontSize = '11px'; progText.style.color = '#ddd'; "
+                + "        prog.appendChild(progBar); prog.appendChild(progText); "
+                + "        body.appendChild(list); body.appendChild(status); body.appendChild(prog); body.appendChild(log); "
                 + "        panel.appendChild(header); panel.appendChild(settings); panel.appendChild(body); "
                 + "        var rh = document.createElement('div'); rh.id = '__momotResizeHandle'; "
                 + "        rh.style.position = 'absolute'; rh.style.right = '2px'; rh.style.bottom = '2px'; "
@@ -803,6 +626,38 @@ public class BlockyUI extends Application {
                 + "            log.scrollTop = log.scrollHeight + 1000; "
                 + "          } catch(e) {} "
                 + "        } "
+                + "        var progStart = 0, progTimer = null, progEnded = false; "
+                + "        var progLast = { run: 1, runs: 1, gen: 0, gens: 1, pct: 0 }; "
+                + "        function fmtElapsed(ms) { "
+                + "          var s = Math.floor(ms / 1000), m = Math.floor(s / 60); s = s % 60; "
+                + "          return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s; "
+                + "        } "
+                + "        function renderProgress() { "
+                + "          try { "
+                + "            var el = progStart ? (Date.now() - progStart) : 0; "
+                + "            progFill.style.width = progLast.pct + '%'; "
+                + "            progText.textContent = 'Run ' + progLast.run + '/' + progLast.runs + ' | generation ' + progLast.gen + '/' + progLast.gens "
+                + "              + ' | ' + Math.round(progLast.pct) + '% | ' + fmtElapsed(el) + (progEnded ? ' | ended' : ''); "
+                + "          } catch(e) {} "
+                + "        } "
+                + "        window.__momotProgressStart = function(runs, gens) { "
+                + "          try { "
+                + "            if (progTimer) clearInterval(progTimer); "
+                + "            progStart = Date.now(); progEnded = false; "
+                + "            progLast = { run: 1, runs: runs, gen: 0, gens: gens, pct: 0 }; "
+                + "            prog.style.display = 'block'; renderProgress(); "
+                + "            progTimer = setInterval(renderProgress, 1000); "
+                + "          } catch(e) {} "
+                + "        }; "
+                + "        window.__momotSetProgress = function(run, runs, gen, gens, pct) { "
+                + "          try { progLast = { run: run, runs: runs, gen: gen, gens: gens, pct: pct }; renderProgress(); } catch(e) {} "
+                + "        }; "
+                + "        window.__momotProgressDone = function() { "
+                + "          try { "
+                + "            if (progTimer) { clearInterval(progTimer); progTimer = null; } "
+                + "            progEnded = true; renderProgress(); "
+                + "          } catch(e) {} "
+                + "        }; "
                 + "        window.__momotSetStatus = setStatus; "
                 + "        window.__momotLogClear = logClear; "
                 + "        window.__momotLogAppend = logAppend; "
@@ -1016,7 +871,7 @@ public class BlockyUI extends Application {
                 + "                var kids = tbody.children; "
                 + "                for (var k=0; k<kids.length; k++) kids[k].style.background = 'transparent'; "
                 + "                tr.style.background = 'rgba(255,255,255,0.15)'; "
-                + "                setStatus('Selected: ' + p.modelName); "
+                + "                setStatus('Selected: ' + p.modelName + ' (double-click to load)'); "
                 + "                try { "
                 + "                  var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
                 + "                  if (bridge && bridge.getSolutionPath) { "
@@ -1066,7 +921,13 @@ public class BlockyUI extends Application {
                 + "          } catch(e) { if (!isSilent) setStatus('Refresh failed'); } "
                 + "        } "
                 + "        window.__momotShowAndRefresh = function(){ try { panel.style.display = 'block'; } catch(e) {} try { refresh(true); } catch(e2) {} }; "
-                + "        refreshBtn.addEventListener('click', function(){ refresh(); }); "
+                + "        clearOverlayBtn.addEventListener('click', function(){ "
+                + "          try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {} "
+                + "          try { "
+                + "            var oldMarker = document.getElementById('dmgMarker'); "
+                + "            if (oldMarker && oldMarker.parentNode) oldMarker.parentNode.removeChild(oldMarker); "
+                + "          } catch(eM) {} "
+                + "        }); "
                 + "        mStopBtn.addEventListener('click', function(){ "
                 + "          try { "
                 + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
@@ -1076,7 +937,7 @@ public class BlockyUI extends Application {
                 + "            } "
                 + "          } catch(e) { setStatus('Stop failed'); } "
                 + "        }); "
-                + "        mRunBtn.addEventListener('click', function(){ "
+                + "        window.__momotStartRun = function(){ "
                 + "          try { "
                 + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
                 + "            if (!bridge || !bridge.runMomotWithParams) { setStatus('Java bridge runMomotWithParams not available'); return; } "
@@ -1092,30 +953,20 @@ public class BlockyUI extends Application {
                 + "                Z(window.Q, window.S, 4 * t); "
                 + "              } "
                 + "            } catch(eT) {} "
-                + "            var s = parseInt(document.getElementById('__momotInpSeed').value) || 0; "
-                + "            var p = parseInt(document.getElementById('__momotInpPop').value) || 50; "
-                + "            var it = parseInt(document.getElementById('__momotInpIter').value) || 40; "
+                + "            var s = 0; "
+                + "            var p = 100; "
+                + "            var it = 100; "
                 + "            var e = p * it; "
-                + "            var r = parseInt(document.getElementById('__momotInpRuns').value) || 10; "
-                + "            var sl = parseInt(document.getElementById('__momotInpSolLen').value) || 10; "
-                + "            var algSel = document.getElementById('__momotSelAlg'); "
-                + "            var alg = (algSel && algSel.value) || 'NSGA_II'; "
+                + "            var r = 8; "
+                + "            var sl = 10; "
+                + "            var alg = 'NSGA_II'; "
                 + "            if (bridge.setMomotAlgorithm) bridge.setMomotAlgorithm(alg); "
                 + "            setStatus('Starting MoMoT (alg=' + alg + ', seed=' + s + ', pop=' + p + ', iter=' + it + ' (eval=' + e + '), runs=' + r + ', solLen=' + sl + ')...'); "
                 + "            try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {} "
                 + "            bridge.runMomotWithParams(s, p, e, r, sl); "
                 + "          } catch(e) { setStatus('Run failed: ' + e); } "
-                + "        }); "
-                + "        loadBtn.addEventListener('click', function(){ "
-                + "          try { "
-                + "            var p = window.__momotSelectedPath; "
-                + "            if (!p) { setStatus('Select a solution first'); return; } "
-                + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
-                + "            if (!bridge || !bridge.loadMomotSolution) { setStatus('Java bridge loadMomotSolution not available'); return; } "
-                + "            setStatus('Loading model...'); "
-                + "            bridge.loadMomotSolution(p); "
-                + "          } catch(e) { setStatus('Load failed'); } "
-                + "        }); "
+                + "        }; "
+                + "        mRunBtn.addEventListener('click', window.__momotStartRun); "
                 + "        setStatus('Hidden until Direct Manipulation teleport.'); "
                 + "        (function(){ "
                 + "          try { "
@@ -1599,6 +1450,7 @@ public class BlockyUI extends Application {
                 + "                  if (bridge && bridge.teleportPegman) bridge.teleportPegman(col, row, t); "
                 + "                } catch(e4) {} "
                 + "                try { if (window.__momotShowAndRefresh) window.__momotShowAndRefresh(); } catch(e4b) {} "
+                + "                try { if (window.__momotStartRun) window.__momotStartRun(); } catch(e4c) {} "
                 + "                __dmStop(); "
                 + "              } catch(e5) { __dmStop(); } "
                 + "            }; "
@@ -2023,31 +1875,11 @@ public class BlockyUI extends Application {
         try {
             momotCurrentOutputDir = null; // Clear previous run results when panel is shown for a new location
             
-            // Infer default solution length
-            int defSolLen = 10;
-            try {
-                String input = MomotRunService.defaultDirectManipulationSpec().inputXmi;
-                File f = new File(input);
-                if (!f.isAbsolute()) {
-                    // Try to resolve it as MomotRunService does
-                    if (!f.exists()) f = new File("..", input);
-                    if (!f.exists()) f = new File("..", ".." + File.separator + input);
-                }
-                if (f.exists()) {
-                    Class<?> metrics = Class.forName("blocky_momot.BlockyProgramMetrics");
-                    Object v = metrics.getMethod("inferSolutionLength", String.class).invoke(null, f.getAbsoluteFile().getPath());
-                    if (v instanceof Number) defSolLen = Math.max(1, ((Number) v).intValue() * 2);
-                }
-            } catch (Exception ignored) {}
-
             pendingShowMomotPanel = true;
-            final int finalDefSolLen = defSolLen;
             webView.getEngine().executeScript(
                 "try { " +
                 "  if (window.__momotShowAndRefresh) window.__momotShowAndRefresh();" +
-                "  if (window.__momotSetStatus) window.__momotSetStatus('MoMoT panel ready. Set parameters and click Run.');" +
-                "  var slInp = document.getElementById('__momotInpSolLen');" +
-                "  if (slInp) slInp.value = '" + finalDefSolLen + "';" +
+                "  if (window.__momotSetStatus) window.__momotSetStatus('MoMoT panel ready. Click Run.');" +
                 "} catch(e) {}"
             );
         } catch (Exception ignored) {
@@ -2055,6 +1887,7 @@ public class BlockyUI extends Application {
     }
 
     private void startMomotWithParams(int seed, int populationSize, int maxEvaluations, int nrRuns, int solutionLength) {
+        final int myRunId = momotRunId.incrementAndGet();
         try {
             pendingShowMomotPanel = true;
             webView.getEngine().executeScript(
@@ -2062,6 +1895,8 @@ public class BlockyUI extends Application {
                 "  if (window.__momotFirstGoalReset) window.__momotFirstGoalReset(); " +
                 "  if (window.__momotShowAndRefresh) window.__momotShowAndRefresh();" +
                 "  if (window.__momotLogClear) window.__momotLogClear();" +
+                "  if (window.__momotProgressStart) window.__momotProgressStart(" + nrRuns + ", "
+                        + Math.max(1, maxEvaluations / Math.max(1, populationSize)) + ");" +
                 "  if (window.__momotSetStatus) window.__momotSetStatus('Running MoMoT...');" +
                 "} catch(e) {}"
             );
@@ -2113,7 +1948,22 @@ public class BlockyUI extends Application {
 
         final java.util.concurrent.atomic.AtomicBoolean uiRefreshPending = new java.util.concurrent.atomic.AtomicBoolean(false);
         final java.util.concurrent.atomic.AtomicLong lastRefreshMs = new java.util.concurrent.atomic.AtomicLong(0);
+        // Progress: the evaluation count (nfe) is per run, so a drop in nfe means the next run has started.
+        final java.util.concurrent.atomic.AtomicInteger currentRun = new java.util.concurrent.atomic.AtomicInteger(1);
+        final java.util.concurrent.atomic.AtomicInteger lastNfe = new java.util.concurrent.atomic.AtomicInteger(-1);
+        final int evalsPerRun = Math.max(1, maxEvaluations);
+        final int generationsPerRun = Math.max(1, maxEvaluations / Math.max(1, populationSize));
         java.util.function.BiConsumer<Integer, Object> liveSubscriber = (nfe, paretoFront) -> {
+            if (momotRunId.get() != myRunId) return;
+            int n = nfe == null ? 0 : Math.max(0, nfe);
+            int prev = lastNfe.getAndSet(n);
+            if (prev >= 0 && n < prev && currentRun.get() < nrRuns) {
+                currentRun.incrementAndGet();
+            }
+            final int run = currentRun.get();
+            final int gen = Math.min(generationsPerRun, (n + Math.max(1, populationSize) - 1) / Math.max(1, populationSize));
+            final double pct = Math.min(100.0, 100.0 * ((run - 1) * (double) evalsPerRun + Math.min(n, evalsPerRun))
+                    / ((double) Math.max(1, nrRuns) * evalsPerRun));
             long now = System.currentTimeMillis();
             if ((now - lastRefreshMs.get() >= 250 || lastRefreshMs.get() == 0) && uiRefreshPending.compareAndSet(false, true)) {
                 lastRefreshMs.set(now);
@@ -2121,7 +1971,9 @@ public class BlockyUI extends Application {
                     uiRefreshPending.set(false);
                     try {
                         webView.getEngine().executeScript(
-                            "try { if (window.__momotShowAndRefresh) window.__momotShowAndRefresh(); } catch(e) {}"
+                            "try { if (window.__momotSetProgress) window.__momotSetProgress(" + run + ", " + nrRuns + ", "
+                                + gen + ", " + generationsPerRun + ", " + String.format(java.util.Locale.ROOT, "%.1f", pct) + "); "
+                                + "if (window.__momotShowAndRefresh) window.__momotShowAndRefresh(); } catch(e) {}"
                         );
                     } catch (Exception ignored) {
                     }
@@ -2141,16 +1993,18 @@ public class BlockyUI extends Application {
                 }
             });
         }, () -> {
+            if (momotRunId.get() != myRunId) return;
             try {
                 webView.getEngine().executeScript(
                     "try { " +
+                    "  if (window.__momotProgressDone) window.__momotProgressDone();" +
                     "  if (window.__momotShowAndRefresh) window.__momotShowAndRefresh();" +
                     "} catch(e) {}"
                 );
             } catch (Exception ignored3) {
             }
         }, (finalOutDir) -> {
-            if (finalOutDir != null && !finalOutDir.trim().isEmpty()) {
+            if (momotRunId.get() == myRunId && finalOutDir != null && !finalOutDir.trim().isEmpty()) {
                 momotCurrentOutputDir = finalOutDir.trim();
             }
         }, liveSubscriber);
