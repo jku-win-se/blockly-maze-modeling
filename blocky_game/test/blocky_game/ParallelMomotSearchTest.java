@@ -299,105 +299,115 @@ class ParallelMomotSearchTest {
 
     @Test
     void testMomotFitnessObjectiveHelperThreadIsolation() throws Exception {
-        BlockyFactory factory = BlockyFactory.eINSTANCE;
+        String prevObj = System.getProperty("blocky.objectives");
+        System.setProperty("blocky.objectives", "CURRENT");
+        try {
+            BlockyFactory factory = BlockyFactory.eINSTANCE;
 
-        // Baseline A: [MoveForward, MoveForward]
-        Game gameA = factory.createGame();
-        Level lvlA = factory.createLevel();
-        Body bodyA = factory.createBody();
-        Container ca1 = factory.createContainer();
-        AtomicStatement sa1 = factory.createAtomicStatement();
-        sa1.setKind(AtomicStatementKind.MOVE_FORWARD);
-        ca1.setStatement(sa1);
-        Container ca2 = factory.createContainer();
-        AtomicStatement sa2 = factory.createAtomicStatement();
-        sa2.setKind(AtomicStatementKind.MOVE_FORWARD);
-        ca2.setStatement(sa2);
-        ca1.setNext(ca2);
-        bodyA.setFirstContainer(ca1);
-        lvlA.setSolution(bodyA);
-        gameA.getLevels().add(lvlA);
+            // Baseline A: [MoveForward, MoveForward]
+            Game gameA = factory.createGame();
+            Level lvlA = factory.createLevel();
+            Body bodyA = factory.createBody();
+            Container ca1 = factory.createContainer();
+            AtomicStatement sa1 = factory.createAtomicStatement();
+            sa1.setKind(AtomicStatementKind.MOVE_FORWARD);
+            ca1.setStatement(sa1);
+            Container ca2 = factory.createContainer();
+            AtomicStatement sa2 = factory.createAtomicStatement();
+            sa2.setKind(AtomicStatementKind.MOVE_FORWARD);
+            ca2.setStatement(sa2);
+            ca1.setNext(ca2);
+            bodyA.setFirstContainer(ca1);
+            lvlA.setSolution(bodyA);
+            gameA.getLevels().add(lvlA);
 
-        // Baseline B: [TurnLeft, TurnLeft]
-        Game gameB = factory.createGame();
-        Level lvlB = factory.createLevel();
-        Body bodyB = factory.createBody();
-        Container cb1 = factory.createContainer();
-        AtomicStatement sb1 = factory.createAtomicStatement();
-        sb1.setKind(AtomicStatementKind.TURN_LEFT);
-        cb1.setStatement(sb1);
-        Container cb2 = factory.createContainer();
-        AtomicStatement sb2 = factory.createAtomicStatement();
-        sb2.setKind(AtomicStatementKind.TURN_LEFT);
-        cb2.setStatement(sb2);
-        cb1.setNext(cb2);
-        bodyB.setFirstContainer(cb1);
-        lvlB.setSolution(bodyB);
-        gameB.getLevels().add(lvlB);
+            // Baseline B: [TurnLeft, TurnLeft]
+            Game gameB = factory.createGame();
+            Level lvlB = factory.createLevel();
+            Body bodyB = factory.createBody();
+            Container cb1 = factory.createContainer();
+            AtomicStatement sb1 = factory.createAtomicStatement();
+            sb1.setKind(AtomicStatementKind.TURN_LEFT);
+            cb1.setStatement(sb1);
+            Container cb2 = factory.createContainer();
+            AtomicStatement sb2 = factory.createAtomicStatement();
+            sb2.setKind(AtomicStatementKind.TURN_LEFT);
+            cb2.setStatement(sb2);
+            cb1.setNext(cb2);
+            bodyB.setFirstContainer(cb1);
+            lvlB.setSolution(bodyB);
+            gameB.getLevels().add(lvlB);
 
-        // Candidate model: [MoveForward]
-        Game candidateGame = factory.createGame();
-        Level candLvl = factory.createLevel();
-        Body candBody = factory.createBody();
-        Container cc1 = factory.createContainer();
-        AtomicStatement sc1 = factory.createAtomicStatement();
-        sc1.setKind(AtomicStatementKind.MOVE_FORWARD);
-        cc1.setStatement(sc1);
-        candBody.setFirstContainer(cc1);
-        candLvl.setSolution(candBody);
-        candidateGame.getLevels().add(candLvl);
+            // Candidate model: [MoveForward]
+            Game candidateGame = factory.createGame();
+            Level candLvl = factory.createLevel();
+            Body candBody = factory.createBody();
+            Container cc1 = factory.createContainer();
+            AtomicStatement sc1 = factory.createAtomicStatement();
+            sc1.setKind(AtomicStatementKind.MOVE_FORWARD);
+            cc1.setStatement(sc1);
+            candBody.setFirstContainer(cc1);
+            candLvl.setSolution(candBody);
+            candidateGame.getLevels().add(candLvl);
 
-        class TestBlockyRunner extends blocky_momot_runner.blocky_custom {
-            double evalFitness(Game g) {
-                return _createObjectiveHelper_1(null, null, g);
+            class TestBlockyRunner extends blocky_momot_runner.blocky_custom {
+                double evalFitness(Game g) {
+                    return _createObjectiveHelper_1(null, null, g);
+                }
+            }
+
+            TestBlockyRunner runnerA = new TestBlockyRunner();
+            runnerA.setBaselineSolution(bodyA);
+
+            TestBlockyRunner runnerB = new TestBlockyRunner();
+            runnerB.setBaselineSolution(bodyB);
+
+            AtomicReference<Double> scoreA = new AtomicReference<>();
+            AtomicReference<Double> scoreB = new AtomicReference<>();
+            CountDownLatch startLatch = new CountDownLatch(1);
+            CountDownLatch doneLatch = new CountDownLatch(2);
+
+            Thread ta = new Thread(() -> {
+                try {
+                    startLatch.await();
+                    scoreA.set(runnerA.evalFitness(candidateGame));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+
+            Thread tb = new Thread(() -> {
+                try {
+                    startLatch.await();
+                    scoreB.set(runnerB.evalFitness(candidateGame));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+
+            ta.start();
+            tb.start();
+            startLatch.countDown();
+            assertTrue(doneLatch.await(5, TimeUnit.SECONDS));
+
+            assertEquals(1.0, scoreA.get(), "Runner A against [MF, MF] should give edit distance 1.0");
+            assertEquals(2.0, scoreB.get(), "Runner B against [TL, TL] should give edit distance 2.0");
+
+            // Verify unconfigured runner yields penalty without sticky global baseline
+            TestBlockyRunner unconfiguredRunner = new TestBlockyRunner();
+            assertEquals(100000.0, unconfiguredRunner.evalFitness(candidateGame),
+                    "Unconfigured runner without baseline must return fallback penalty, not a sticky baseline");
+        } finally {
+            if (prevObj != null) {
+                System.setProperty("blocky.objectives", prevObj);
+            } else {
+                System.clearProperty("blocky.objectives");
             }
         }
-
-        TestBlockyRunner runnerA = new TestBlockyRunner();
-        runnerA.setBaselineSolution(bodyA);
-
-        TestBlockyRunner runnerB = new TestBlockyRunner();
-        runnerB.setBaselineSolution(bodyB);
-
-        AtomicReference<Double> scoreA = new AtomicReference<>();
-        AtomicReference<Double> scoreB = new AtomicReference<>();
-        CountDownLatch startLatch = new CountDownLatch(1);
-        CountDownLatch doneLatch = new CountDownLatch(2);
-
-        Thread ta = new Thread(() -> {
-            try {
-                startLatch.await();
-                scoreA.set(runnerA.evalFitness(candidateGame));
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                doneLatch.countDown();
-            }
-        });
-
-        Thread tb = new Thread(() -> {
-            try {
-                startLatch.await();
-                scoreB.set(runnerB.evalFitness(candidateGame));
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                doneLatch.countDown();
-            }
-        });
-
-        ta.start();
-        tb.start();
-        startLatch.countDown();
-        assertTrue(doneLatch.await(5, TimeUnit.SECONDS));
-
-        assertEquals(1.0, scoreA.get(), "Runner A against [MF, MF] should give edit distance 1.0");
-        assertEquals(2.0, scoreB.get(), "Runner B against [TL, TL] should give edit distance 2.0");
-
-        // Verify unconfigured runner yields penalty without sticky global baseline
-        TestBlockyRunner unconfiguredRunner = new TestBlockyRunner();
-        assertEquals(100000.0, unconfiguredRunner.evalFitness(candidateGame),
-                "Unconfigured runner without baseline must return fallback penalty, not a sticky baseline");
     }
 
     @Test

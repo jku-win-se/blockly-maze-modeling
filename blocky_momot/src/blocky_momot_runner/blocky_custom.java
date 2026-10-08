@@ -17,6 +17,7 @@ import at.ac.tuwien.big.momot.search.fitness.dimension.AbstractEGraphFitnessDime
 import at.ac.tuwien.big.momot.util.MomotUtil;
 import blocky.Body;
 import blocky.Game;
+import blocky.GameStatus;
 import blocky.Level;
 import blocky_momot.BlockyProgramDistance;
 import blocky_momot.BlockyProgramMetrics;
@@ -107,6 +108,35 @@ public class blocky_custom extends blocky {
         return ctx != null ? ctx.outputDirectory : null;
     }
 
+    // *_edit_anywhere.henshin (see tools/henshin-prototype): the only search move is EditAnywhere, which
+    // applies whichever of insert / delete (user-placed blocks) / modify (user-placed blocks) fits.
+    // Done here instead of blocky.momot so src-gen does not need regenerating: MOMoT qualifies unit
+    // names by module file name, which the generated ignore list and parameter keys do not know for the
+    // *_edit_anywhere files. Modules without EditAnywhere keep the generated configuration.
+    private static final String EDIT_ANYWHERE = "EditAnywhere";
+
+    @Override
+    protected at.ac.tuwien.big.momot.ModuleManager createModuleManager() {
+        at.ac.tuwien.big.momot.ModuleManager manager = super.createModuleManager();
+        if (manager.getUnits().stream().noneMatch(u -> EDIT_ANYWHERE.equals(u.getName()))) {
+            return manager;
+        }
+        for (org.eclipse.emf.henshin.model.Unit unit : new java.util.ArrayList<>(manager.getUnits())) {
+            if (!EDIT_ANYWHERE.equals(unit.getName())) {
+                manager.removeUnit(unit);
+                continue;
+            }
+            for (org.eclipse.emf.henshin.model.Parameter p : unit.getParameters()) {
+                if ("k".equals(p.getName())) {
+                    manager.setParameterValue(p, new blocky_momot.RandomAtomicKindLiteralValue());
+                } else if ("cnd".equals(p.getName())) {
+                    manager.setParameterValue(p, new blocky_momot.RandomConditionKindLiteralValue());
+                }
+            }
+        }
+        return manager;
+    }
+
     @Override
     protected TransformationSearchOrchestration createOrchestration(String initialGraph, int solutionLength) {
         TransformationSearchOrchestration orchestration = super.createOrchestration(initialGraph, solutionLength);
@@ -139,12 +169,31 @@ public class blocky_custom extends blocky {
         return orchestration;
     }
 
+    // blocky.objectives=GATED (default, Exploration-Proposal.md): Edits, Actions and the extra Blocks objective
+    // only count for candidates that reach the goal; every other candidate gets GATED_WORST, so a small or
+    // early-crashing program gains nothing from being small. CURRENT keeps the objectives as they were.
+    private static final double GATED_WORST = 100000.0;
+
+    private static boolean gatedObjectives() {
+        return "GATED".equals(System.getProperty("blocky.objectives", "GATED"));
+    }
+
+    private static boolean reachesGoal(final EObject root) {
+        if (root instanceof Game game && !game.getLevels().isEmpty() && game.getLevels().get(0) != null) {
+            return BlockySimulator.run(game.getLevels().get(0)) == GameStatus.WON;
+        }
+        return false;
+    }
+
     @Override
     protected double _createObjectiveHelper_1(final TransformationSolution solution, final EGraph graph, final EObject root) {
         if (Thread.currentThread().isInterrupted()) {
             throw new RuntimeException("MoMoT search interrupted (user stop or level change)");
         }
         try {
+            if (gatedObjectives() && !reachesGoal(root)) {
+                return GATED_WORST;
+            }
             if (root instanceof Game game) {
                 Body baseline = this.baselineSolution;
                 if (baseline == null) {
@@ -172,6 +221,7 @@ public class blocky_custom extends blocky {
             if (root instanceof Game game) {
                 Level level = game.getLevels().isEmpty() ? null : game.getLevels().get(0);
                 if (level == null) return 1000000.0;
+                if (gatedObjectives() && !reachesGoal(root)) return GATED_WORST;
                 if (Boolean.getBoolean("blocky.shortestPathObjective")) {
                     double distance = BlockySimulator.distanceToGoalOrPenalty(level);
                     if (distance > 0.0) {
@@ -199,6 +249,25 @@ public class blocky_custom extends blocky {
         };
     }
 
+    // closestToGoal: the generated version reads Cell.distanceToGoal, which is only annotated for the one input
+    // file known when the runner class was loaded (static blocky.input). For any other input every cell is
+    // unannotated and the objective was the constant penalty 100000. Computing the distance field per
+    // evaluation gives the same value (smallest distance over the visited cells) for every input.
+    @Override
+    protected double _createObjectiveHelper_3(final TransformationSolution solution, final EGraph graph, final EObject root) {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new RuntimeException("MoMoT search interrupted (user stop or level change)");
+        }
+        try {
+            if (root instanceof Game game && !game.getLevels().isEmpty() && game.getLevels().get(0) != null) {
+                return (double) BlockySimulator.distanceToGoalOrPenalty(game.getLevels().get(0), 100000);
+            }
+        } catch (Throwable t) {
+            return 1000000.0;
+        }
+        return 1000000.0;
+    }
+
     protected double _createObjectiveHelper_4(final TransformationSolution solution, final EGraph graph, final EObject root) {
         if (Thread.currentThread().isInterrupted()) {
             throw new RuntimeException("MoMoT search interrupted (user stop or level change)");
@@ -209,6 +278,7 @@ public class blocky_custom extends blocky {
                 if (level == null) {
                     return 1000000.0;
                 }
+                if (gatedObjectives() && !reachesGoal(root)) return GATED_WORST;
                 return (double) BlockyProgramMetrics.countStatements(level.getSolution());
             }
         } catch (Throwable t) {
@@ -243,27 +313,31 @@ public class blocky_custom extends blocky {
             final EvolutionaryAlgorithmFactory<TransformationSolution> moea,
             final LocalSearchAlgorithmFactory<TransformationSolution> local) {
         final IRegisteredAlgorithm<NSGAII> delegate = super._createRegisteredAlgorithm_0(orchestration, moea, local);
-        return new IRegisteredAlgorithm<NSGAII>() {
+        // Extends AbstractRegisteredAlgorithm so that register() registers THIS wrapper: MOMoT instantiates
+        // algorithms through the registry, so a wrapper that forwarded register() to the delegate was
+        // never asked to createAlgorithm().
+        return new at.ac.tuwien.big.moea.search.algorithm.provider.AbstractRegisteredAlgorithm<NSGAII>() {
             @Override
             public NSGAII createAlgorithm() {
+                // blocky.algorithm (set by the game's "Alg" dropdown): NSGA_II (default) or MEMETIC_NSGA_II
+                // (NSGA-II + short hill climb on the best candidates after each generation).
+                // Benchmarks only, not in the dropdown: RANDOM_SEARCH (baseline without selection) and
+                // IMMIGRANTS_NSGA_II (NSGA-II + new random candidates every generation).
                 NSGAII alg = delegate.createAlgorithm();
+                blocky_momot.MemeticNSGAII.resetLastRunStats();
+                String algorithmName = System.getProperty("blocky.algorithm", "NSGA_II");
+                if ("MEMETIC_NSGA_II".equals(algorithmName)) {
+                    alg = new blocky_momot.MemeticNSGAII(alg,
+                            orchestration.getSearchHelper(), orchestration.getModuleManager(),
+                            new blocky_momot.GoalFirstFitnessComparator(orchestration.getFitnessFunction().getObjectiveNames()));
+                } else if ("RANDOM_SEARCH".equals(algorithmName)) {
+                    alg = new blocky_momot.RandomSearchNSGAII(alg);
+                } else if ("IMMIGRANTS_NSGA_II".equals(algorithmName)) {
+                    alg = new blocky_momot.RandomImmigrantsNSGAII(alg);
+                }
+                System.out.println("[MoMoT] Algorithm: " + alg.getClass().getSimpleName());
                 getPublisherListener().setCurrentAlgorithm(alg);
                 return alg;
-            }
-
-            @Override
-            public String getRegisteredName() {
-                return delegate.getRegisteredName();
-            }
-
-            @Override
-            public boolean isRegistered() {
-                return delegate.isRegistered();
-            }
-
-            @Override
-            public String register() {
-                return delegate.register();
             }
         };
     }
@@ -389,7 +463,26 @@ public class blocky_custom extends blocky {
         return experiment;
     }
 
-    private synchronized void saveLiveResults(Path outputDir, NondominatedPopulation paretoFront) {
+    /**
+     * The solutions to write for the solution panel: the given front plus the non-goal archive of the publisher
+     * listener (empty unless blocky.nonGoalArchive is set). The archive entries come last so that the files that
+     * are matched to the objectives by position (solutions.txt) stay aligned for the front.
+     */
+    private Population withNonGoalArchive(final Iterable<? extends Solution> front) {
+        Population shown = new Population(front);
+        try {
+            ParetoFrontPublisherListener pub = getPublisherListener();
+            if (pub != null) {
+                shown.addAll(pub.getNonGoalArchiveSnapshot());
+            }
+        } catch (Throwable t) {
+            System.err.println("[MoMoT] non-goal archive not written: " + t);
+        }
+        return shown;
+    }
+
+    private synchronized void saveLiveResults(Path outputDir, NondominatedPopulation front) {
+        Population paretoFront = withNonGoalArchive(front);
         try {
             Path modelsPath = outputDir.resolve("models");
             Files.createDirectories(modelsPath);
@@ -496,6 +589,9 @@ public class blocky_custom extends blocky {
         }
 
         System.out.println("[MoMoT] Search finished. Handling results...");
+        if (blocky_momot.MemeticNSGAII.lastRunStats() != null) {
+            System.out.println(blocky_momot.MemeticNSGAII.lastRunStats());
+        }
         handleResults(experiment);
     }
 
@@ -517,15 +613,16 @@ public class blocky_custom extends blocky {
         String modelsDir = outputDir.resolve("models").toString();
 
         Population population = TransformationResultManager.createApproximationSet(experiment, (String[]) null);
+        Population shown = withNonGoalArchive(population);
         System.out.println("- Save objectives of all algorithms to '" + objectivesFile + "'");
-        TransformationResultManager.saveObjectives(objectivesFile, population);
+        TransformationResultManager.saveObjectives(objectivesFile, shown);
 
         File timesFile = outputDir.resolve("times.pf").toFile();
         File gensFile = outputDir.resolve("generations.pf").toFile();
         StringBuilder timesContent = new StringBuilder();
         StringBuilder gensContent = new StringBuilder();
         ParetoFrontPublisherListener pub = getPublisherListener();
-        for (Solution solution : population) {
+        for (Solution solution : shown) {
             long t = 0L;
             int g = 1;
             if (solution != null) {
@@ -590,7 +687,7 @@ public class blocky_custom extends blocky {
                 solutionsDir, baseName, MomotUtil.asIterables(population, TransformationSolution.class), solutionWriter);
 
         population = TransformationResultManager.createApproximationSet(experiment, (String[]) null);
-        List<File> savedModels = TransformationResultManager.saveModels(modelsDir, baseName, population);
+        List<File> savedModels = TransformationResultManager.saveModels(modelsDir, baseName, withNonGoalArchive(population));
         java.util.Set<String> validNames = new java.util.HashSet<>();
         if (savedModels != null) {
             for (File f : savedModels) {

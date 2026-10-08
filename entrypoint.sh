@@ -24,6 +24,10 @@ netstat -tunlp | grep 6080 || echo "websockify NOT LISTENING on 6080"
 echo "Starting Blocky Maze..."
 export DISPLAY=:99
 export JAVA_TOOL_OPTIONS="--add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.xml/com.sun.org.apache.xerces.internal.jaxp=ALL-UNNAMED --add-exports=java.xml/com.sun.org.apache.xerces.internal.jaxp=ALL-UNNAMED -Djava.util.Arrays.useLegacyMergeSort=true"
+# BLOCKY_OBJECTIVES: GATED (default; Edits, Actions and Blocks only count for candidates that reach the goal) or CURRENT
+export JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS -Dblocky.objectives=${BLOCKY_OBJECTIVES:-GATED}"
+# BLOCKY_WRAP: true (default) or false (true = use the *_wrap.henshin rule files with wrap/unwrap moves)
+export JAVA_TOOL_OPTIONS="$JAVA_TOOL_OPTIONS -Dblocky.rules.wrap=${BLOCKY_WRAP:-true}"
 export MAVEN_OPTS="$JAVA_TOOL_OPTIONS"
 export CLASSPATH="/app/blocky_momot/target/classes:/app/blocky_game/target/classes"
 mvn -pl blocky_game javafx:run

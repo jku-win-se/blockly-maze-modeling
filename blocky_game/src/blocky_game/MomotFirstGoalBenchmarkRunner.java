@@ -51,6 +51,8 @@ public final class MomotFirstGoalBenchmarkRunner {
         System.out.println("[FirstGoalBenchmark] populationSize=" + popSize
                 + " iterations=" + iterations
                 + " maxEvaluations=" + maxEval);
+        System.out.println("[FirstGoalBenchmark] algorithm=" + System.getProperty("blocky.algorithm", "NSGA_II")
+                + " solutionLengthFactor=" + parseIntProperty("blocky.solutionLengthFactor", 1));
 
         MomotRunService.warmupRunnerClass();
 
@@ -117,7 +119,8 @@ public final class MomotFirstGoalBenchmarkRunner {
         String henshinPath = "../blocky_model/transformations/" + henshinName;
         System.setProperty("blocky.henshin", henshinPath);
 
-        int solLen = canonicalSolutionLengthForLevel(level);
+        // blocky.solutionLengthFactor (default 1) scales the canonical length, e.g. 2 for twice as long.
+        int solLen = canonicalSolutionLengthForLevel(level) * parseIntProperty("blocky.solutionLengthFactor", 1);
 
         List<RunResult> runResults = new ArrayList<>();
 
@@ -401,7 +404,32 @@ public final class MomotFirstGoalBenchmarkRunner {
     }
 
     public static String selectHenshinModuleForLevel(int level) {
-        return "statement_insertions_henshin_text.henshin";
+        if (Boolean.getBoolean("blocky.rules.levelSpecific")) {
+            if (level <= 2) {
+                return "statement_insertions_atomic_only.henshin";
+            } else if (level <= 5) {
+                return withWrapMoves("statement_insertions_no_conds.henshin");
+            } else if (level <= 7) {
+                return withWrapMoves("statement_insertions_no_else.henshin");
+            }
+        }
+        return withWrapMoves("statement_insertions_henshin_text.henshin");
+    }
+
+    /**
+     * PROTOTYPE: with -Dblocky.rules.wrap=true the *_wrap.henshin variant is used (same rules plus wrap/unwrap
+     * moves, built by tools/henshin-prototype/run.sh wrap). There is none for atomic_only.
+     */
+    public static String withWrapMoves(String henshinFile) {
+        // blocky.rules.editAnywhere=true: the *_edit_anywhere variant (insert, delete, modify as one move), so
+        // that wrap off and wrap on differ only in the wrap/unwrap moves
+        if (Boolean.getBoolean("blocky.rules.editAnywhere") && !henshinFile.contains("atomic_only")) {
+            henshinFile = henshinFile.replaceFirst("\\.henshin$", "_edit_anywhere.henshin");
+        }
+        if (!Boolean.getBoolean("blocky.rules.wrap") || henshinFile.contains("atomic_only")) {
+            return henshinFile;
+        }
+        return henshinFile.replaceFirst("\\.henshin$", "_wrap.henshin");
     }
 
     public static int canonicalSolutionLengthForLevel(int level) {

@@ -258,6 +258,13 @@ public class SessionContext {
         this.momotCurrentOutputDir = outDir.getAbsolutePath();
         this.momotCurrentLevelId = levelId;
 
+        if (System.getProperty("blocky.objectives") == null) {
+            System.setProperty("blocky.objectives", "GATED");
+        }
+        if (System.getProperty("blocky.nonGoalArchive") == null) {
+            System.setProperty("blocky.nonGoalArchive", "10");
+        }
+
         MomotRunService.RunSpec spec = new MomotRunService.RunSpec(
             inputXmi.getAbsolutePath(),
             outDir.getAbsolutePath(),

@@ -624,10 +624,16 @@
                             var objs = ln.trim().split(/\s+/).filter(Boolean).map(Number);
                             if (objs.length > maxObj) maxObj = objs.length;
                             var name = (it.modelPath || "").split(/[\/\\]/).pop();
-                            return { it: it, objs: objs, modelName: name };
+                            var isGoal = objs[0] === -1;
+                            return { it: it, objs: objs, modelName: name, isGoal: isGoal };
                         });
 
-                        if (window.__momotSortCol !== -1) {
+                        if (window.__momotSortCol === -1) {
+                            processed.sort(function(a, b) {
+                                if (a.isGoal !== b.isGoal) return a.isGoal ? -1 : 1;
+                                return 0;
+                            });
+                        } else {
                             processed.sort(function(a, b) {
                                 var vA, vB;
                                 if (window.__momotSortCol < maxObj) {
@@ -674,6 +680,7 @@
                         processed.forEach(function(p) {
                             var tr = document.createElement('tr');
                             tr.style.cursor = 'pointer';
+                            if (!p.isGoal) tr.style.opacity = '0.65';
                             if (keepPath && p.it.modelPath === keepPath) {
                                 tr.style.background = 'rgba(255,255,255,0.15)';
                                 selectedName = p.modelName;
@@ -686,7 +693,7 @@
                                     else if (val === 0) td.textContent = 'FALSE';
                                     else td.textContent = (val !== undefined && !isNaN(val)) ? val : '-';
                                 } else {
-                                    td.textContent = (val !== undefined && !isNaN(val)) ? val : '-';
+                                    td.textContent = (val !== undefined && !isNaN(val) && val < 100000) ? val : '-';
                                 }
                                 td.style.padding = '6px 8px'; td.style.textAlign = 'right';
                                 td.style.border = '1px solid rgba(255,255,255,0.15)';
@@ -725,12 +732,13 @@
                             tbody.appendChild(tr);
                         });
                         table.appendChild(tbody); list.appendChild(table);
+                        var goalCount = processed.filter(function(p) { return p.isGoal; }).length;
                         if (selectedName) {
                             window.__momotSelectedPath = keepPath;
                             setStatus('Selected: ' + selectedName);
                         } else {
                             window.__momotSelectedPath = null;
-                            setStatus(arr.length + ' solution(s) found.');
+                            setStatus(processed.length + ' candidate(s), ' + goalCount + ' reaching the goal.');
                         }
                         list.scrollTop = keepScroll;
                     } catch(e) { setStatus('Failed to render: ' + e); }

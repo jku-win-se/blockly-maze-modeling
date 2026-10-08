@@ -25,6 +25,11 @@ public class Main {
         if (System.getProperty("prism.primtextures") == null) {
             System.setProperty("prism.primtextures", "false");
         }
+        // The solution panel also lists the non-goal candidates that came closest to the goal (Improvement-Plan.md,
+        // section 3.6). Off in code, so the benchmark runners (their own main) are unchanged; -Dblocky.nonGoalArchive=0 turns it off here.
+        if (System.getProperty("blocky.nonGoalArchive") == null) {
+            System.setProperty("blocky.nonGoalArchive", "10");
+        }
         if (System.getProperty("prism.maxvram") == null) {
             System.setProperty("prism.maxvram", "1G");
         }
