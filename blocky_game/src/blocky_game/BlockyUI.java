@@ -536,16 +536,32 @@ public class BlockyUI extends Application {
                 + "        settings.style.padding = '6px 8px'; settings.style.borderBottom = '1px solid rgba(255,255,255,0.1)'; "
                 + "        settings.style.alignItems = 'center'; settings.style.fontSize = '11px'; "
                 + "        settings.style.color = '#fff'; "
+                + "        var labSeed = document.createElement('span'); labSeed.textContent = 'Seed:'; "
+                + "        var inpSeed = mkInput('__momotInpSeed', '0', 'Random seed (0 for auto)', '35px'); "
+                + "        var labPop = document.createElement('span'); labPop.textContent = 'Pop:'; "
+                + "        var inpPop = mkInput('__momotInpPop', '50', 'Population size', '35px'); "
+                + "        var labIter = document.createElement('span'); labIter.textContent = 'Iter:'; "
+                + "        var inpIter = mkInput('__momotInpIter', '40', 'Number of iterations (generations)', '30px'); "
+                + "        var labRuns = document.createElement('span'); labRuns.textContent = 'Runs:'; "
+                + "        var inpRuns = mkInput('__momotInpRuns', '10', 'Number of algorithm runs', '25px'); "
+                + "        var labSolLen = document.createElement('span'); labSolLen.textContent = 'SolLen:'; "
+                + "        var inpSolLen = mkInput('__momotInpSolLen', '10', 'Solution length (number of transformation steps)', '25px'); "
                 + "        var btnCont = document.createElement('div'); btnCont.style.display = 'flex'; btnCont.style.gap = '4px'; "
                 + "        var mRunBtn = mkBtn('__momotRunBtn', 'Run', 'Execute MOMoT search'); "
                 + "        mRunBtn.style.background = 'rgba(70, 150, 70, 0.6)'; "
-                + "        mRunBtn.style.display = 'none'; "
                 + "        var mStopBtn = mkBtn('__momotStopBtn', 'Stop', 'Stop current MOMoT search'); "
                 + "        mStopBtn.style.background = 'rgba(180, 50, 50, 0.6)'; "
                 + "        btnCont.appendChild(mRunBtn); btnCont.appendChild(mStopBtn); "
+                + "        settings.appendChild(labSeed); settings.appendChild(inpSeed); "
+                + "        settings.appendChild(labPop); settings.appendChild(inpPop); "
+                + "        settings.appendChild(labIter); settings.appendChild(inpIter); "
+                + "        settings.appendChild(labRuns); settings.appendChild(inpRuns); "
+                + "        settings.appendChild(labSolLen); settings.appendChild(inpSolLen); "
                 + "        settings.appendChild(btnCont); "
+                + "        var refreshBtn = mkBtn('__momotRefreshBtn', 'Refresh', 'Reload solutions from output folders'); "
                 + "        var logToggleBtn = mkBtn('__momotLogToggleBtn', 'Show log', 'Show or hide the MoMoT log'); "
                 + "        var clearOverlayBtn = mkBtn('__momotClearOverlayBtn', 'Clear path', 'Clear the comparison path and the marker from the maze'); "
+                + "        right.appendChild(refreshBtn); "
                 + "        right.appendChild(logToggleBtn); "
                 + "        right.appendChild(clearOverlayBtn); "
                 + "        header.appendChild(title); header.appendChild(right); "
@@ -558,9 +574,13 @@ public class BlockyUI extends Application {
                 + "        list.style.borderRadius = '4px'; "
                 + "        list.style.background = 'rgba(0,0,0,0.2)'; "
                 + "        list.style.display = 'none'; "
+                + "        var actions = document.createElement('div'); actions.id = '__momotActions'; "
+                + "        actions.style.display = 'flex'; actions.style.alignItems = 'center'; actions.style.justifyContent = 'space-between'; actions.style.marginTop = '8px'; "
+                + "        var loadBtn = mkBtn('__momotLoadBtn', 'Load', 'Load selected model into the game'); "
+                + "        actions.appendChild(loadBtn); "
                 + "        var status = document.createElement('div'); status.id = '__momotStatus'; status.style.marginTop = '6px'; "
                 + "        status.style.color = '#0f0'; status.style.fontWeight = 'bold'; "
-                + "        status.textContent = 'Place a Direct Manipulation marker to start the search.'; "
+                + "        status.textContent = 'Click Refresh or Run to see solutions.'; "
                 + "        var log = document.createElement('pre'); log.id = '__momotLog'; "
                 + "        log.style.margin = '8px 0 0 0'; log.style.padding = '6px 8px'; "
                 + "        log.style.height = '80px'; log.style.overflow = 'auto'; "
@@ -589,7 +609,7 @@ public class BlockyUI extends Application {
                 + "        var progText = document.createElement('div'); progText.id = '__momotProgressText'; "
                 + "        progText.style.marginTop = '3px'; progText.style.fontSize = '11px'; progText.style.color = '#ddd'; "
                 + "        prog.appendChild(progBar); prog.appendChild(progText); "
-                + "        body.appendChild(list); body.appendChild(status); body.appendChild(prog); body.appendChild(log); "
+                + "        body.appendChild(list); body.appendChild(actions); body.appendChild(status); body.appendChild(prog); body.appendChild(log); "
                 + "        panel.appendChild(header); panel.appendChild(settings); panel.appendChild(body); "
                 + "        var rh = document.createElement('div'); rh.id = '__momotResizeHandle'; "
                 + "        rh.style.position = 'absolute'; rh.style.right = '2px'; rh.style.bottom = '2px'; "
@@ -778,7 +798,7 @@ public class BlockyUI extends Application {
                 + "            if (window.__momotFirstGoalTime !== undefined && window.__momotFirstGoalTime !== null && window.__momotFirstGoalTime !== Infinity) { "
                 + "              goalInfo = ' | First goal: ' + (window.__momotFirstGoalFormatted || ((window.__momotFirstGoalTime / 1000).toFixed(2) + 's')) + ' (Gen ' + (window.__momotFirstGoalGen !== undefined && window.__momotFirstGoalGen !== null && window.__momotFirstGoalGen >= 0 ? window.__momotFirstGoalGen : '-') + ')'; "
                 + "            } "
-                // Candidates that do not reach the goal are always listed (sorted after the goal-reaching ones).
+                + "            // Candidates that do not reach the goal are always listed (sorted after the goal-reaching ones). "
                 + "            var displayed = processed; "
                 + "            if (window.__momotSortCol === -1) { "
                 + "              displayed.sort(function(a, b) { "
@@ -944,6 +964,7 @@ public class BlockyUI extends Application {
                 + "          } catch(e) { if (!isSilent) setStatus('Refresh failed'); } "
                 + "        } "
                 + "        window.__momotShowAndRefresh = function(){ try { panel.style.display = 'block'; } catch(e) {} try { refresh(true); } catch(e2) {} }; "
+                + "        refreshBtn.addEventListener('click', function(){ refresh(); }); "
                 + "        clearOverlayBtn.addEventListener('click', function(){ "
                 + "          try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {} "
                 + "          try { "
@@ -976,21 +997,28 @@ public class BlockyUI extends Application {
                 + "                Z(window.Q, window.S, 4 * t); "
                 + "              } "
                 + "            } catch(eT) {} "
-                + "            var s = 0; "
-                + "            var p = 100; "
-                + "            var it = 100; "
+                + "            var s = parseInt(document.getElementById('__momotInpSeed') ? document.getElementById('__momotInpSeed').value : '0') || 0; "
+                + "            var p = parseInt(document.getElementById('__momotInpPop') ? document.getElementById('__momotInpPop').value : '50') || 50; "
+                + "            var it = parseInt(document.getElementById('__momotInpIter') ? document.getElementById('__momotInpIter').value : '40') || 40; "
                 + "            var e = p * it; "
-                + "            var r = 8; "
-                + "            var sl = 10; "
-                + "            var alg = 'NSGA_II'; "
-                + "            if (bridge.setMomotAlgorithm) bridge.setMomotAlgorithm(alg); "
-                + "            setStatus('Starting MoMoT (alg=' + alg + ', seed=' + s + ', pop=' + p + ', iter=' + it + ' (eval=' + e + '), runs=' + r + ', solLen=' + sl + ')...'); "
+                + "            var r = parseInt(document.getElementById('__momotInpRuns') ? document.getElementById('__momotInpRuns').value : '10') || 10; "
+                + "            var sl = parseInt(document.getElementById('__momotInpSolLen') ? document.getElementById('__momotInpSolLen').value : '10') || 10; "
+                + "            setStatus('Starting MoMoT (seed=' + s + ', pop=' + p + ', iter=' + it + ' (eval=' + e + '), runs=' + r + ', solLen=' + sl + ')...'); "
                 + "            try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {} "
                 + "            bridge.runMomotWithParams(s, p, e, r, sl); "
                 + "          } catch(e) { setStatus('Run failed: ' + e); } "
                 + "        }; "
                 + "        mRunBtn.addEventListener('click', window.__momotStartRun); "
-                + "        setStatus('Hidden until Direct Manipulation teleport.'); "
+                + "        loadBtn.addEventListener('click', function(){ "
+                + "          try { "
+                + "            var p = window.__momotSelectedPath; "
+                + "            if (!p) { setStatus('Select a solution first'); return; } "
+                + "            var bridge = window.javaBridge || (window.parent && window.parent.javaBridge); "
+                + "            if (!bridge || !bridge.loadMomotSolution) { setStatus('Java bridge loadMomotSolution not available'); return; } "
+                + "            setStatus('Loading model...'); "
+                + "            bridge.loadMomotSolution(p); "
+                + "          } catch(e) { setStatus('Load failed'); } "
+                + "        }); "
                 + "        (function(){ "
                 + "          try { "
                 + "            var dragging = false; var resizing = false; "
@@ -1473,7 +1501,6 @@ public class BlockyUI extends Application {
                 + "                  if (bridge && bridge.teleportPegman) bridge.teleportPegman(col, row, t); "
                 + "                } catch(e4) {} "
                 + "                try { if (window.__momotShowAndRefresh) window.__momotShowAndRefresh(); } catch(e4b) {} "
-                + "                try { if (window.__momotStartRun) window.__momotStartRun(); } catch(e4c) {} "
                 + "                __dmStop(); "
                 + "              } catch(e5) { __dmStop(); } "
                 + "            }; "
@@ -1693,40 +1720,13 @@ public class BlockyUI extends Application {
                         }
                     }
                     sb.append("\"timeFormatted\":\"").append(escapeJsonString(formattedTime)).append("\",");
-                    sb.append("\"generationToForm\":").append(e.generationToForm != null ? e.generationToForm : -1).append(",");
-                    sb.append("\"blocks\":").append(blockCountOf(e.modelPath));
+                    sb.append("\"generationToForm\":").append(e.generationToForm != null ? e.generationToForm : -1);
                     sb.append("}");
                 }
                 sb.append("]}");
                 return sb.toString();
             } catch (Exception ex) {
                 return "{\"solutions\":[]}";
-            }
-        }
-
-        /** Block counts per solution model; the table is polled, so each model file is only read once. */
-        private final java.util.Map<String, Integer> blockCountCache = new java.util.concurrent.ConcurrentHashMap<>();
-
-        private int blockCountOf(String modelPath) {
-            // Never let this extra column break the whole listing: any failure shows as "-" in the table.
-            try {
-                if (modelPath == null || modelPath.isBlank() || !new File(modelPath).isFile()) return -1;
-                Integer cached = blockCountCache.get(modelPath);
-                if (cached != null) return cached;
-                // Loaded with the game's own model classes, as getSolutionPath does: blocky_momot classes are
-                // not visible to this class at runtime (NoClassDefFoundError under javafx:run).
-                Resource res = new ResourceSetImpl().createResource(URI.createFileURI(new File(modelPath).getAbsolutePath()));
-                res.load(null);
-                Object root = res.getContents().isEmpty() ? null : res.getContents().get(0);
-                Level level = null;
-                if (root instanceof Game && !((Game) root).getLevels().isEmpty()) level = ((Game) root).getLevels().get(0);
-                else if (root instanceof Level) level = (Level) root;
-                int count = level == null ? -1 : SimUtils.countStatements(level.getSolution());
-                blockCountCache.put(modelPath, count);
-                return count;
-            } catch (Throwable t) {
-                System.err.println("[JSBridge] block count failed for " + modelPath + ": " + t);
-                return -1;
             }
         }
 

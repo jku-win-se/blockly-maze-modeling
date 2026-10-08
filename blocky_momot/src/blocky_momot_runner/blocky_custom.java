@@ -119,6 +119,16 @@ public class blocky_custom extends blocky {
     protected at.ac.tuwien.big.momot.ModuleManager createModuleManager() {
         at.ac.tuwien.big.momot.ModuleManager manager = super.createModuleManager();
         if (manager.getUnits().stream().noneMatch(u -> EDIT_ANYWHERE.equals(u.getName()))) {
+            String propHenshin = System.getProperty("blocky.henshin");
+            if (propHenshin != null && (propHenshin.contains("edit_anywhere") || propHenshin.contains("wrap"))) {
+                File f = new File(propHenshin);
+                if (f.exists()) {
+                    manager = new at.ac.tuwien.big.momot.ModuleManager();
+                    manager.addModule(f.getAbsolutePath());
+                }
+            }
+        }
+        if (manager.getUnits().stream().noneMatch(u -> EDIT_ANYWHERE.equals(u.getName()))) {
             return manager;
         }
         for (org.eclipse.emf.henshin.model.Unit unit : new java.util.ArrayList<>(manager.getUnits())) {

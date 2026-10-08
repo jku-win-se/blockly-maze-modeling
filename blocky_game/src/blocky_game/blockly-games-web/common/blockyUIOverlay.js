@@ -537,7 +537,20 @@
                 log.style.border = '1px solid rgba(255,255,255,0.15)'; log.style.borderRadius = '6px';
                 log.style.whiteSpace = 'pre-wrap'; log.style.wordBreak = 'break-word'; log.textContent = '';
 
-                body.appendChild(list); body.appendChild(actions); body.appendChild(status); body.appendChild(log);
+                var prog = document.createElement('div'); prog.id = '__momotProgress';
+                prog.style.marginTop = '6px'; prog.style.display = 'none';
+                var progBar = document.createElement('div');
+                progBar.style.height = '8px'; progBar.style.background = 'rgba(255,255,255,0.15)';
+                progBar.style.borderRadius = '4px'; progBar.style.overflow = 'hidden';
+                var progFill = document.createElement('div'); progFill.id = '__momotProgressFill';
+                progFill.style.height = '100%'; progFill.style.width = '0%'; progFill.style.background = '#4caf50';
+                progFill.style.transition = 'width 0.3s';
+                progBar.appendChild(progFill);
+                var progText = document.createElement('div'); progText.id = '__momotProgressText';
+                progText.style.marginTop = '3px'; progText.style.fontSize = '11px'; progText.style.color = '#ddd';
+                prog.appendChild(progBar); prog.appendChild(progText);
+
+                body.appendChild(list); body.appendChild(actions); body.appendChild(status); body.appendChild(prog); body.appendChild(log);
                 panel.appendChild(header); panel.appendChild(settings); panel.appendChild(body);
 
                 var rh = document.createElement('div'); rh.id = '__momotResizeHandle';
@@ -569,8 +582,47 @@
                     } catch(e) {}
                 }
 
+                var progStart = 0, progTimer = null, progEnded = false;
+                var progLast = { run: 1, runs: 1, gen: 0, gens: 1, pct: 0 };
+                function fmtElapsed(ms) {
+                    var s = Math.floor(ms / 1000), m = Math.floor(s / 60); s = s % 60;
+                    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+                }
+                function renderProgress() {
+                    try {
+                        var el = progStart ? (Date.now() - progStart) : 0;
+                        progFill.style.width = progLast.pct + '%';
+                        progText.textContent = 'Run ' + progLast.run + '/' + progLast.runs + ' | generation ' + progLast.gen + '/' + progLast.gens
+                            + ' | ' + Math.round(progLast.pct) + '% | ' + fmtElapsed(el) + (progEnded ? ' | ended' : '');
+                    } catch(e) {}
+                }
+                window.__momotProgressStart = function(runs, gens) {
+                    try {
+                        if (progTimer) clearInterval(progTimer);
+                        progStart = Date.now(); progEnded = false;
+                        progLast = { run: 1, runs: runs || 1, gen: 0, gens: gens || 1, pct: 0 };
+                        prog.style.display = 'block'; renderProgress();
+                        progTimer = setInterval(renderProgress, 1000);
+                    } catch(e) {}
+                };
+                window.__momotSetProgress = function(run, runs, gen, gens, pct) {
+                    try {
+                        progLast = { run: run, runs: runs, gen: gen, gens: gens, pct: pct };
+                        prog.style.display = 'block';
+                        renderProgress();
+                    } catch(e) {}
+                };
+                window.__momotProgressDone = function() {
+                    try {
+                        if (progTimer) { clearInterval(progTimer); progTimer = null; }
+                        progEnded = true; renderProgress();
+                    } catch(e) {}
+                };
+
                 function clearSolutions() {
                     try {
+                        if (progTimer) { clearInterval(progTimer); progTimer = null; }
+                        prog.style.display = 'none';
                         window.__momotLastData = [];
                         window.__momotLastJson = null;
                         window.__momotSelectedPath = null;
@@ -795,6 +847,9 @@
                         var e = p * it;
                         var r = parseInt(document.getElementById('__momotInpRuns').value) || 10;
                         var sl = parseInt(document.getElementById('__momotInpSolLen').value) || 10;
+                        if (window.__momotProgressStart) {
+                            window.__momotProgressStart(r, it);
+                        }
                         setStatus('Starting MoMoT (seed=' + s + ', pop=' + p + ', iter=' + it + ' (eval=' + e + '), runs=' + r + ', solLen=' + sl + ')...');
                         try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {}
                         bridge.runMomotWithParams(s, p, e, r, sl);
@@ -810,8 +865,6 @@
                         bridge.loadMomotSolution(p);
                     } catch(e) { setStatus('Load failed'); }
                 });
-
-                setStatus('Hidden until Direct Manipulation teleport.');
             } else if (!existing.parentNode) {
                 var host2 = document.body || document.documentElement;
                 if (host2) host2.appendChild(existing);

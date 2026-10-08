@@ -495,6 +495,13 @@ public class HttpSearchServer {
             sb.append("\"running\":").append(session.isMomotRunning()).append(",");
             sb.append("\"status\":\"").append(escapeJson(session.getMomotStatus())).append("\",");
             sb.append("\"outputDir\":\"").append(escapeJson(session.getMomotCurrentOutputDir())).append("\",");
+            sb.append("\"progress\":{");
+            sb.append("\"run\":").append(session.getProgressRun()).append(",");
+            sb.append("\"totalRuns\":").append(session.getProgressTotalRuns()).append(",");
+            sb.append("\"gen\":").append(session.getProgressGen()).append(",");
+            sb.append("\"totalGens\":").append(session.getProgressTotalGens()).append(",");
+            sb.append("\"pct\":").append(String.format(java.util.Locale.US, "%.1f", session.getProgressPct()));
+            sb.append("},");
             sb.append("\"logs\":[");
             List<String> logs = session.getMomotLogs();
             for (int i = 0; i < logs.size(); i++) {

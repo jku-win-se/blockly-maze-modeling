@@ -1,5 +1,6 @@
 package blocky_game;
 
+import java.io.File;
 import javafx.application.Application;
 
 public class Main {
@@ -24,6 +25,21 @@ public class Main {
         }
         if (System.getProperty("prism.primtextures") == null) {
             System.setProperty("prism.primtextures", "false");
+        }
+        if (System.getProperty("blocky.objectives") == null) {
+            System.setProperty("blocky.objectives", "GATED");
+        }
+        if (System.getProperty("blocky.henshin") == null) {
+            String defaultModule = MomotFirstGoalBenchmarkRunner.defaultHenshinModule();
+            String henshinPath = MomotRunService.firstExisting(
+                    "blocky_model/transformations/" + defaultModule,
+                    "../blocky_model/transformations/" + defaultModule,
+                    defaultModule
+            );
+            File resolved = MomotRunService.resolveExistingFile(henshinPath);
+            if (resolved.exists()) {
+                System.setProperty("blocky.henshin", resolved.getAbsolutePath());
+            }
         }
         // The solution panel also lists the non-goal candidates that came closest to the goal (Improvement-Plan.md,
         // section 3.6). Off in code, so the benchmark runners (their own main) are unchanged; -Dblocky.nonGoalArchive=0 turns it off here.

@@ -543,15 +543,23 @@ public final class MomotRunService {
 
             String currentHenshin = System.getProperty("blocky.henshin");
             if (currentHenshin != null && !currentHenshin.isBlank()) {
+                if (Boolean.getBoolean("blocky.rules.wrap") && !currentHenshin.contains("_wrap")) {
+                    String wrapped = MomotFirstGoalBenchmarkRunner.withWrapMoves(currentHenshin);
+                    File wrappedFile = resolveExistingFile(wrapped);
+                    if (wrappedFile.exists() && wrappedFile.isFile()) {
+                        currentHenshin = wrappedFile.getAbsolutePath();
+                    }
+                }
                 File existingHenshin = resolveExistingFile(currentHenshin);
                 if (existingHenshin.exists() && existingHenshin.isFile()) {
                     System.setProperty("blocky.henshin", existingHenshin.getAbsolutePath());
                 }
             } else {
+                String defaultModule = MomotFirstGoalBenchmarkRunner.defaultHenshinModule();
                 String fallbackHenshin = firstExisting(
-                        "blocky_model/transformations/statement_insertions_henshin_text.henshin",
-                        "../blocky_model/transformations/statement_insertions_henshin_text.henshin",
-                        "statement_insertions_henshin_text.henshin"
+                        "blocky_model/transformations/" + defaultModule,
+                        "../blocky_model/transformations/" + defaultModule,
+                        defaultModule
                 );
                 File resolvedHenshin = resolveExistingFile(fallbackHenshin);
                 if (resolvedHenshin.exists()) {
@@ -656,7 +664,7 @@ public final class MomotRunService {
         } catch (Throwable ignored) {}
     }
 
-    private static File resolveExistingFile(String path) {
+    public static File resolveExistingFile(String path) {
         if (path == null || path.isBlank()) return new File("model/1.xmi");
         File f = new File(path);
         if (f.isAbsolute() && f.exists()) return f;
@@ -689,7 +697,7 @@ public final class MomotRunService {
         return f;
     }
 
-    private static String firstExisting(String... paths) {
+    public static String firstExisting(String... paths) {
         for (String p : paths) {
             if (p != null) {
                 File f = resolveExistingFile(p);

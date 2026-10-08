@@ -406,14 +406,18 @@ public final class MomotFirstGoalBenchmarkRunner {
     public static String selectHenshinModuleForLevel(int level) {
         if (Boolean.getBoolean("blocky.rules.levelSpecific")) {
             if (level <= 2) {
-                return "statement_insertions_atomic_only.henshin";
+                return "statement_insertions_atomic_only_edit_anywhere.henshin";
             } else if (level <= 5) {
-                return withWrapMoves("statement_insertions_no_conds.henshin");
+                return withWrapMoves("statement_insertions_no_conds_edit_anywhere.henshin");
             } else if (level <= 7) {
-                return withWrapMoves("statement_insertions_no_else.henshin");
+                return withWrapMoves("statement_insertions_no_else_edit_anywhere.henshin");
             }
         }
-        return withWrapMoves("statement_insertions_henshin_text.henshin");
+        return withWrapMoves("statement_insertions_henshin_text_edit_anywhere.henshin");
+    }
+
+    public static String defaultHenshinModule() {
+        return withWrapMoves("statement_insertions_henshin_text_edit_anywhere.henshin");
     }
 
     /**
@@ -423,10 +427,10 @@ public final class MomotFirstGoalBenchmarkRunner {
     public static String withWrapMoves(String henshinFile) {
         // blocky.rules.editAnywhere=true: the *_edit_anywhere variant (insert, delete, modify as one move), so
         // that wrap off and wrap on differ only in the wrap/unwrap moves
-        if (Boolean.getBoolean("blocky.rules.editAnywhere") && !henshinFile.contains("atomic_only")) {
+        if (Boolean.getBoolean("blocky.rules.editAnywhere") && !henshinFile.contains("atomic_only") && !henshinFile.contains("edit_anywhere")) {
             henshinFile = henshinFile.replaceFirst("\\.henshin$", "_edit_anywhere.henshin");
         }
-        if (!Boolean.getBoolean("blocky.rules.wrap") || henshinFile.contains("atomic_only")) {
+        if (!Boolean.getBoolean("blocky.rules.wrap") || henshinFile.contains("atomic_only") || henshinFile.contains("_wrap")) {
             return henshinFile;
         }
         return henshinFile.replaceFirst("\\.henshin$", "_wrap.henshin");

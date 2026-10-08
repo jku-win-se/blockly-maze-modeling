@@ -1027,6 +1027,10 @@
                 }).then(function(r) { return r.json(); })
                 .then(function(data) {
                     console.log('[webBridge] MOMoT run started:', data);
+                    if (typeof window.__momotProgressStart === 'function') {
+                        var totalGens = Math.floor(eval / (pop || 1));
+                        window.__momotProgressStart(runs, totalGens);
+                    }
                     startStatusPolling();
                 })
                 .catch(function(e) { console.error('[webBridge] runMomot error', e); });
@@ -1371,6 +1375,9 @@
             clearInterval(pollInterval);
             pollInterval = null;
         }
+        if (typeof window.__momotProgressDone === 'function') {
+            window.__momotProgressDone();
+        }
         fetchSolutions();
         if (momotFinishRetryTimer) clearTimeout(momotFinishRetryTimer);
         momotFinishRetryTimer = setTimeout(function() {
@@ -1399,6 +1406,10 @@
                 }).then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (!data || generation !== pollGeneration) return;
+                    if (data.progress && typeof window.__momotSetProgress === 'function') {
+                        var p = data.progress;
+                        window.__momotSetProgress(p.run, p.totalRuns, p.gen, p.totalGens, p.pct);
+                    }
                     if (data.logs && window.__momotLogAppend) {
                         for (var i = lastMomotLogIndex; i < data.logs.length; i++) {
                             window.__momotLogAppend(data.logs[i]);

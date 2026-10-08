@@ -26,6 +26,12 @@ public class SessionContext {
     private volatile String momotCurrentOutputDir;
     /** Level id that {@link #momotCurrentOutputDir} belongs to. -1 means no active results. */
     private volatile int momotCurrentLevelId = -1;
+
+    private volatile int progressRun = 0;
+    private volatile int progressTotalRuns = 0;
+    private volatile int progressGen = 0;
+    private volatile int progressTotalGens = 0;
+    private volatile double progressPct = 0.0;
     /**
      * Last applied page epoch. Monotonically increasing per page load in the web client.
      * Requests with an epoch older than this value are rejected.
@@ -264,6 +270,18 @@ public class SessionContext {
         if (System.getProperty("blocky.nonGoalArchive") == null) {
             System.setProperty("blocky.nonGoalArchive", "10");
         }
+        if (System.getProperty("blocky.henshin") == null) {
+            String defaultModule = MomotFirstGoalBenchmarkRunner.selectHenshinModuleForLevel(levelId);
+            String henshinPath = MomotRunService.firstExisting(
+                    "blocky_model/transformations/" + defaultModule,
+                    "../blocky_model/transformations/" + defaultModule,
+                    defaultModule
+            );
+            File resolved = MomotRunService.resolveExistingFile(henshinPath);
+            if (resolved.exists()) {
+                System.setProperty("blocky.henshin", resolved.getAbsolutePath());
+            }
+        }
 
         MomotRunService.RunSpec spec = new MomotRunService.RunSpec(
             inputXmi.getAbsolutePath(),
@@ -276,6 +294,34 @@ public class SessionContext {
         momotLogBuffer.clear();
         momotLogBuffer.add("[MoMoT] Starting search for session " + sessionId + "...");
 
+        final int nrRuns = Math.max(1, runs);
+        final int evalsPerRun = Math.max(1, eval);
+        final int generationsPerRun = Math.max(1, eval / Math.max(1, pop));
+        this.progressTotalRuns = nrRuns;
+        this.progressTotalGens = generationsPerRun;
+        this.progressRun = 1;
+        this.progressGen = 0;
+        this.progressPct = 0.0;
+
+        final java.util.concurrent.atomic.AtomicInteger curRun = new java.util.concurrent.atomic.AtomicInteger(1);
+        final java.util.concurrent.atomic.AtomicInteger lastNfe = new java.util.concurrent.atomic.AtomicInteger(-1);
+
+        java.util.function.BiConsumer<Integer, Object> subscriber = (nfe, paretoFront) -> {
+            if (runGen != searchGeneration.get()) return;
+            int n = nfe == null ? 0 : Math.max(0, nfe);
+            int prev = lastNfe.getAndSet(n);
+            if (prev >= 0 && n < prev && curRun.get() < nrRuns) {
+                curRun.incrementAndGet();
+            }
+            int r = curRun.get();
+            int g = Math.min(generationsPerRun, (n + Math.max(1, pop) - 1) / Math.max(1, pop));
+            double pct = Math.min(100.0, 100.0 * ((r - 1) * (double) evalsPerRun + Math.min(n, evalsPerRun))
+                    / ((double) nrRuns * evalsPerRun));
+            this.progressRun = r;
+            this.progressGen = g;
+            this.progressPct = pct;
+        };
+
         this.momotThread = MomotRunService.runAsync(spec, log -> {
             if (runGen != searchGeneration.get()) return;
             momotLogBuffer.add(log);
@@ -285,6 +331,9 @@ public class SessionContext {
         }, () -> {
             if (runGen != searchGeneration.get()) return;
             isMomotRunning = false;
+            this.progressPct = 100.0;
+            this.progressRun = this.progressTotalRuns;
+            this.progressGen = this.progressTotalGens;
             if (!"Stopped".equals(momotStatus)) {
                 momotStatus = "Finished";
                 momotLogBuffer.add("[MoMoT] Search completed.");
@@ -294,7 +343,7 @@ public class SessionContext {
             if (runGen != searchGeneration.get()) return;
             if (currentLevelId() != levelId) return;
             momotCurrentOutputDir = dir;
-        });
+        }, subscriber);
     }
 
     public synchronized void stopMomotRun() {
@@ -309,8 +358,15 @@ public class SessionContext {
             isMomotRunning = false;
             momotStatus = "Stopped";
             momotLogBuffer.add("[MoMoT] Search stopped by user.");
+            this.progressPct = 100.0;
         }
     }
+
+    public int getProgressRun() { return progressRun; }
+    public int getProgressTotalRuns() { return progressTotalRuns; }
+    public int getProgressGen() { return progressGen; }
+    public int getProgressTotalGens() { return progressTotalGens; }
+    public double getProgressPct() { return progressPct; }
 
     public synchronized List<MomotResultsService.SolutionEntry> listMomotSolutions() {
         touch();
