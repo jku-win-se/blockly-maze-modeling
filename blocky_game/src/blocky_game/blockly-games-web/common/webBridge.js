@@ -993,6 +993,16 @@
             if (typeof window.__momotClearSolutions === 'function') {
                 window.__momotClearSolutions();
             }
+            var popVal = parseInt(pop, 10) || 1;
+            var evalVal = parseInt(eval, 10) || 0;
+            var runsVal = parseInt(runs, 10) || 1;
+            var totalGens = Math.max(1, Math.floor(evalVal / popVal));
+            if (typeof window.__momotProgressStart === 'function') {
+                window.__momotProgressStart(runsVal, totalGens);
+            }
+            if (typeof window.__momotSetStatus === 'function') {
+                window.__momotSetStatus('Starting MoMoT...');
+            }
             var info = getTimerSessionInfo();
             var activeGrid = getActiveGrid();
             var frontendK = (typeof window.K === 'number') ? window.K : info.level;
@@ -1007,7 +1017,15 @@
             });
 
             getSessionId(function(sid) {
-                if (!sid) return;
+                if (!sid) {
+                    if (typeof window.__momotProgressDone === 'function') {
+                        window.__momotProgressDone();
+                    }
+                    if (typeof window.__momotSetStatus === 'function') {
+                        window.__momotSetStatus('Run failed: No session available');
+                    }
+                    return;
+                }
                 fetch(apiBase + '/api/momot/run', {
                     method: 'POST',
                     headers: attachTimerHeaders({ 'Content-Type': 'application/json', 'X-Session-ID': sid }),
@@ -1024,16 +1042,29 @@
                         meta: metaJson,
                         xml: currentXml
                     })
-                }).then(function(r) { return r.json(); })
+                }).then(function(r) {
+                    if (r && typeof r.ok === 'boolean' && !r.ok) {
+                        throw new Error('HTTP ' + r.status);
+                    }
+                    return r.json();
+                })
                 .then(function(data) {
                     console.log('[webBridge] MOMoT run started:', data);
-                    if (typeof window.__momotProgressStart === 'function') {
-                        var totalGens = Math.floor(eval / (pop || 1));
-                        window.__momotProgressStart(runs, totalGens);
+                    if (data && data.status && data.status !== 'ok' && !data.running) {
+                        throw new Error(data.message || data.status);
                     }
                     startStatusPolling();
                 })
-                .catch(function(e) { console.error('[webBridge] runMomot error', e); });
+                .catch(function(e) {
+                    console.error('[webBridge] runMomot error', e);
+                    if (typeof window.__momotProgressDone === 'function') {
+                        window.__momotProgressDone();
+                    }
+                    if (typeof window.__momotSetStatus === 'function') {
+                        var msg = (e && e.message) ? e.message : String(e);
+                        window.__momotSetStatus('Run failed: ' + msg);
+                    }
+                });
             });
         },
 
@@ -1398,12 +1429,18 @@
         var seenRunning = false;
         lastMomotLogIndex = 0;
         if (typeof window.__momotLogClear === 'function') window.__momotLogClear();
-        pollInterval = setInterval(function() {
+
+        function pollOnce() {
             getSessionId(function(sid) {
                 if (!sid || generation !== pollGeneration) return;
                 fetch(apiBase + '/api/momot/status', {
                     headers: { 'X-Session-ID': sid }
-                }).then(function(r) { return r.json(); })
+                }).then(function(r) {
+                    if (r && typeof r.ok === 'boolean' && !r.ok) {
+                        throw new Error('HTTP ' + r.status);
+                    }
+                    return r.json();
+                })
                 .then(function(data) {
                     if (!data || generation !== pollGeneration) return;
                     if (data.progress && typeof window.__momotSetProgress === 'function') {
@@ -1429,9 +1466,19 @@
                     if (finished || (seenRunning && !data.running)) {
                         finishMomotPolling(generation);
                     }
-                }).catch(function(e) {});
+                }).catch(function(e) {
+                    if (generation !== pollGeneration) return;
+                    console.error('[webBridge] status polling error', e);
+                    if (typeof window.__momotSetStatus === 'function') {
+                        var msg = (e && e.message) ? e.message : String(e);
+                        window.__momotSetStatus('MoMoT status error: ' + msg);
+                    }
+                });
             });
-        }, 1000);
+        }
+
+        pollOnce();
+        pollInterval = setInterval(pollOnce, 1000);
     }
 
     window.__blockyResetMomotSession = function() {

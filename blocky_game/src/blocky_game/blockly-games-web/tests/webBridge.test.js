@@ -176,6 +176,87 @@ describe('webBridge.js Test Suite', () => {
         assert.ok(rendered.length > afterFinish, 'the delayed fetch renders the final solutions');
     });
 
+    it('sets starting state immediately, polls status once on accept, and surfaces request errors', async () => {
+        let statusLog = [];
+        let progressStarted = null;
+        let progressDoneCalled = false;
+
+        window.__momotSetStatus = (msg) => { statusLog.push(msg); };
+        window.__momotProgressStart = (runs, gens) => { progressStarted = { runs, gens }; };
+        window.__momotProgressDone = () => { progressDoneCalled = true; };
+
+        let runDeferred = null;
+        const previousFetch = window.fetch;
+        let statusFetched = false;
+
+        window.fetch = async (url) => {
+            if (url.includes('/api/momot/run')) {
+                return new Promise((resolve) => {
+                    runDeferred = () => resolve({ json: async () => ({ status: 'ok', running: true }) });
+                });
+            }
+            if (url.includes('/api/momot/status')) {
+                statusFetched = true;
+                return { json: async () => ({ running: true, status: 'Waiting' }) };
+            }
+            if (url.includes('/api/momot/solutions')) {
+                return { json: async () => [] };
+            }
+            return previousFetch(url);
+        };
+        global.fetch = window.fetch;
+
+        // Start search (seed=1, pop=20, eval=100, runs=2, solLen=8) -> totalGens = Math.floor(100/20) = 5
+        window.javaBridge.runMomotWithParams(1, 20, 100, 2, 8);
+
+        // Synchronously in the same turn: progress started and status set
+        assert.deepStrictEqual(progressStarted, { runs: 2, gens: 5 });
+        assert.ok(statusLog.includes('Starting MoMoT...'), 'status should be set to Starting MoMoT... immediately');
+        assert.strictEqual(statusFetched, false, 'status poll should not happen before run request resolves');
+
+        // Resolve the run POST
+        runDeferred();
+        await new Promise(r => setTimeout(r, 40));
+
+        // Immediate poll should have executed without manual setInterval tick
+        assert.strictEqual(statusFetched, true, 'status should be polled immediately once run is accepted');
+        assert.strictEqual(statusLog[statusLog.length - 1], 'MoMoT: Waiting', 'MoMoT: Waiting should replace Starting MoMoT...');
+
+        // Test error handling on failed run POST
+        statusLog = [];
+        progressDoneCalled = false;
+        window.fetch = async (url) => {
+            if (url.includes('/api/momot/run')) {
+                throw new Error('Connection refused');
+            }
+            return previousFetch(url);
+        };
+        global.fetch = window.fetch;
+
+        window.javaBridge.runMomotWithParams(1, 20, 100, 1, 8);
+        await new Promise(r => setTimeout(r, 40));
+
+        assert.strictEqual(progressDoneCalled, true, 'progress bar should stop on run error');
+        assert.ok(statusLog.some(msg => msg.includes('Run failed: Connection refused')), 'error must be surfaced on status line');
+
+        // Test status polling error handling
+        statusLog = [];
+        window.fetch = async (url) => {
+            if (url.includes('/api/momot/run')) {
+                return { json: async () => ({ status: 'ok', running: true }) };
+            }
+            if (url.includes('/api/momot/status')) {
+                throw new Error('503 Service Unavailable');
+            }
+            return previousFetch(url);
+        };
+        global.fetch = window.fetch;
+
+        window.javaBridge.runMomotWithParams(1, 20, 100, 1, 8);
+        await new Promise(r => setTimeout(r, 40));
+        assert.ok(statusLog.some(msg => msg.includes('MoMoT status error: 503 Service Unavailable')), 'status poll failure must be surfaced on status line');
+    });
+
     it('runMomotWithParams includes current XML, map, meta, and epoch in the run body', async () => {
         let runBody = null;
         window.BlocklyInterface = {
