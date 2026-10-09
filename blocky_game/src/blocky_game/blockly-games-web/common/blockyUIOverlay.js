@@ -493,6 +493,13 @@
                 settings.appendChild(labSolLen); settings.appendChild(inpSolLen);
 
                 var refreshBtn = mkBtn('__momotRefreshBtn', 'Refresh', 'Reload solutions from output folders');
+                var logToggleBtn = mkBtn('__momotLogToggleBtn', 'Log', 'Show or hide the MoMoT log');
+                logToggleBtn.addEventListener('click', function() {
+                    var show = (log.style.display === 'none');
+                    log.style.display = show ? 'block' : 'none';
+                    logToggleBtn.textContent = show ? 'Hide Log' : 'Log';
+                    if (show) { log.scrollTop = log.scrollHeight + 1000; }
+                });
                 var gearBtn = mkBtn('__momotGearBtn', '⚙', 'Advanced settings');
                 gearBtn.addEventListener('click', function() {
                     var cur = settings.style.display;
@@ -508,6 +515,7 @@
                 right.appendChild(mRunBtn);
                 right.appendChild(mStopBtn);
                 right.appendChild(refreshBtn);
+                right.appendChild(logToggleBtn);
                 right.appendChild(gearBtn);
                 right.appendChild(mCloseBtn);
                 header.appendChild(title); header.appendChild(right);
@@ -521,14 +529,9 @@
                 list.style.border = '1px solid rgba(255,255,255,0.1)'; list.style.borderRadius = '4px';
                 list.style.background = 'rgba(0,0,0,0.2)'; list.style.display = 'none';
 
-                var actions = document.createElement('div'); actions.id = '__momotActions';
-                actions.style.display = 'flex'; actions.style.gap = '6px'; actions.style.marginTop = '8px';
-                var loadBtn = mkBtn('__momotLoadBtn', 'Load', 'Load selected model into the game');
-                actions.appendChild(loadBtn);
-
                 var status = document.createElement('div'); status.id = '__momotStatus'; status.style.marginTop = '6px';
                 status.style.color = '#0f0'; status.style.fontWeight = 'bold';
-                status.textContent = 'Click Refresh or Run to see solutions.';
+                status.textContent = 'Place the pegman to start search.';
 
                 var log = document.createElement('pre'); log.id = '__momotLog';
                 log.style.margin = '8px 0 0 0'; log.style.padding = '6px 8px';
@@ -536,6 +539,7 @@
                 log.style.background = 'rgba(0,0,0,0.4)'; log.style.color = '#ddd';
                 log.style.border = '1px solid rgba(255,255,255,0.15)'; log.style.borderRadius = '6px';
                 log.style.whiteSpace = 'pre-wrap'; log.style.wordBreak = 'break-word'; log.textContent = '';
+                log.style.display = 'none';
 
                 var prog = document.createElement('div'); prog.id = '__momotProgress';
                 prog.style.marginTop = '6px'; prog.style.display = 'none';
@@ -550,7 +554,7 @@
                 progText.style.marginTop = '3px'; progText.style.fontSize = '11px'; progText.style.color = '#ddd';
                 prog.appendChild(progBar); prog.appendChild(progText);
 
-                body.appendChild(list); body.appendChild(actions); body.appendChild(status); body.appendChild(prog); body.appendChild(log);
+                body.appendChild(list); body.appendChild(status); body.appendChild(prog); body.appendChild(log);
                 panel.appendChild(header); panel.appendChild(settings); panel.appendChild(body);
 
                 var rh = document.createElement('div'); rh.id = '__momotResizeHandle';
@@ -629,7 +633,7 @@
                         list.innerHTML = '';
                         list.style.display = 'none';
                         logClear();
-                        setStatus('No solutions for this level yet. Click Run to start search.');
+                        setStatus('No solutions for this level yet. Place the pegman to start search.');
                         if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]);
                     } catch(e) {}
                 }
@@ -724,7 +728,6 @@
                         var objNames = ['Goal Reached', 'Edits', 'Number of Actions', 'Closest to Goal', 'Number of Blocks'];
                         var displayCols = Math.max(maxObj, objNames.length);
                         for (var i=0; i<displayCols; i++) hRow.appendChild(mkTh(objNames[i] || ('Obj ' + (i+1)), i));
-                        hRow.appendChild(mkTh('Model', 999));
                         thead.appendChild(hRow); table.appendChild(thead);
 
                         var tbody = document.createElement('tbody');
@@ -751,10 +754,6 @@
                                 td.style.border = '1px solid rgba(255,255,255,0.15)';
                                 tr.appendChild(td);
                             }
-                            var tdM = document.createElement('td');
-                            tdM.textContent = p.modelName; tdM.style.padding = '6px 8px';
-                            tdM.style.border = '1px solid rgba(255,255,255,0.15)';
-                            tr.appendChild(tdM);
 
                             tr.addEventListener('mouseenter', function() { if (window.__momotSelectedPath !== p.it.modelPath) tr.style.background = 'rgba(255,255,255,0.05)'; });
                             tr.addEventListener('mouseleave', function() { if (window.__momotSelectedPath !== p.it.modelPath) tr.style.background = 'transparent'; });
@@ -828,10 +827,13 @@
                         }
                     } catch(e) { setStatus('Stop failed'); }
                 });
-                mRunBtn.addEventListener('click', function(){
+                window.__momotStartRun = function(){
                     try {
                         var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);
                         if (!bridge || !bridge.runMomotWithParams) { setStatus('Java bridge runMomotWithParams not available'); return; }
+                        try {
+                            if (window.__momotFirstGoalReset) window.__momotFirstGoalReset();
+                        } catch(eR) {}
                         try {
                             if (window.Z && typeof window.__preDmQ === 'number') {
                                 window.Q = window.__preDmQ;
@@ -841,12 +843,12 @@
                                 Z(window.Q, window.S, 4 * t);
                             }
                         } catch(eT) {}
-                        var s = parseInt(document.getElementById('__momotInpSeed').value) || 0;
-                        var p = parseInt(document.getElementById('__momotInpPop').value) || 50;
-                        var it = parseInt(document.getElementById('__momotInpIter').value) || 40;
+                        var s = parseInt(document.getElementById('__momotInpSeed') ? document.getElementById('__momotInpSeed').value : '0') || 0;
+                        var p = parseInt(document.getElementById('__momotInpPop') ? document.getElementById('__momotInpPop').value : '50') || 50;
+                        var it = parseInt(document.getElementById('__momotInpIter') ? document.getElementById('__momotInpIter').value : '40') || 40;
                         var e = p * it;
-                        var r = parseInt(document.getElementById('__momotInpRuns').value) || 10;
-                        var sl = parseInt(document.getElementById('__momotInpSolLen').value) || 10;
+                        var r = parseInt(document.getElementById('__momotInpRuns') ? document.getElementById('__momotInpRuns').value : '10') || 10;
+                        var sl = parseInt(document.getElementById('__momotInpSolLen') ? document.getElementById('__momotInpSolLen').value : '10') || 10;
                         if (window.__momotProgressStart) {
                             window.__momotProgressStart(r, it);
                         }
@@ -854,17 +856,8 @@
                         try { if (window.__dbgDrawComparisonPath) window.__dbgDrawComparisonPath([]); } catch(eC) {}
                         bridge.runMomotWithParams(s, p, e, r, sl);
                     } catch(e) { setStatus('Run failed: ' + e); }
-                });
-                loadBtn.addEventListener('click', function(){
-                    try {
-                        var p = window.__momotSelectedPath;
-                        if (!p) { setStatus('Select a solution first'); return; }
-                        var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);
-                        if (!bridge || !bridge.loadMomotSolution) { setStatus('Java bridge loadMomotSolution not available'); return; }
-                        setStatus('Loading model...');
-                        bridge.loadMomotSolution(p);
-                    } catch(e) { setStatus('Load failed'); }
-                });
+                };
+                mRunBtn.addEventListener('click', window.__momotStartRun);
             } else if (!existing.parentNode) {
                 var host2 = document.body || document.documentElement;
                 if (host2) host2.appendChild(existing);
@@ -1390,14 +1383,71 @@
                                     var row = Math.floor((cy / rect.height) * height);
                                     if (col < 0 || row < 0 || col >= width || row >= height) return;
                                     var v = grid[row][col];
-                                    if (v === 0) return; // 0 = WALL, allow 1=PATH, 2=START, 3=GOAL, 4=DMG
+                                    if (!(v === 1 || v === 3)) return; // 0 = WALL, 2 = START
                                     var t = (typeof window.T === 'number') ? window.T : ((typeof window.__stableStartT === 'number') ? window.__stableStartT : 0);
                                     try { if (typeof __dbgSetPegman === 'function') __dbgSetPegman(col, row, t); } catch(e3) {}
+
+                                    var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);
+
+                                    function doPlacementAndStart() {
+                                        var pPlacement = null;
+                                        try {
+                                            if (bridge && bridge.teleportPegman) {
+                                                pPlacement = bridge.teleportPegman(col, row, t);
+                                            }
+                                        } catch(e4) {}
+
+                                        function onPlacementDone() {
+                                            try {
+                                                if (grid && Array.isArray(grid)) {
+                                                    for (var r = 0; r < grid.length; r++) {
+                                                        if (Array.isArray(grid[r])) {
+                                                            for (var c = 0; c < grid[r].length; c++) {
+                                                                if (grid[r][c] === 3) grid[r][c] = 1;
+                                                            }
+                                                        }
+                                                    }
+                                                    grid[row][col] = 3;
+                                                }
+                                                window.od = { x: col, y: row };
+                                            } catch(eG) {}
+                                            try { if (window.__momotShowAndRefresh) window.__momotShowAndRefresh(); } catch(e4b) {}
+                                            try { if (window.__momotStartRun) window.__momotStartRun(); } catch(e4c) {}
+                                        }
+
+                                        if (pPlacement && typeof pPlacement.then === 'function') {
+                                            pPlacement.then(onPlacementDone).catch(function(err) {
+                                                console.error('[DM] teleportPegman failed:', err);
+                                                onPlacementDone();
+                                            });
+                                        } else {
+                                            onPlacementDone();
+                                        }
+                                    }
+
+                                    var isRunning = false;
                                     try {
-                                        var bridge = window.javaBridge || (window.parent && window.parent.javaBridge);
-                                        if (bridge && bridge.teleportPegman) bridge.teleportPegman(col, row, t);
-                                    } catch(e4) {}
-                                    try { if (window.__momotShowAndRefresh) window.__momotShowAndRefresh(); } catch(e4b) {}
+                                        if (bridge && typeof bridge.isMomotRunning === 'function') {
+                                            isRunning = bridge.isMomotRunning();
+                                        } else if (typeof window.__momotIsRunning === 'boolean') {
+                                            isRunning = window.__momotIsRunning;
+                                        }
+                                    } catch(eR) {}
+
+                                    if (isRunning && bridge && bridge.stopMomotRun) {
+                                        var pStop = null;
+                                        try {
+                                            pStop = bridge.stopMomotRun();
+                                        } catch(eS) {}
+                                        if (pStop && typeof pStop.then === 'function') {
+                                            pStop.then(doPlacementAndStart).catch(doPlacementAndStart);
+                                        } else {
+                                            doPlacementAndStart();
+                                        }
+                                    } else {
+                                        doPlacementAndStart();
+                                    }
+
                                     if (ev.type === 'touchend' && ev.preventDefault) ev.preventDefault();
                                     __dmStop();
                                 } catch(e5) { __dmStop(); }

@@ -162,4 +162,42 @@ describe('blockyUIOverlay.js Test Suite', () => {
         gearBtn.click();
         assert.strictEqual(settings.style.display, 'none', 'Second gear click should collapse parameters row');
     });
+
+    it('hides log by default, toggles it via header Log button, and omits Load button and Model column', async () => {
+        await new Promise(r => setTimeout(r, 150));
+        const loadBtn = window.document.getElementById('__momotLoadBtn');
+        const actions = window.document.getElementById('__momotActions');
+        assert.strictEqual(loadBtn, null, '#__momotLoadBtn should be removed');
+        assert.strictEqual(actions, null, '#__momotActions should be removed');
+
+        const log = window.document.getElementById('__momotLog');
+        assert.ok(log, '#__momotLog should exist');
+        assert.strictEqual(log.style.display, 'none', 'Log should start hidden');
+
+        const logToggleBtn = window.document.getElementById('__momotLogToggleBtn');
+        assert.ok(logToggleBtn, '#__momotLogToggleBtn should exist in header');
+        assert.strictEqual(logToggleBtn.textContent, 'Log');
+
+        logToggleBtn.click();
+        assert.strictEqual(log.style.display, 'block', 'Clicking Log button should show log');
+        assert.strictEqual(logToggleBtn.textContent, 'Hide Log');
+
+        logToggleBtn.click();
+        assert.strictEqual(log.style.display, 'none', 'Clicking again should hide log');
+        assert.strictEqual(logToggleBtn.textContent, 'Log');
+
+        const status = window.document.getElementById('__momotStatus');
+        assert.strictEqual(status.textContent, 'Place the pegman to start search.');
+
+        // Render solution and verify Model column does not exist
+        window.__momotRenderSolutions([
+            { modelPath: 'models/sol_test.xmi', objectiveLine: '-1.0 4.0 5.0 0.0 3.0' }
+        ]);
+        const list = window.document.getElementById('__momotList');
+        const ths = Array.from(list.querySelectorAll('thead th')).map(th => th.textContent.trim());
+        assert.ok(!ths.some(t => t.startsWith('Model')), 'Table headers should not contain Model column');
+
+        const tds = list.querySelectorAll('tbody tr td');
+        assert.strictEqual(tds.length, 5, 'Should have exactly 5 objective columns and no Model column');
+    });
 });

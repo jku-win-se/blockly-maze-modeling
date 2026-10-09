@@ -122,6 +122,11 @@
                 window.__stableStartT = window.T;
 
                 if (isSameLevel && data.maxBlocks !== undefined) window.Od = data.maxBlocks;
+
+                if (typeof data.momotRunning === 'boolean') {
+                    momotIsRunning = data.momotRunning;
+                    window.__momotIsRunning = data.momotRunning;
+                }
                 window.__injectNewPath = data.newPath || [];
                 window.__injectPastPath = data.pastPath || [];
 
@@ -231,6 +236,8 @@
     }
 
     var cachedSolutions = [];
+    var momotIsRunning = false;
+    window.__momotIsRunning = false;
 
     // ==========================================
     // Client-Side Local Debugger Engine
@@ -990,6 +997,8 @@
 
         runMomotWithParams: function(seed, pop, eval, runs, solLen) {
             cachedSolutions = [];
+            momotIsRunning = true;
+            window.__momotIsRunning = true;
             if (typeof window.__momotClearSolutions === 'function') {
                 window.__momotClearSolutions();
             }
@@ -1018,6 +1027,8 @@
 
             getSessionId(function(sid) {
                 if (!sid) {
+                    momotIsRunning = false;
+                    window.__momotIsRunning = false;
                     if (typeof window.__momotProgressDone === 'function') {
                         window.__momotProgressDone();
                     }
@@ -1053,10 +1064,14 @@
                     if (data && data.status && data.status !== 'ok' && !data.running) {
                         throw new Error(data.message || data.status);
                     }
+                    momotIsRunning = true;
+                    window.__momotIsRunning = true;
                     startStatusPolling();
                 })
                 .catch(function(e) {
                     console.error('[webBridge] runMomot error', e);
+                    momotIsRunning = false;
+                    window.__momotIsRunning = false;
                     if (typeof window.__momotProgressDone === 'function') {
                         window.__momotProgressDone();
                     }
@@ -1069,13 +1084,29 @@
         },
 
         stopMomotRun: function() {
-            getSessionId(function(sid) {
-                if (!sid) return;
-                fetch(apiBase + '/api/momot/stop', {
-                    method: 'POST',
-                    headers: { 'X-Session-ID': sid }
+            momotIsRunning = false;
+            window.__momotIsRunning = false;
+            return new Promise(function(resolve) {
+                getSessionId(function(sid) {
+                    if (!sid) {
+                        resolve(null);
+                        return;
+                    }
+                    fetch(apiBase + '/api/momot/stop', {
+                        method: 'POST',
+                        headers: { 'X-Session-ID': sid }
+                    }).then(function(r) {
+                        return r.json ? r.json() : r;
+                    }).then(resolve).catch(function(e) {
+                        console.error('[webBridge] stopMomotRun error', e);
+                        resolve(null);
+                    });
                 });
             });
+        },
+
+        isMomotRunning: function() {
+            return !!momotIsRunning;
         },
 
         listMomotSolutions: function() {
@@ -1171,18 +1202,28 @@
 
         teleportPegman: function(q, s, t) {
             var info = getTimerSessionInfo();
-            getSessionId(function(sid) {
-                if (!sid) return;
-                fetch(apiBase + '/api/dm/request', {
-                    method: 'POST',
-                    headers: attachTimerHeaders({ 'Content-Type': 'application/json', 'X-Session-ID': sid }),
-                    body: JSON.stringify({
-                        q: q,
-                        s: s,
-                        t: t,
-                        timerSessionId: info.timerSessionId,
-                        level: info.level
-                    })
+            return new Promise(function(resolve, reject) {
+                getSessionId(function(sid) {
+                    if (!sid) {
+                        resolve(null);
+                        return;
+                    }
+                    fetch(apiBase + '/api/dm/request', {
+                        method: 'POST',
+                        headers: attachTimerHeaders({ 'Content-Type': 'application/json', 'X-Session-ID': sid }),
+                        body: JSON.stringify({
+                            q: q,
+                            s: s,
+                            t: t,
+                            timerSessionId: info.timerSessionId,
+                            level: info.level
+                        })
+                    }).then(function(res) {
+                        if (res && typeof res.ok === 'boolean' && !res.ok) {
+                            throw new Error('HTTP ' + res.status);
+                        }
+                        return res.json ? res.json() : res;
+                    }).then(resolve).catch(reject);
                 });
             });
         },
@@ -1395,6 +1436,8 @@
             momotFinishRetryTimer = null;
         }
         cachedSolutions = [];
+        momotIsRunning = false;
+        window.__momotIsRunning = false;
         if (typeof window.__momotClearSolutions === 'function') {
             window.__momotClearSolutions();
         }
@@ -1402,6 +1445,8 @@
 
     function finishMomotPolling(generation) {
         if (generation !== pollGeneration) return;
+        momotIsRunning = false;
+        window.__momotIsRunning = false;
         if (pollInterval) {
             clearInterval(pollInterval);
             pollInterval = null;
@@ -1457,6 +1502,8 @@
                         window.__momotSetStatus('MoMoT: ' + data.status);
                     }
                     if (data.running) {
+                        momotIsRunning = true;
+                        window.__momotIsRunning = true;
                         seenRunning = true;
                         fetchSolutions();
                         return;
@@ -1464,6 +1511,8 @@
                     var status = data.status || '';
                     var finished = status === 'Finished' || status === 'Stopped';
                     if (finished || (seenRunning && !data.running)) {
+                        momotIsRunning = false;
+                        window.__momotIsRunning = false;
                         finishMomotPolling(generation);
                     }
                 }).catch(function(e) {
@@ -1493,6 +1542,8 @@
             momotFinishRetryTimer = null;
         }
         cachedSolutions = [];
+        momotIsRunning = false;
+        window.__momotIsRunning = false;
         sessionId = null;
         try {
             localStorage.removeItem('blocky_session_id');

@@ -80,4 +80,78 @@ describe('directManipulation.test.js Test Suite', () => {
         assert.strictEqual(teleportCalls[0].q, 2);
         assert.strictEqual(teleportCalls[0].s, 0);
     });
+
+    it('updates grid, teleports pegman, and auto-starts MoMoT run when pegman is placed', async () => {
+        await new Promise(r => setTimeout(r, 150));
+        let runCalls = [];
+        window.javaBridge.runMomotWithParams = (seed, pop, evalVal, runs, solLen) => {
+            runCalls.push({ seed, pop, evalVal, runs, solLen });
+        };
+
+        const dmBtn = window.document.getElementById('directManipulationButton');
+        dmBtn.click();
+        const svg = window.document.getElementById('svgMaze');
+        svg.getBoundingClientRect = () => ({
+            left: 0, top: 0, width: 400, height: 400, right: 400, bottom: 400
+        });
+
+        // Click cell (2, 0)
+        const clickEv = new window.MouseEvent('click', { clientX: 225, clientY: 25, bubbles: true });
+        svg.dispatchEvent(clickEv);
+
+        // Clicked cell should now be goal (3) and old goal (2, 2) should now be path (1)
+        assert.strictEqual(window.X[0][2], 3);
+        assert.strictEqual(window.X[2][2], 1);
+        assert.strictEqual(window.od.x, 2);
+        assert.strictEqual(window.od.y, 0);
+
+        // MoMoT run was automatically triggered
+        assert.strictEqual(runCalls.length, 1);
+        assert.strictEqual(runCalls[0].seed, 0);
+        assert.strictEqual(runCalls[0].pop, 50);
+        assert.strictEqual(runCalls[0].runs, 10);
+    });
+
+    it('stops in-flight search first and awaits placement promise before auto-starting', async () => {
+        await new Promise(r => setTimeout(r, 150));
+        let eventOrder = [];
+        let resolveTeleport;
+
+        window.javaBridge.isMomotRunning = () => true;
+        window.javaBridge.stopMomotRun = () => {
+            eventOrder.push('stopMomotRun');
+            return Promise.resolve();
+        };
+        window.javaBridge.teleportPegman = (q, s, t) => {
+            eventOrder.push('teleportPegman');
+            return new Promise((resolve) => {
+                resolveTeleport = resolve;
+            });
+        };
+        window.javaBridge.runMomotWithParams = () => {
+            eventOrder.push('runMomotWithParams');
+        };
+
+        const dmBtn = window.document.getElementById('directManipulationButton');
+        dmBtn.click();
+        const svg = window.document.getElementById('svgMaze');
+        svg.getBoundingClientRect = () => ({
+            left: 0, top: 0, width: 400, height: 400, right: 400, bottom: 400
+        });
+
+        // Click cell (2, 0)
+        const clickEv = new window.MouseEvent('click', { clientX: 225, clientY: 25, bubbles: true });
+        svg.dispatchEvent(clickEv);
+
+        await new Promise(r => setTimeout(r, 20));
+        assert.deepStrictEqual(eventOrder, ['stopMomotRun', 'teleportPegman']);
+
+        // Now resolve teleport promise
+        resolveTeleport();
+        await new Promise(r => setTimeout(r, 20));
+
+        assert.deepStrictEqual(eventOrder, ['stopMomotRun', 'teleportPegman', 'runMomotWithParams']);
+        assert.strictEqual(window.X[0][2], 3);
+        assert.strictEqual(window.X[2][2], 1);
+    });
 });
